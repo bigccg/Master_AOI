@@ -9,7 +9,7 @@
 // ──────────────────────────────────────────────
 
 const state = {
-    sheet: 'B200_Gen',
+    sheet: 'ALL',
     page: 1,
     pageSize: 10,
     search: '',
@@ -34,6 +34,7 @@ let matrixInflight = null;
 let currentSheetData = null;
 
 const RACK_PER_PAGE = 6;
+const ALL_SIZE_INSERT_MSG = 'หน้า All Size Magazine ไม่สามารถเพิ่มข้อมูลได้ กรุณาเลือกชีตก่อน / Select a sheet before inserting a new record.';
 
 // ──────────────────────────────────────────────
 // Copy & Alerts
@@ -437,6 +438,13 @@ function syncShelfViewMode() {
     if (rackSection) rackSection.classList.toggle('hidden', isAllZones);
     if (matrixSection) matrixSection.classList.toggle('hidden', !isAllZones);
     if (isAllZones) requestAnimationFrame(syncMatrixStickyOffsets);
+
+    // All Size Magazine is view-only for new records
+    const newBtn = document.getElementById('new-entry-btn');
+    if (newBtn) {
+        newBtn.disabled = isAllZones;
+        newBtn.title = isAllZones ? ALL_SIZE_INSERT_MSG : '';
+    }
     return isAllZones;
 }
 window.syncShelfViewMode = syncShelfViewMode;
@@ -847,11 +855,15 @@ function renderRackMap(rack, sp) {
     const cardsContainer = document.getElementById('rack-cards-container');
     if (!cardsContainer) return;
 
+    // Other = Bare / Bad Mark has no G / D / G+D, so it gets its own color (keyed by pcs_status)
     const cellCls = {
         G:  'bg-emerald-600 text-white',
         D:  'bg-red-600 text-white',
-        GD: 'bg-amber-400 text-amber-950'
+        GD: 'bg-amber-400 text-amber-950',
+        'Bare':     'bg-sky-500 text-white',
+        'Bad Mark': 'bg-violet-600 text-white'
     };
+    const statusLabel = { G: 'G', D: 'D', GD: 'G+D' };
 
     let cardsHtml = '';
     rack.magazines.forEach(m => {
@@ -859,10 +871,11 @@ function renderRackMap(rack, sp) {
         m.shelves.forEach(s => {
             if (s.occupied) {
                 const d = s.data;
-                const tip = `${s.shelf} · ${d.code} · ${d.product} · ${d.status}`;
+                const key = (window.OTHER_NO_CLASS || []).includes(d.pcs_status) ? d.pcs_status : s.status;
+                const tip = `${s.shelf} · ${d.code} · ${d.product} · ${statusLabel[key] || key}`;
                 gridHtml += `
                     <button type="button" data-action="edit" data-id="${d.id}" title="${h(tip)}"
-                            class="h-7 flex items-center justify-center rounded text-[11px] font-semibold ${cellCls[s.status] || 'bg-slate-500 text-white'} hover:ring-2 hover:ring-blue-400 hover:ring-offset-1 cursor-pointer transition">${h(s.shelf)}</button>
+                            class="h-7 flex items-center justify-center rounded text-[11px] font-semibold ${cellCls[key] || 'bg-slate-500 text-white'} hover:ring-2 hover:ring-blue-400 hover:ring-offset-1 cursor-pointer transition">${h(s.shelf)}</button>
                 `;
             } else {
                 gridHtml += `
@@ -996,16 +1009,31 @@ function gmSetMode(mode, code) {
     set('gm-st-sheet', state.sheet);
 }
 
-// required-fields progress in the statusline (shelf, product, side, board type, board classification)
+// required-fields progress in the statusline (shelf, product, side, board type, board classification unless locked)
 function gmSyncProgress() {
     const ids = ['modal-shelf', 'modal-product', 'modal-side', 'modal-board-type'];
     const statusChecked = !!document.querySelector('#board-form input[name="board_status"]:checked');
-    const total = ids.length + 1;
+    const statusLocked = !!document.querySelector('#board-form input[name="board_status"]:disabled');
+    const total = ids.length + (statusLocked ? 0 : 1);
     const done = ids.filter(id => (document.getElementById(id)?.value || '').trim() !== '').length + (statusChecked ? 1 : 0);
     const bar = document.getElementById('gm-prog-bar');
     const txt = document.getElementById('gm-prog-text');
     if (bar) bar.style.width = (done / total * 100) + '%';
     if (txt) txt.textContent = done + '/' + total;
+}
+
+// Other = Bare / Bad Mark (window.OTHER_NO_CLASS) -> Board Classification is cleared and locked, defects dropped with it
+function syncClassificationLock() {
+    const locked = (window.OTHER_NO_CLASS || []).includes(document.getElementById('modal-pcs')?.value);
+    document.querySelectorAll('#board-form input[name="board_status"]').forEach(r => {
+        r.disabled = locked;
+        if (locked) r.checked = false;
+    });
+    if (locked) {
+        clearDefects();
+        closeDefectPanel(false);
+    }
+    return locked;
 }
 
 function gmSyncDefectChip() {
@@ -1036,6 +1064,7 @@ window.gmSyncDefectChip = gmSyncDefectChip;
     const form = document.getElementById('board-form');
     form?.addEventListener('input', gmSyncProgress);
     form?.addEventListener('change', (e) => {
+        if (e.target.id === 'modal-pcs') syncClassificationLock();
         gmSyncProgress();
         if (e.target.name === 'board_status') gmSyncDefectChip();
     });
@@ -1112,6 +1141,10 @@ function setModalDeleteVisible(visible) {
 let activeModalSheet = null;
 
 function openAddModal() {
+    if (state.sheet === 'ALL') {
+        showFlash('err', ALL_SIZE_INSERT_MSG);
+        return;
+    }
     clearModalErrors();
     setModalDeleteVisible(false);
 
@@ -1119,7 +1152,7 @@ function openAddModal() {
     if (form) form.reset();
     document.querySelectorAll('#board-form input[name="board_status"]').forEach(r => { r.checked = false; });
 
-    activeModalSheet = state.sheet === 'ALL' ? 'B200_Gen' : state.sheet;
+    activeModalSheet = state.sheet;
 
     document.getElementById('modal-id').value = '0';
     document.getElementById('modal-title-text').textContent = 'Add New AOI Board Record / บันทึกข้อมูลบอร์ดใหม่';
@@ -1140,6 +1173,7 @@ function openAddModal() {
         updateModalFreeShelves(currentSheetData.free_by_mag, currentSheetData.free_shelves, currentSheetData.rack.capacity, currentSheetData.shelf_prefix, currentSheetData.rack.is_max);
     }
 
+    syncClassificationLock();   // form.reset() cleared Other, but not the radios' disabled state
     gmSyncProgress();
     gmSyncDefectChip();
     gmShow(modal);
@@ -1208,11 +1242,12 @@ async function openEditModal(id) {
         document.getElementById('defects-input').value = d.defects || '';
         syncDefectCheckboxesFromHidden();
         closeDefectPanel(true);
+        const classLocked = syncClassificationLock();
 
         gmSyncProgress();
         gmSyncDefectChip();
         gmShow(modal);
-        if (d.status === 'D' || d.status === 'GD') {
+        if (!classLocked && (d.status === 'D' || d.status === 'GD')) {
             setTimeout(() => openDefectPanel(d.status), 90);
         }
         setTimeout(() => prod?.focus({ preventScroll: true }), 120);
@@ -2442,7 +2477,7 @@ function setupDelegation() {
     // Browser navigation (Back / Forward)
     window.addEventListener('popstate', (e) => {
         const params = new URLSearchParams(window.location.search);
-        const sh = params.get('sheet') || 'B200_Gen';
+        const sh = params.get('sheet') || 'ALL';
         state.sheet = sh;
         state.search = params.get('q') || '';
         state.shelf = params.get('shelf') || 'ALL';
@@ -2479,7 +2514,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize state from URL params
     const params = new URLSearchParams(window.location.search);
-    state.sheet      = params.get('sheet') || window.initialSheet || 'B200_Gen';
+    state.sheet      = params.get('sheet') || window.initialSheet || 'ALL';
     state.search     = params.get('q') || '';
     state.shelf      = params.get('shelf') || 'ALL';
     state.board_type = params.get('board_type') || 'ALL';

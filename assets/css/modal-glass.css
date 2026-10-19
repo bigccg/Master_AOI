@@ -584,6 +584,13 @@
 .gm-seg-item.g  { --c: 4,120,87; }
 .gm-seg-item.d  { --c: 190,18,60; }
 .gm-seg-item.gd { --c: 180,83,9; }
+/* locked: Other = Bare / Bad Mark disables the radios (app.js syncClassificationLock) */
+.gm-seg:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.gm-seg:has(input:disabled) .gm-seg-item { pointer-events: none; }
+.gm-seg-lock { display: none; }
+.gm-seg-lock::before { background: #94a3b8; animation: none; }
+.gm-field:has(.gm-seg input:disabled) .gm-seg-lock { display: flex; }
+.gm-field:has(.gm-seg input:disabled) .gm-req { display: none; }
 
 
 /* ---------- error box ---------- */

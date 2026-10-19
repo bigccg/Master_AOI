@@ -46,7 +46,7 @@ if ($isAllZones) {
             $cnt[$r['status']] = (int)$r['c'];
         }
     }
-    $total = array_sum($cnt);
+    $total = $tabCounts['ALL'];   // every board, incl. Other = Bare / Bad Mark (no G / D / G+D)
     $pctG  = $total ? (int)round($cnt['G'] / $total * 100) : 0;
 
     $maxMagCount = 1;
@@ -92,7 +92,7 @@ $modalSp       = shelfPrefix($modalSheet);
 $modalMagCount = magazineCount($pdo, $modalSheet);
 $modalCapacity = $modalMagCount * MAGAZINE_SIZE;
 
-$st = $pdo->prepare('SELECT id, shelf, shelf_no, status, code, product FROM boards WHERE sheet = ?');
+$st = $pdo->prepare('SELECT id, shelf, shelf_no, status, pcs_status, code, product FROM boards WHERE sheet = ?');
 $st->execute([$modalSheet]);
 $rack     = [];
 $rackInfo = [];
@@ -105,7 +105,8 @@ foreach ($st as $r) {
         'shelf'   => $r['shelf'],
         'code'    => $r['code'],
         'product' => $r['product'],
-        'status'  => $r['status']
+        'status'  => $r['status'],
+        'pcs_status' => $r['pcs_status']
     ];
     $takenBy[$no][] = (int)$r['id'];
 }

@@ -33,12 +33,18 @@ if (!hash_equals(csrf(), $csrfToken)) {
     exit;
 }
 
-$sheet = trim((string)($input['sheet'] ?? DEFAULT_SHEET));
+$sheet = trim((string)($input['sheet'] ?? ''));
+$id    = (int)($input['id'] ?? 0);
+
+// New records need a real sheet: All Size Magazine ("ALL") / unknown sheets are rejected instead of falling back
 if (!isset(SHEETS[$sheet])) {
+    if ($id === 0) {
+        echo json_encode(['success' => false, 'errors' => [ALL_SIZE_INSERT_ERROR]]);
+        exit;
+    }
     $sheet = DEFAULT_SHEET;
 }
 
-$id      = (int)($input['id'] ?? 0);
 $code    = trim((string)($input['code'] ?? ''));
 $shelf   = strtoupper(trim((string)($input['shelf'] ?? '')));
 $product = strtoupper(trim((string)($input['product'] ?? '')));
@@ -47,6 +53,13 @@ $type    = trim((string)($input['board_type'] ?? ''));
 $status  = (string)($input['board_status'] ?? '');
 $pcs     = trim((string)($input['pcs'] ?? ''));
 $defects = trim((string)($input['defects'] ?? ''));
+
+// Other = Bare / Bad Mark -> no Board Classification (locked empty in the form), so no defects either
+$noClass = in_array($pcs, OTHER_NO_CLASS, true);
+if ($noClass) {
+    $status  = '';
+    $defects = '';
+}
 
 $formErrors = [];
 $pdo = db();
@@ -101,7 +114,7 @@ if ($side === '' || !in_array($side, BOARD_SIDES, true)) {
 if ($type === '' || !in_array($type, BOARD_TYPES, true)) {
     $formErrors[] = 'กรุณาเลือก Board Type';
 }
-if ($status === '' || !in_array($status, ['G', 'D', 'GD'], true)) {
+if (!$noClass && !in_array($status, ['G', 'D', 'GD'], true)) {
     $formErrors[] = 'กรุณาเลือก Board Classification';
 }
 if ($pcs !== '' && !in_array($pcs, OTHER_OPTIONS, true)) {

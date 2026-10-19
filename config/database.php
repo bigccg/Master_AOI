@@ -22,6 +22,7 @@ const RACK_PER_PAGE  = 6;     // Magazines shown per Rack Map page
 const PER_PAGE      = 10;           // Default page size (also used as fallback)
 const MAX_ALL_ROWS  = 5000;         // Hard safety cap when limit=all
 const DEFAULT_SHEET = 'B200_Gen';
+const ALL_SIZE_INSERT_ERROR = 'หน้า All Size Magazine ไม่สามารถเพิ่มข้อมูลได้ กรุณาเลือกชีตก่อน / Select a sheet before inserting a new record.';
 
 // Number Code format: AOI-P1-(YY)-(MM)-(000)
 //   AOI-P1 = fixed prefix (Factory P1), YY/MM = year/month of entry,
@@ -58,6 +59,9 @@ const BOARD_TYPES = ['ES3261A', 'Aluminum', 'L67068'];
 const BOARD_SIDES = ['F-Side', 'B-Side'];
 
 const OTHER_OPTIONS = ['Bare', 'Bad Mark'];
+
+// Other values that have no Board Classification: G / D / G+D is saved empty and locked in the form
+const OTHER_NO_CLASS = ['Bare', 'Bad Mark'];
 
 // Single source of truth for AOI defect codes (code => label)
 const DEFECT_LABELS = [
