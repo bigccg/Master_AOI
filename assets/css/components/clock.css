@@ -1,0 +1,43 @@
+/* Glass clock in the header (components/header.php, assets/js/components/clock.js) */
+
+/* ==========================================================================
+   Glass clock (header) · calm: frosted pill, tabular digits, one soft "live" dot
+   ========================================================================== */
+@keyframes clk-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+.aoi-clock {
+    display: inline-flex; align-items: center; gap: .65rem;
+    padding: .3rem .8rem .3rem .4rem;
+    border-radius: 12px;
+    border: 1px solid rgba(148,163,184,.40);
+    background: linear-gradient(135deg, rgba(255,255,255,.80), rgba(241,245,249,.55));
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+            backdrop-filter: blur(14px) saturate(1.5);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 6px 16px -12px rgba(15,23,42,.30);
+}
+.aoi-clock-ico {
+    position: relative; flex: none;
+    display: grid; place-items: center;
+    width: 2.1rem; height: 2.1rem; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(16,185,129,.18), rgba(34,211,238,.14));
+    border: 1px solid rgba(16,185,129,.30);
+    color: #047857; font-size: .95rem;
+}
+.aoi-clock-dot {
+    position: absolute; top: -2px; right: -2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #10b981; box-shadow: 0 0 0 2px #fff;
+    animation: clk-live 3s ease-in-out infinite;
+}
+.aoi-clock-body { display: flex; flex-direction: column; line-height: 1.1; }
+.aoi-clock-shift { font-size: .625rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+.aoi-clock-row { display: flex; align-items: baseline; gap: .6rem; margin-top: .15rem; }
+.aoi-clock-time {
+    font: 600 1.125rem/1 'JetBrains Mono', 'Fira Code', monospace;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: #0f172a;
+}
+.aoi-clock-sec { color: #10b981; font-weight: 500; }
+.aoi-clock-date { font-size: .75rem; font-weight: 500; color: #475569; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { .aoi-clock-dot { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .aoi-clock { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; } }

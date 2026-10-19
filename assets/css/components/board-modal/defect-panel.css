@@ -1,0 +1,58 @@
+/* Defect selection panel (components/board-modal/defect-panel.php) */
+
+/* ---------- defect panel ---------- */
+#defect-panel .gm-head { padding: 12px 16px 10px 18px; }
+#defect-panel .gm-actions { padding: 8px 18px 12px; }
+.gm-defect-body { display: grid; gap: 6px; padding: 10px 18px 4px; min-height: 0; overflow: visible; }
+.gm-defect-lead { margin: 0; font-size: 11.5px; color: #be123c; display: flex; align-items: center; gap: 8px; }
+.gm-defect-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px 8px; max-height: min(420px, 62vh); overflow-y: auto; padding: 2px 4px 4px 2px; scrollbar-width: thin; }
+.gm-defect { position: relative; display: flex; align-items: center; gap: 8px; height: 31px; padding: 0 10px; min-width: 0; white-space: nowrap; cursor: pointer; border-radius: 10px;
+             font-size: 11px; font-weight: 500; color: #334155; line-height: 1;
+             background: rgba(255,255,255,.62); border: 1px solid rgba(148,163,184,.4);
+             transition: transform .25s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s, box-shadow .25s, color .2s; }
+.gm-defect > span:not(.gm-box) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-defect:hover { transform: translateY(-1px); background: #fff; border-color: rgba(244,63,94,.45); box-shadow: 0 10px 18px -12px rgba(244,63,94,.6); }
+.gm-defect:active { transform: scale(.97); }
+.gm-defect input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
+.gm-box { flex: none; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; font-size: 9px; color: transparent;
+          background: #fff; border: 1.5px solid #cbd5e1; transition: background .2s, border-color .2s, color .2s, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.gm-defect:has(input:checked) { color: #9f1239; background: linear-gradient(135deg, rgba(255,241,242,.95), rgba(255,247,237,.9)); border-color: rgba(244,63,94,.6);
+                                box-shadow: 0 8px 16px -12px rgba(244,63,94,.8), inset 0 0 0 1px rgba(244,63,94,.12); }
+.gm-defect:has(input:checked) .gm-box { background: linear-gradient(135deg, #f43f5e, #f97316); border-color: transparent; color: #fff; transform: scale(1.08) rotate(-6deg); }
+.gm-defect:has(input:focus-visible) { outline: 2px solid rgba(244,63,94,.55); outline-offset: 1px; }
+.gm-defect .num { font: 700 10px/1 'JetBrains Mono',monospace; color: #94a3b8; }
+.gm-defect:has(input:checked) .num { color: #e11d48; }
+.gm-defect.wide { grid-column: auto; }
+.gm-other-note { grid-column: 1 / -1; min-width: 0; width: 100%; }
+.gm-other-note:has(> .hidden) { display: none !important; }
+.gm-other-note textarea.gm-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 64px;
+    height: auto;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, .44);
+    background-color: rgba(255, 255, 255, .76);
+    color: #0f172a;
+    font-family: 'Poppins', 'Inter', 'Prompt', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    resize: vertical;
+    box-sizing: border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 1px 2px rgba(15, 23, 42, .04);
+}
+.gm-other-note textarea.gm-input:hover:not(:disabled):not(:focus) {
+    background-color: rgba(255, 255, 255, .92);
+    border-color: rgba(244, 63, 94, .5);
+}
+.gm-other-note textarea.gm-input:focus {
+    background-color: rgba(255, 255, 255, .97);
+    border-color: #f43f5e;
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, .16), 0 10px 20px -12px rgba(244, 63, 94, .45);
+}
+.gm-count { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.gm-count b { color: #e11d48; font-size: 12px; }

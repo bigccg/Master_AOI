@@ -1,0 +1,249 @@
+/* Filter bar layout (components/filters.php) */
+
+/* ==========================================================================
+   Filter Bar Layout Alignment & Compact Dropdown Clarity
+   - Keeps 100% of the original Hyprland & Glass v1-v3 animations intact
+   - Uses CSS variables: --ctl-h (2rem), --ctl-fs (0.8125rem), --opt-fs (0.8125rem)
+   - Removes .aoi-search-tag, adds ellipsis to search input & placeholder
+   - Sets 1200px grid: minmax(200px, 1.3fr) repeat(4, minmax(110px, 1fr)) with 0.375rem gap
+   - Reduces font-weight to 500 (hover/selected 600) and compacts option padding
+   ========================================================================== */
+
+/* 1. Compact control height & aligned responsive Grid/Flex layout in #filters */
+#filters {
+    padding: 0.625rem !important;  /* p-2.5 */
+}
+
+#filters .aoi-filter-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+#filters .aoi-filter-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.375rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+}
+
+@media (min-width: 640px) {
+    #filters .aoi-filter-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #filters .aoi-search-wrap {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 1200px) {
+    #filters .aoi-filter-form {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.375rem;
+    }
+    #filters .aoi-filter-controls {
+        grid-template-columns: minmax(200px, 1.3fr) repeat(4, minmax(110px, 1fr));
+        gap: 0.375rem;
+    }
+    #filters .aoi-search-wrap {
+        grid-column: auto;
+    }
+}
+
+#filters .aoi-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+    flex-shrink: 0;
+}
+
+/* Uniform var(--ctl-h) height, 8px radius, and crisp box-sizing across all toolbar controls */
+#filters #barcode-search-input,
+#filters select,
+#page-size-select,
+#filters .aoi-icon-btn {
+    height: var(--ctl-h);          /* 2rem / 32px uniform height */
+    min-height: var(--ctl-h);
+    box-sizing: border-box;
+    border-radius: 8px;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+#filters #barcode-search-input {
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+    color: #0f172a;
+    padding-left: 2.25rem;
+    padding-right: 0.75rem;
+    text-overflow: ellipsis;
+    border-color: rgba(100, 116, 139, 0.45);
+}
+#filters #barcode-search-input::placeholder {
+    color: #475569;
+    font-weight: 500;
+    text-overflow: ellipsis;
+}
+
+#filters .aoi-filter-controls > select {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#filters .page-size-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+#filters .page-size-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+}
+
+#page-size-select {
+    min-width: 4.25rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+#filters .aoi-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ctl-h);           /* 2rem x 2rem square button matching control height */
+    height: var(--ctl-h);
+    padding: 0;
+    font-size: 0.8125rem;
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(100, 116, 139, 0.45);
+}
+
+/* 2. Dropdown Text & Option Division (preserving original Glass CSS & animations) */
+#filters select,
+#add-entry-modal select,
+#page-size-select {
+    --g-line: rgba(100, 116, 139, 0.48);
+    --g-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%230f172a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    color: #0f172a;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+/* Native fallback option readability */
+#filters select option,
+#add-entry-modal select option,
+#page-size-select option {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-size: var(--opt-fs);
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+}
+#add-entry-modal select optgroup {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+@supports (appearance: base-select) {
+    /* Slightly higher opacity on the light frosted glass panel so text contrast stays ultra-crisp */
+    :is(#filters, #add-entry-modal) select::picker(select),
+    #page-size-select::picker(select) {
+        background:
+            linear-gradient(rgba(255, 255, 255, .95), rgba(248, 250, 252, .95)) padding-box,
+            conic-gradient(from var(--g-ang), #34d399, #22d3ee, #818cf8, #34d399) border-box;
+        padding: 5px;
+    }
+
+    /* High-contrast dark typography + compact option division */
+    :is(#filters, #add-entry-modal) select option,
+    #page-size-select option {
+        padding: 0.4rem 0.75rem 0.4rem 1.6rem;
+        color: #0f172a;
+        font-size: var(--opt-fs);
+        font-weight: 500;
+        line-height: 1.35;
+        border-radius: 6px;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.15); /* Light thin divider */
+        margin-block: 1px;
+    }
+
+    /* Distinct divider below the first "All (...)" default option */
+    #filters select option:first-child {
+        border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+        margin-bottom: 2px;
+        background-color: rgba(241, 245, 249, 0.75);
+        font-weight: 600;
+    }
+
+    :is(#filters, #add-entry-modal) select option:last-child,
+    #page-size-select option:last-child {
+        border-bottom: none;
+    }
+
+    /* Clear left indicator dot */
+    :is(#filters, #add-entry-modal) select option::before,
+    #page-size-select option::before {
+        width: 5px;
+        height: 5px;
+        background: rgba(51, 65, 85, 0.55);
+    }
+
+    /* High-contrast hover & focus state */
+    :is(#filters, #add-entry-modal) select option:hover,
+    :is(#filters, #add-entry-modal) select option:focus-visible,
+    #page-size-select option:hover,
+    #page-size-select option:focus-visible {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .15), rgba(34, 211, 238, .10));
+        color: #064e3b;
+        font-weight: 600;
+    }
+
+    /* High-contrast selected/checked state */
+    :is(#filters, #add-entry-modal) select option:checked,
+    #page-size-select option:checked {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .08));
+        color: #064e3b;
+        font-weight: 600;
+    }
+
+    :is(#filters, #add-entry-modal) select option::checkmark,
+    #page-size-select option::checkmark {
+        color: #047857;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    /* Clear separation for <optgroup> inside the Add/Edit modal Shelf select */
+    #add-entry-modal select optgroup {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #0f172a;
+        padding-top: 4px;
+        margin-top: 3px;
+        border-top: 1px solid rgba(100, 116, 139, 0.25);
+    }
+    #add-entry-modal select optgroup:first-of-type {
+        border-top: none;
+        margin-top: 0;
+    }
+}

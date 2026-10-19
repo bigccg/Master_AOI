@@ -1,0 +1,135 @@
+/* Board modal form: body, inputs, classification segment, error box */
+
+/* ---------- form body ---------- */
+.gm-form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.gm-body { display: grid; gap: 15px; padding: 18px 20px 8px; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+.gm-body > * { animation: gm-rise .55s cubic-bezier(.16,1,.3,1) both; }
+.gm-body > :nth-child(1) { animation-delay: .10s; }
+.gm-body > :nth-child(2) { animation-delay: .16s; }
+.gm-body > :nth-child(3) { animation-delay: .22s; }
+.gm-body > :nth-child(4) { animation-delay: .28s; }
+.gm-body > :nth-child(5) { animation-delay: .34s; }
+.gm-body > :nth-child(6) { animation-delay: .40s; }
+.gm-body > :nth-child(7) { animation-delay: .46s; }
+
+.gm-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gm-field { min-width: 0; }
+.gm-label { display: flex; align-items: center; gap: 7px; margin-bottom: 6px;
+            font-size: 11.5px; font-weight: 500; color: #475569; transition: color .2s; }
+.gm-label .k { font: 600 9.5px/1 'JetBrains Mono','Fira Code',monospace; padding: 3px 5px; border-radius: 5px;
+               background: rgba(15,23,42,.06); color: #64748b; transition: background .25s, color .25s, box-shadow .25s; }
+.gm-label .th { color: #94a3b8; font-weight: 400; }
+.gm-req { color: #f43f5e; font-style: normal; }
+.gm-field:focus-within > .gm-label { color: #047857; }
+.gm-field:focus-within > .gm-label .k { background: #10b981; color: #fff; box-shadow: 0 0 0 3px rgba(16,185,129,.18); }
+.gm-window.is-edit .gm-field:focus-within > .gm-label { color: #1d4ed8; }
+.gm-window.is-edit .gm-field:focus-within > .gm-label .k { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
+
+/* ---------- inputs ---------- */
+.gm-window .gm-input-wrap { position: relative; }
+.gm-window .gm-input-wrap > .gm-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #94a3b8;
+                           pointer-events: none; transition: color .2s, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.gm-window .gm-input-wrap:focus-within > .gm-ico { color: #10b981; transform: translateY(-50%) scale(1.15); }
+.gm-window .gm-input-wrap > .gm-tick { position: absolute; right: 11px; top: 50%; margin-top: -8px; width: 16px; height: 16px; border-radius: 50%;
+                            display: grid; place-items: center; font-size: 8px; color: #fff; background: #10b981; opacity: 0; transform: scale(0); pointer-events: none; }
+.gm-window .gm-input:not(:placeholder-shown) ~ .gm-tick { animation: gm-tick .4s cubic-bezier(.34,1.56,.64,1) both; }
+
+.gm-window .gm-input,
+#add-entry-modal select.gm-input {
+    display: block; width: 100%; height: 40px; padding: 0 12px;
+    border-radius: 12px; border: 1px solid rgba(148,163,184,.44);
+    background-color: rgba(255,255,255,.64);
+    color: #0f172a; font-size: 13px; font-weight: 500; line-height: 38px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 1px 2px rgba(15,23,42,.04);
+    outline: none;
+    transition: border-color .2s, box-shadow .25s, background-color .2s, transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.gm-window .gm-input::placeholder { color: #94a3b8; font-weight: 400; text-transform: none; }
+.gm-window .gm-input.has-ico { padding-left: 34px; padding-right: 34px; }
+.gm-window .gm-input.mono    { font-family: 'JetBrains Mono','Fira Code',monospace; text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
+.gm-window .gm-input:hover:not(:disabled):not(:focus) { background-color: rgba(255,255,255,.9); border-color: rgba(16,185,129,.5); }
+.gm-window .gm-input:focus {
+    background-color: rgba(255,255,255,.95); border-color: #10b981; transform: translateY(-1px);
+    box-shadow: 0 0 0 4px rgba(16,185,129,.15), 0 10px 22px -12px rgba(16,185,129,.55);
+}
+.gm-window.is-edit .gm-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.15), 0 10px 22px -12px rgba(59,130,246,.55); }
+.gm-window .gm-input[readonly] { background-color: rgba(241,245,249,.8); color: #334155; cursor: default; }
+
+/* the <select>s inherit the gradient-edge glass from components/glass-select.css — only size / font are aligned here */
+#add-entry-modal select.gm-input { padding-right: 34px; line-height: 38px; cursor: pointer; }
+#add-entry-modal select.gm-input:focus { transform: translateY(-1px); }
+#add-entry-modal select.gm-input.mono  { text-transform: none; }
+#add-entry-modal select.gm-input.is-max { color: #be123c; background-color: rgba(255,241,242,.85); border-color: rgba(244,63,94,.4); }
+
+@supports (appearance: base-select) {
+    #add-entry-modal select.gm-input {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        padding-block: 0;
+        padding-inline: 12px;
+        line-height: 1;
+    }
+    #add-entry-modal select.gm-input::picker-icon {
+        flex: none;
+        margin-left: auto;
+    }
+}
+
+.gm-hint { display: flex; align-items: center; gap: 6px; margin: 7px 0 0; font-size: 11px; color: #64748b; line-height: 1.35; }
+.gm-hint::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: gm-hint 2.2s ease-in-out infinite; }
+.gm-hint:has(.text-red-600)::before { background: #f43f5e; animation: none; }
+
+/* auto-generated code chip */
+.gm-code { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; max-width: 100%;
+           font: 600 12px/1.2 'JetBrains Mono','Fira Code',monospace; color: #047857;
+           background: linear-gradient(135deg, rgba(209,250,229,.75), rgba(207,250,254,.6));
+           border: 1px dashed rgba(16,185,129,.5); position: relative; overflow: hidden; }
+.gm-code::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: 0; pointer-events: none;
+                  background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation: gm-sheen 3.6s ease-in-out infinite; }
+.gm-code i { font-size: 11px; }
+
+/* ---------- segmented classification (sliding thumb, CSS-only) ---------- */
+.gm-seg { --t: 16,185,129; --t2: 5,150,105; position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 5px; border-radius: 16px;
+          background: rgba(203,213,225,.6); border: 1px solid rgba(148,163,184,.4);
+          box-shadow: inset 0 2px 5px rgba(15,23,42,.1); }
+.gm-seg:has(input[value="D"]:checked)  { --t: 244,63,94;  --t2: 225,29,72; }
+.gm-seg:has(input[value="GD"]:checked) { --t: 245,158,11; --t2: 217,119,6; }
+.gm-thumb { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px - 8px) / 3); border-radius: 12px; pointer-events: none;
+            background: linear-gradient(135deg, rgb(var(--t)), rgb(var(--t2)));
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(var(--t), .45), 0 10px 20px -5px rgba(var(--t2), .75), inset 0 1px 0 rgba(255,255,255,.45);
+            transition: transform .45s cubic-bezier(.34,1.4,.64,1), background .25s, box-shadow .25s, opacity .25s; }
+.gm-seg:not(:has(input:checked)) .gm-thumb { opacity: 0; transform: scale(.92); }
+.gm-seg:has(input[value="D"]:checked)  .gm-thumb { transform: translateX(calc(100% + 4px)); }
+.gm-seg:has(input[value="GD"]:checked) .gm-thumb { transform: translateX(calc(200% + 8px)); }
+.gm-seg-item { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 7px; height: 42px; cursor: pointer;
+               font-size: 12.5px; font-weight: 600; color: #475569; opacity: .75; border-radius: 12px;
+               transition: color .2s, opacity .2s, transform .2s, background .2s, text-shadow .2s; user-select: none; }
+.gm-seg-item input { position: absolute; opacity: 0; pointer-events: none; }
+.gm-seg-item i { font-size: 13px; transition: transform .35s cubic-bezier(.34,1.56,.64,1), filter .25s; }
+.gm-seg-item:hover:not(:has(input:checked)) { color: #0f172a; opacity: 1; background: rgba(255,255,255,.45); }
+.gm-seg-item:active { transform: scale(.96); }
+.gm-seg-item:has(input:checked) { color: #ffffff; font-weight: 700; opacity: 1; transform: translateY(-1px);
+                                  text-shadow: 0 1px 2px rgba(15,23,42,.3); }
+.gm-seg-item:has(input:checked) i { transform: scale(1.22); filter: drop-shadow(0 1px 2px rgba(15,23,42,.25)); }
+.gm-seg-item:has(input:checked)::after { content: '✓'; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 2px;
+                                         border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1;
+                                         background: rgba(255,255,255,.28); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+.gm-seg-item:has(input:focus-visible) { outline: 2px solid rgba(var(--c), .8); outline-offset: 2px; }
+.gm-seg-item.g  { --c: 4,120,87; }
+.gm-seg-item.d  { --c: 190,18,60; }
+.gm-seg-item.gd { --c: 180,83,9; }
+/* locked: Other = Bare / Bad Mark disables the radios (assets/js/components/board-modal/modal.js syncClassificationLock) */
+.gm-seg:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.gm-seg:has(input:disabled) .gm-seg-item { pointer-events: none; }
+.gm-seg-lock { display: none; }
+.gm-seg-lock::before { background: #94a3b8; animation: none; }
+.gm-field:has(.gm-seg input:disabled) .gm-seg-lock { display: flex; }
+.gm-field:has(.gm-seg input:disabled) .gm-req { display: none; }
+
+
+/* ---------- error box ---------- */
+.gm-error { padding: 10px 12px; border-radius: 12px; font-size: 11.5px; line-height: 1.5; color: #be123c;
+            background: rgba(255,241,242,.88); border: 1px solid rgba(244,63,94,.35);
+            box-shadow: 0 8px 20px -14px rgba(244,63,94,.7); animation: gm-shake .45s ease both; }

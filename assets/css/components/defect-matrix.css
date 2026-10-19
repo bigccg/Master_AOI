@@ -1,0 +1,225 @@
+/* Defect Matrix table on All Size Magazine (components/defect-matrix.php) */
+
+/* ==========================================================================
+   Defect Matrix Table (shown when Shelf = ALL, in place of Rack Map)
+   - Sticky top header + sticky bottom footer
+   - Sticky first 2 left columns (Number Code, Shelf) on horizontal scroll
+   - Equal-width narrow mono Defect columns + row/column hover highlighting
+   ========================================================================== */
+#defect-matrix-wrapper:empty { min-height: 120px; }
+#defect-matrix-wrapper[aria-busy="true"] .dm-table-scroll[data-has-rows="1"] { opacity: .55; }
+
+.dm-table-scroll {
+    max-height: clamp(280px, 48vh, 480px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+    transition: opacity .15s ease;
+}
+
+.dm-table {
+    width: 100%;
+    min-width: max-content;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.dm-th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: max-content;
+    padding: 0.4rem 0.65rem;
+    background-color: #1e293b;
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1.25;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, .14);
+    border-bottom: 2px solid #0f172a;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.dm-th:last-child { border-right: 0; }
+.dm-th[data-col="code"]    { background-color: #1d4ed8; border-bottom-color: #1e3a8a; }
+.dm-th[data-col="shelf"]   { background-color: #0e7490; border-bottom-color: #164e63; }
+.dm-th[data-col="product"] { background-color: #4338ca; border-bottom-color: #312e81; }
+.dm-th[data-col="status"]  { background-color: #d97706; border-bottom-color: #78350f; }
+.dm-th[data-defect-code] {
+    background-color: #334155;
+    border-bottom-color: #0f172a;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    padding: 0.4rem 0.55rem;
+    cursor: help;
+}
+.dm-th[data-defect-code="OTHER"] {
+    text-transform: none;
+}
+
+/* Column header highlight when row has that defect or cursor hovers that column */
+.dm-th.is-col-active {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-bottom-color: #991b1b !important;
+    box-shadow: inset 0 -2px 0 #fde047;
+}
+.dm-th.is-col-cursor:not(.is-col-active) {
+    background-color: #0284c7 !important;
+    border-bottom-color: #075985 !important;
+}
+
+/* Sticky left columns: 1 = Number Code, 2 = Shelf (starts at header width, expands with data) */
+.dm-sticky-col-1 {
+    position: sticky;
+    left: 0;
+    width: max-content;
+}
+.dm-sticky-col-2 {
+    position: sticky;
+    left: var(--dm-col1-w, 110px);
+    width: max-content;
+    border-right: 1px solid #94a3b8 !important;
+    box-shadow: 3px 0 6px -2px rgba(15, 23, 42, 0.14);
+}
+thead .dm-sticky-col-1,
+thead .dm-sticky-col-2 { z-index: 30; }
+tbody .dm-sticky-col-1,
+tbody .dm-sticky-col-2 { z-index: 10; background-color: #ffffff; }
+tfoot .dm-sticky-col-1,
+tfoot .dm-sticky-col-2 { z-index: 25; background-color: #f1f5f9; }
+
+.dm-td {
+    width: max-content;
+    padding: 0.3rem 0.65rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: #1e293b;
+    background-color: #ffffff;
+    font-family: 'Poppins', 'Inter', 'Prompt', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    border-bottom: 1px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    transition: background-color .12s ease;
+}
+.dm-td:last-child { border-right: 0; }
+.dm-td[data-col="code"] {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11.5px;
+}
+.dm-td .badge-glow-good,
+.dm-td .badge-glow-defect {
+    width: 1.25rem;
+    height: 1.25rem;
+    box-shadow: none;
+    animation: none;
+}
+
+.dm-td-defect {
+    width: max-content;
+    padding: 0.25rem 0.4rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.dm-td-defect.is-hit {
+    background-color: #fff1f2;
+}
+
+/* Row interactivity */
+.dm-tbody tr.dm-row { cursor: pointer; }
+.dm-tbody tr.dm-row:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.dm-tbody tr.dm-row:hover .dm-td,
+.dm-tbody tr.dm-row:focus-visible .dm-td {
+    background-color: #f1f5f9;
+}
+.dm-tbody tr.dm-row:hover .dm-td-defect.is-hit,
+.dm-tbody tr.dm-row:focus-visible .dm-td-defect.is-hit {
+    background-color: #ffe4e6;
+}
+.dm-tbody tr.dm-row:hover .dm-sticky-col-1,
+.dm-tbody tr.dm-row:focus-visible .dm-sticky-col-1 {
+    background-color: #f1f5f9;
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+.dm-tbody tr.dm-row:hover .dm-sticky-col-2,
+.dm-tbody tr.dm-row:focus-visible .dm-sticky-col-2 {
+    background-color: #f1f5f9;
+}
+
+/* Defect hit / miss indicators */
+.dm-hit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 9999px;
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.14);
+    transition: transform .18s var(--ease-spring, ease);
+}
+.dm-hit-badge.is-other {
+    background-color: #ffe4e6;
+    border-color: #fda4af;
+    color: #e11d48;
+    cursor: help;
+}
+.dm-row:hover .dm-hit-badge {
+    transform: scale(1.12);
+}
+.dm-miss-dash {
+    color: #cbd5e1;
+    font-size: 11px;
+    user-select: none;
+}
+
+/* Footer summary row */
+.dm-tfoot-td {
+    position: sticky;
+    bottom: 0;
+    z-index: 15;
+    padding: 0.35rem 0.3rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    background-color: #f1f5f9;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 700;
+    border-top: 2px solid #94a3b8;
+    border-right: 1px solid #cbd5e1;
+    transition: background-color .15s ease, color .15s ease;
+}
+.dm-tfoot-td:last-child { border-right: 0; }
+.dm-tfoot-td.is-nonzero {
+    color: #dc2626;
+    background-color: #fef2f2;
+}
+.dm-tfoot-td.is-zero {
+    color: #94a3b8;
+    font-weight: 500;
+}
+.dm-tfoot-td.is-col-active {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    box-shadow: inset 0 2px 0 #dc2626;
+}
+
+/* Legend active chip highlight */
+.dm-legend-item.is-legend-active {
+    background-color: #fee2e2;
+    color: #991b1b;
+    box-shadow: 0 0 0 1px #fca5a5;
+}
+.dm-legend-item.is-legend-active b {
+    color: #dc2626;
+}

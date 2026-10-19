@@ -1,0 +1,17 @@
+/* Confirm popups: rack insert + delete (components/popups/) */
+
+/* ---------- confirm popup (rack map → insert) ---------- */
+.gm-confirm-body { padding: 26px 24px 22px; text-align: center; }
+.gm-pulse { position: relative; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 20px; font-size: 24px; color: #fff;
+            background: linear-gradient(135deg, rgb(var(--gm-a)), rgb(var(--gm-b)));
+            box-shadow: 0 16px 30px -12px rgba(var(--gm-a), .8), inset 0 1px 0 rgba(255,255,255,.55); animation: gm-rise .6s cubic-bezier(.34,1.56,.64,1) .1s both; }
+.gm-pulse::before, .gm-pulse::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgb(var(--gm-a)); opacity: 0; animation: gm-ping 2.4s ease-out infinite; }
+.gm-pulse::after { animation-delay: 1.2s; }
+.gm-confirm-title { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: #0f172a; }
+.gm-confirm-text { margin: 0; font-size: 13px; line-height: 1.7; color: #475569; }
+.gm-confirm-text .en { color: #64748b; font-size: 12px; }
+.gm-shelf-pill { display: inline-block; padding: 1px 9px; margin: 0 2px; border-radius: 8px; font: 700 12px/1.7 'JetBrains Mono',monospace; color: #047857;
+                 background: rgba(209,250,229,.8); border: 1px solid rgba(16,185,129,.4); }
+.gm-shelf-pill.is-danger { color: #be123c; background: rgba(255,241,242,.9); border-color: rgba(244,63,94,.45); }
+.gm-confirm-actions { display: flex; gap: 10px; margin-top: 22px; }
+.gm-confirm-actions .gm-btn { flex: 1; }

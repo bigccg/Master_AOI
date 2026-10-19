@@ -1,0 +1,79 @@
+/* Data table + pagination footer (components/data-table.php, assets/js/components/data-table/) */
+
+/* ===== Data table (hand-built, see assets/js/components/data-table/) ===== */
+/* no fixed min-height: footer sits flush under the last row */
+#table-wrapper:empty { min-height: 120px; }   /* only while first load is pending */
+
+/* Table scrolls inside its own box; header stays sticky */
+.aoi-table-scroll {
+    max-height: clamp(350px, calc(100vh - 280px), 640px);   /* allows full 10 rows on 768px height */
+    overflow: auto;
+    scrollbar-gutter: stable;
+    transition: opacity .15s ease;
+}
+/* While a new page is loading, keep the old rows visible but dimmed */
+#table-wrapper[aria-busy="true"] .aoi-table-scroll[data-has-rows="1"] { opacity: .55; }
+
+.aoi-table {
+    width: 100%;
+    min-width: max-content;      /* grows wider than the card and scrolls instead of clipping */
+    table-layout: auto;          /* default column width from header, stretches to fit cell content */
+    border-collapse: separate;   /* keeps borders on sticky headers */
+    border-spacing: 0;
+}
+
+/* ===== Coloured column headers ===== */
+.aoi-th {
+    position: sticky; top: 0; z-index: 2;
+    width: max-content;
+    padding: 0.35rem 0.65rem;
+    background-color: #1e293b;          /* default: slate-800 */
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1.25;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-right: 1px solid rgba(255,255,255,.12);
+    border-bottom: 2px solid #0f172a;
+}
+.aoi-th[data-col="code"]      { background-color: #1d4ed8; border-bottom-color: #1e3a8a; } /* blue */
+.aoi-th[data-col="shelf"]     { background-color: #0e7490; border-bottom-color: #164e63; } /* cyan */
+.aoi-th[data-col="product"]   { background-color: #4338ca; border-bottom-color: #312e81; } /* indigo */
+.aoi-th[data-col="side"]      { background-color: #059669; border-bottom-color: #047857; } /* emerald */
+.aoi-th[data-col="boardType"] { background-color: #6d28d9; border-bottom-color: #4c1d95; } /* violet */
+.aoi-th[data-col="status"]    { background-color: #d97706; border-bottom-color: #78350f; } /* amber  */
+.aoi-th[data-col="pcs"]       { background-color: #475569; border-bottom-color: #0f172a; } /* slate  */
+.aoi-th[data-col="magSlot"]   { background-color: #0369a1; border-bottom-color: #075985; } /* sky */
+
+/* ===== Body cells: one font, size, weight, colour; centred; grid lines ===== */
+/* Columns start at header width and stretch automatically to fit longer cell data */
+.aoi-td {
+    width: max-content;
+    padding: 0.3rem 0.65rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: #1e293b;                      /* slate-800 for every plain-text cell */
+    font-family: 'Poppins', 'Inter', 'Prompt', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    border-bottom: 1px solid #94a3b8;    /* horizontal */
+    border-right: 1px solid #cbd5e1;     /* vertical */
+}
+.aoi-td:last-child { border-right: 0; }
+.aoi-tbody tr:last-child .aoi-td { border-bottom: 0; }   /* the footer's border-t closes the table */
+.aoi-td .badge-glow-good,
+.aoi-td .badge-glow-defect { width: 1.25rem; height: 1.25rem; box-shadow: none; animation: none; }
+
+.aoi-td[data-col="status"] .badge-glow-good,
+.aoi-td[data-col="status"] .badge-glow-defect,
+.aoi-td[data-col="pcs"]  span { white-space: nowrap; }
+
+/* ===== Pagination footer (inside the table card) ===== */
+#pagination-footer button:hover:not(:disabled),
+#pagination-footer button:active:not(:disabled) { transform: none; }   /* no lift: buttons are joined */

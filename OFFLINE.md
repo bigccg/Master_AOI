@@ -9,8 +9,8 @@ All frontend assets are served locally:
 - **Icons**: Font Awesome 6 Free (webfonts + CSS)
 - **CSS Framework**: Tailwind CSS via local JIT compiler (`assets/js/tailwindcss.js`)
 - **Data Grid**: Grid.js v6.0.6 (`assets/js/gridjs.umd.js`, `assets/css/gridjs.min.css`)
-- **Custom Styles**: `assets/css/style.css`, `assets/css/fonts.css`, `assets/css/fonts-ui.css`
-- **Application Logic**: `assets/js/app.js`
+- **Custom Styles**: `assets/css/{base,theme,components}/` (one file per component), `assets/css/fonts.css`, `assets/css/fonts-ui.css`
+- **Application Logic**: `assets/js/{core,components}/` + `assets/js/main.js` (load order: `includes/assets.php`)
 
 ## 🗄️ Database: SQLite (Offline) / MySQL (Production)
 
@@ -83,7 +83,9 @@ export DB_PASS=your-password
 
 ```
 aoi-web-php/
-├── index.php                 # Main entry point
+├── index.php                 # Main entry point (requires includes/ + components/)
+├── includes/                 # request state, POST actions, page data, CSV export, asset load order
+├── components/               # page sections: header, kpi-cards, filters, data-table, rack-map, board-modal/, popups/ ...
 ├── config/
 │   └── database.php          # DB config (MySQL + SQLite auto-fallback)
 ├── api/
@@ -91,7 +93,7 @@ aoi-web-php/
 │   └── delete.php            # Delete API (POST) - works with both DBs
 ├── assets/
 │   ├── css/
-│   │   ├── style.css         # Custom styles
+│   │   ├── base/ theme/ components/   # Custom styles, one file per component
 │   │   ├── fonts.css         # @font-face for Inter, JetBrains Mono, Noto Sans Thai
 │   │   ├── fonts-ui.css      # @font-face for Poppins, Inter, Prompt (UI fonts)
 │   │   ├── fontawesome.min.css  # Font Awesome 6 Free CSS
@@ -99,7 +101,8 @@ aoi-web-php/
 │   ├── js/
 │   │   ├── tailwindcss.js    # Tailwind CSS JIT compiler (Play CDN build)
 │   │   ├── gridjs.umd.js     # Grid.js v6.0.6 UMD build
-│   │   └── app.js            # Custom table logic
+│   │   ├── core/ components/ # App logic, one script per component
+│   │   └── main.js           # Boots the page (loaded last)
 │   ├── webfonts/             # Font Awesome webfonts (woff2, ttf)
 │   ├── fonts/                # Inter, JetBrains Mono, Noto Sans Thai (woff)
 │   └── fonts/ui/             # Poppins, Inter, Prompt (woff2)

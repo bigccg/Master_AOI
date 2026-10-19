@@ -24,7 +24,7 @@
     function clearSearch() {
         if (input.value === '') return;
         input.value = '';
-        input.dispatchEvent(new Event('input', { bubbles: true }));   // app.js debounce reloads the table
+        input.dispatchEvent(new Event('input', { bubbles: true }));   // filters.js debounce reloads the table
         input.focus();
     }
 

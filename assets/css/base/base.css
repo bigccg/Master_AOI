@@ -1,0 +1,39 @@
+/* Base: scrollbar, badge glow, print rules */
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    height: 7px;
+    width: 7px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Badge glow effects */
+.badge-glow-defect {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    animation: none;
+}
+.badge-glow-good {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+    animation: none;
+}
+
+/* Print styles */
+@media print {
+    header,
+    #filters,
+    .no-print,
+    #pagination-footer {
+        display: none !important;
+    }
+    .aoi-table-scroll,
+    .dm-table-scroll { max-height: none; overflow: visible; }
+}

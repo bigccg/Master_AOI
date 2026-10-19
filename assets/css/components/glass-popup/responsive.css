@@ -1,0 +1,33 @@
+/* Glass popups: small screens / reduced motion / print */
+
+/* ---------- small screens / accessibility ---------- */
+@media (max-width: 480px) {
+    .gm-row { grid-template-columns: 1fr; }
+    .gm-defect-grid { grid-template-columns: 1fr; overflow-y: auto; }
+    .gm-actions { padding-inline: 16px; }
+    .gm-btn kbd { display: none; }
+    .gm-seg-item { font-size: 10.5px; gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .gm-overlay,
+    .gm-stage,
+    .gm-window,
+    .gm-body > *,
+    .gm-defect,
+    .gm-glow,
+    .gm-ring,
+    .gm-orb,
+    .gm-badge::after,
+    .gm-hint::before,
+    .gm-code::after,
+    .gm-thumb {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+@media (prefers-reduced-transparency: reduce) {
+    .gm-surface, .gm-overlay { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    .gm-surface { background: #fff !important; }
+    .gm-overlay { background: rgba(241, 245, 249, .94); }
+}
+@media print { .gm-overlay { display: none !important; } }

@@ -1,0 +1,301 @@
+/* Board modal stage + Dynamic Island morph of the defect panel (components/board-modal/) */
+
+/* ---------- side-by-side stage & Dynamic Island morph (60fps compositor-only) ---------- */
+.gm-stage {
+    --defect-w: min(500px, calc(100vw - 40px));
+    --defect-gap: 20px;
+    --stage-shift: calc((var(--defect-w) + var(--defect-gap)) * 0.5);
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    width: min(520px, calc(100vw - 32px));
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 32px);
+    perspective: 1400px;
+    animation: gm-popin .6s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+/* Entrance gm-popin & field gm-rise play ONLY ONCE when the modal opens */
+.gm-stage.is-entered {
+    animation: none !important;
+}
+.gm-stage.is-entered > #gm-window .gm-body > * {
+    animation: none !important;
+}
+
+/* Main form window: pure translate3d horizontal glide, zero layout reflow */
+.gm-stage > #gm-window {
+    width: 100%;
+    flex: 0 0 100%;
+    z-index: 3;
+    animation: none;
+    transform: translate3d(0, 0, 0);
+}
+.gm-stage > #gm-window.gm-ok {
+    animation: gm-okflash .5s ease both;
+}
+.gm-stage.has-defects > #gm-window {
+    transform: translate3d(calc(-1 * var(--stage-shift)), 0, 0);
+}
+
+/*Static-positioned defect slot: never animates width or margin */
+.gm-defect-slot {
+    --gm-a: 244,63,94;
+    --gm-b: 251,146,60;
+    --gm-c: 250,204,21;
+    position: absolute;
+    top: 0;
+    bottom: auto;
+    min-height: 100%;
+    max-height: calc(100vh - 32px);
+    left: calc(100% + var(--defect-gap) - var(--stage-shift));
+    width: var(--defect-w);
+    padding: 26px;
+    margin: -26px;
+    box-sizing: content-box;
+    display: flex;
+    align-items: stretch;
+    z-index: 4;
+    pointer-events: none;
+    contain: layout paint style;
+}
+.gm-defect-slot.is-mixed,
+.gm-defect-slot:has(#defect-panel.is-mixed) {
+    --gm-a: 245,158,11;
+    --gm-b: 249,115,22;
+    --gm-c: 244,63,94;
+}
+.gm-stage.has-defects .gm-defect-slot {
+    pointer-events: auto;
+}
+
+/* Zero-size SVG filter holder */
+.gm-goo-svg {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Small fixed-size gooey bridge layer (88x76px) active ONLY during pill detachment/merge */
+.gm-goo-layer {
+    position: absolute;
+    top: 55.5%;
+    left: 26px;
+    width: 88px;
+    height: 76px;
+    margin-top: -38px;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    contain: layout paint style;
+    transform: translate3d(0, 0, 0);
+}
+.gm-stage.is-morphing .gm-goo-layer {
+    filter: url(#gm-island-goo);
+    will-change: transform, opacity;
+}
+.gm-goo-anchor,
+.gm-goo-bud {
+    position: absolute;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgb(var(--gm-a)) 0%, rgb(var(--gm-b)) 100%);
+    transition: background .24s ease;
+}
+.gm-goo-anchor {
+    left: 14px;
+    top: 19px;
+    width: 14px;
+    height: 38px;
+}
+.gm-goo-bud {
+    left: 16px;
+    top: 21px;
+    width: 42px;
+    height: 34px;
+    transform: translate3d(0, 0, 0) scale3d(0.5, 0.5, 1);
+}
+
+/* Tiny absorb ripple on #gm-window's right edge when the pill collapses into G */
+.gm-edge-ripple {
+    position: absolute;
+    top: 55.5%;
+    left: 26px;
+    width: 18px;
+    height: 60px;
+    margin-top: -30px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(0.3, 0.3, 1);
+    background: radial-gradient(50% 50% at 50% 50%,
+        rgba(255, 255, 255, .95) 0%,
+        rgba(var(--gm-b), .88) 46%,
+        rgba(var(--gm-a), 0) 100%);
+    box-shadow: 0 0 16px 2px rgba(var(--gm-a), .62);
+}
+
+/* The docked Dynamic Island defect panel */
+#defect-panel.gm-defect-dock {
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    flex: 1 1 100%;
+    transform-origin: 0% 55.5%;
+    animation: none !important;
+    contain: layout paint style;
+    clip-path: inset(0% 0% 0% 0% round 22px);
+    transition:
+        --gm-a .24s ease,
+        --gm-b .24s ease,
+        --gm-c .24s ease;
+}
+#defect-panel.gm-defect-dock.is-mixed {
+    --gm-a: 245,158,11;
+    --gm-b: 249,115,22;
+    --gm-c: 244,63,94;
+}
+#defect-panel.gm-defect-dock.is-mixed > .gm-surface {
+    background: linear-gradient(155deg, rgba(255,255,255,.86), rgba(255,251,235,.68) 55%, rgba(254,243,199,.62));
+}
+
+/* Static glow layer on defect panel to avoid continuous conic-gradient blur(24px) repaints */
+#defect-panel.gm-defect-dock > .gm-glow {
+    animation: none;
+    opacity: .26;
+}
+
+/* Sleek 100% iPhone-style Dynamic Island pill skin with seamless specular sheen */
+.gm-island-skin {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateZ(0);
+    background:
+        radial-gradient(120% 80% at 18% 20%, rgba(255, 255, 255, .34), transparent 55%),
+        linear-gradient(135deg,
+            rgb(var(--gm-a)) 0%,
+            rgb(var(--gm-b)) 72%,
+            rgb(var(--gm-a)) 100%);
+    box-shadow:
+        inset 0 1.5px 1px rgba(255, 255, 255, .75),
+        inset 0 -1.5px 2px rgba(15, 23, 42, .22);
+    transition: background .24s ease;
+}
+.gm-island-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(165deg,
+        rgba(255, 255, 255, .28) 0%,
+        transparent 42%,
+        rgba(15, 23, 42, .12) 100%);
+}
+
+/* ---------- Performance budget during morph (.is-morphing) ---------- */
+.gm-stage.is-morphing > #gm-window {
+    will-change: transform;
+}
+.gm-stage.is-morphing #defect-panel.gm-defect-dock {
+    will-change: transform, opacity, clip-path;
+}
+.gm-stage.is-morphing .gm-island-skin,
+.gm-stage.is-morphing #defect-panel > .gm-surface,
+.gm-stage.is-morphing #defect-panel .gm-head,
+.gm-stage.is-morphing #defect-panel .gm-defect-body,
+.gm-stage.is-morphing .gm-goo-bud,
+.gm-stage.is-morphing .gm-edge-ripple {
+    will-change: transform, opacity;
+}
+
+/* Temporarily replace expensive stacked backdrop-filter(30px) with cheap translucent fills while morphing */
+.gm-stage.is-morphing #defect-panel > .gm-surface,
+#defect-panel.is-morphing > .gm-surface {
+    -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+    background: linear-gradient(155deg, rgba(255,255,255,.96), rgba(255,248,248,.93) 55%, rgba(255,241,242,.92));
+}
+.gm-stage.is-morphing #defect-panel.is-mixed > .gm-surface,
+#defect-panel.is-morphing.is-mixed > .gm-surface {
+    background: linear-gradient(155deg, rgba(255,255,255,.96), rgba(255,251,235,.93) 55%, rgba(254,243,199,.92));
+}
+.gm-stage.is-morphing > #gm-window > .gm-surface {
+    -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+    background: linear-gradient(155deg, rgba(255,255,255,.95), rgba(248,250,252,.92) 55%, rgba(236,253,245,.90));
+}
+.gm-stage.is-morphing > #gm-window.is-edit > .gm-surface {
+    background: linear-gradient(155deg, rgba(255,255,255,.95), rgba(248,250,252,.92) 55%, rgba(239,246,255,.90));
+}
+
+/* Pause all infinite decorative animations while morphing to eliminate per-frame repaints */
+.gm-stage.is-morphing .gm-glow,
+.gm-stage.is-morphing .gm-ring,
+.gm-stage.is-morphing .gm-orb,
+.gm-stage.is-morphing .gm-badge::after,
+.gm-stage.is-morphing .gm-hint::before,
+.gm-stage.is-morphing .gm-code::after,
+.gm-stage.is-morphing .gm-path .caret {
+    animation-play-state: paused !important;
+}
+.gm-stage.is-morphing #defect-panel > .gm-glow {
+    opacity: 0;
+}
+
+/* Stacked / narrow layout (max-width 980px): vertical pill -> panel expand/collapse */
+@media (max-width: 980px) {
+    .gm-stage {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        width: min(520px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .gm-stage > #gm-window,
+    .gm-stage.has-defects > #gm-window {
+        width: 100%;
+        flex: 0 0 auto;
+        transform: translate3d(0, 0, 0);
+    }
+    .gm-defect-slot {
+        position: relative;
+        left: auto;
+        top: auto;
+        bottom: auto;
+        width: 100% !important;
+        padding: 0;
+        margin: 0;
+        display: none;
+        contain: layout paint style;
+    }
+    .gm-stage.has-defects .gm-defect-slot,
+    .gm-stage.is-morphing .gm-defect-slot {
+        display: flex;
+        margin-top: 14px;
+    }
+    .gm-goo-layer,
+    .gm-edge-ripple {
+        display: none;
+    }
+    #defect-panel.gm-defect-dock {
+        width: 100%;
+        flex: 1 1 100%;
+        transform-origin: 50% 0%;
+    }
+    .gm-island-rim {
+        top: 0;
+        height: 14%;
+    }
+    .gm-defect-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+#rack-insert-confirm.gm-overlay, #delete-board-confirm.gm-overlay { z-index: 65; }
