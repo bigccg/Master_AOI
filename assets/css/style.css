@@ -1,0 +1,1357 @@
+/**
+ * Custom Styles for AOI Inspection System
+ * Extracted from original index.php
+ */
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    height: 7px;
+    width: 7px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Badge glow effects */
+.badge-glow-defect {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    animation: none;
+}
+.badge-glow-good {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+    animation: none;
+}
+
+/* Print styles */
+@media print {
+    header,
+    #filters,
+    .no-print,
+    #pagination-footer {
+        display: none !important;
+    }
+    .aoi-table-scroll,
+    .dm-table-scroll { max-height: none; overflow: visible; }
+}
+
+/* ===== Data table (hand-built, see assets/js/app.js) ===== */
+/* no fixed min-height: footer sits flush under the last row */
+#table-wrapper:empty { min-height: 120px; }   /* only while first load is pending */
+
+/* Table scrolls inside its own box; header stays sticky */
+.aoi-table-scroll {
+    max-height: clamp(350px, calc(100vh - 280px), 640px);   /* allows full 10 rows on 768px height */
+    overflow: auto;
+    scrollbar-gutter: stable;
+    transition: opacity .15s ease;
+}
+/* While a new page is loading, keep the old rows visible but dimmed */
+#table-wrapper[aria-busy="true"] .aoi-table-scroll[data-has-rows="1"] { opacity: .55; }
+
+.aoi-table {
+    width: 100%;
+    min-width: max-content;      /* grows wider than the card and scrolls instead of clipping */
+    table-layout: auto;          /* default column width from header, stretches to fit cell content */
+    border-collapse: separate;   /* keeps borders on sticky headers */
+    border-spacing: 0;
+}
+
+/* ===== Coloured column headers ===== */
+.aoi-th {
+    position: sticky; top: 0; z-index: 2;
+    width: max-content;
+    padding: 0.35rem 0.65rem;
+    background-color: #1e293b;          /* default: slate-800 */
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1.25;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-right: 1px solid rgba(255,255,255,.12);
+    border-bottom: 2px solid #0f172a;
+}
+.aoi-th[data-col="code"]      { background-color: #1d4ed8; border-bottom-color: #1e3a8a; } /* blue */
+.aoi-th[data-col="shelf"]     { background-color: #0e7490; border-bottom-color: #164e63; } /* cyan */
+.aoi-th[data-col="product"]   { background-color: #4338ca; border-bottom-color: #312e81; } /* indigo */
+.aoi-th[data-col="side"]      { background-color: #059669; border-bottom-color: #047857; } /* emerald */
+.aoi-th[data-col="boardType"] { background-color: #6d28d9; border-bottom-color: #4c1d95; } /* violet */
+.aoi-th[data-col="status"]    { background-color: #d97706; border-bottom-color: #78350f; } /* amber  */
+.aoi-th[data-col="pcs"]       { background-color: #475569; border-bottom-color: #0f172a; } /* slate  */
+.aoi-th[data-col="magSlot"]   { background-color: #0369a1; border-bottom-color: #075985; } /* sky */
+
+/* ===== Body cells: one font, size, weight, colour; centred; grid lines ===== */
+/* Columns start at header width and stretch automatically to fit longer cell data */
+.aoi-td {
+    width: max-content;
+    padding: 0.3rem 0.65rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: #1e293b;                      /* slate-800 for every plain-text cell */
+    font-family: 'Poppins', 'Inter', 'Prompt', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    border-bottom: 1px solid #94a3b8;    /* horizontal */
+    border-right: 1px solid #cbd5e1;     /* vertical */
+}
+.aoi-td:last-child { border-right: 0; }
+.aoi-tbody tr:last-child .aoi-td { border-bottom: 0; }   /* the footer's border-t closes the table */
+.aoi-td .badge-glow-good,
+.aoi-td .badge-glow-defect { width: 1.25rem; height: 1.25rem; box-shadow: none; animation: none; }
+
+.aoi-td[data-col="status"] .badge-glow-good,
+.aoi-td[data-col="status"] .badge-glow-defect,
+.aoi-td[data-col="pcs"]  span { white-space: nowrap; }
+
+/* ===== Pagination footer (inside the table card) ===== */
+#pagination-footer button:hover:not(:disabled),
+#pagination-footer button:active:not(:disabled) { transform: none; }   /* no lift: buttons are joined */
+
+/* ===== Page-size selector (toolbar) ===== */
+.page-size-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #475569;
+}
+#page-size-select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+}
+#page-size-select:focus {
+    outline: none;
+    border-color: #059669;
+    box-shadow: 0 0 0 2px rgba(5,150,105,0.2);
+}
+
+
+/* ==========================================================================
+   Hyprland-inspired polish  (motion + shape only — NO colour changes)
+   - rounded "windows", soft shadows, glass header
+   - spring pop-in, staggered reveal, animated active-window border
+   - every effect reuses colours that already exist on the page
+   ========================================================================== */
+
+:root {
+    --ctl-h: 2rem;        /* ความสูง control (เดิม 2.5rem) */
+    --ctl-fs: 0.8125rem;  /* 13px (เดิม 14px) */
+    --opt-fs: 0.8125rem;  /* option ใน dropdown (เดิม 0.95rem) */
+    --ease-spring: cubic-bezier(.34, 1.56, .64, 1);   /* Hyprland "overshot" bezier */
+    --ease-out:    cubic-bezier(.16, 1, .3, 1);
+    --win-radius:  14px;
+}
+
+@property --hypr-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+html { scroll-behavior: smooth; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+.font-mono, code { font-feature-settings: "calt" 1, "zero" 1; }
+
+/* ---------- keyframes ---------- */
+@keyframes hypr-pop     { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes hypr-slide   { from { opacity: 0; transform: translateY(-10px); }           to { opacity: 1; transform: none; } }
+@keyframes hypr-row     { from { opacity: 0; transform: translateX(-8px); }            to { opacity: 1; transform: none; } }
+@keyframes hypr-cell    { from { opacity: 0; transform: scale(.7); }                    to { opacity: 1; transform: none; } }
+@keyframes hypr-spin    { to { --hypr-angle: 360deg; } }
+@keyframes hypr-bar     { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hypr-modal   { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes hypr-fade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hypr-logo    { 0%,100% { box-shadow: 0 4px 6px -1px rgba(4,120,87,.20), 0 0 0 0 rgba(16,185,129,.35); }
+                          50%     { box-shadow: 0 4px 6px -1px rgba(4,120,87,.20), 0 0 0 7px rgba(16,185,129,0); } }
+@keyframes hypr-flash   { from { opacity: 0; transform: translateX(24px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* ---------- header (glass bar, like a Waybar) ---------- */
+body > header {
+    background-color: rgba(255,255,255,.82) !important;
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+            backdrop-filter: saturate(1.4) blur(14px);
+    animation: hypr-slide .55s var(--ease-out) both;
+}
+body > header > div:first-child {
+    padding-top: 0.5rem !important;    /* py-2 */
+    padding-bottom: 0.5rem !important;
+}
+body > header h1 {
+    font-size: 1rem !important;        /* ~16px (1rem) */
+    line-height: 1.25 !important;
+}
+body > header p {
+    font-size: 0.75rem !important;     /* ~12px (0.75rem) */
+}
+body > header .rounded-lg.bg-emerald-700 {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    font-size: 1.125rem !important;
+    animation: hypr-logo 3.2s ease-in-out infinite;
+    transition: transform .4s var(--ease-spring);
+}
+body > header .rounded-lg.bg-emerald-700:hover { transform: rotate(-8deg) scale(1.08); }
+body > header .rounded-md { border-radius: 10px; transition: transform .25s var(--ease-spring), box-shadow .25s ease, background-color .2s ease; }
+
+/* workspace tabs — like Hyprland workspace pills */
+body > header nav a {
+    border-radius: 9px !important;
+    transition: transform .25s var(--ease-spring), background-color .2s ease, box-shadow .25s ease;
+}
+body > header nav a:hover { transform: translateY(-1px); }
+body > header nav a:first-of-type { margin-left: 0; }
+body > header nav a[class*="border-t-emerald-600"] { animation: hypr-pop .4s var(--ease-spring) both; }
+
+/* ---------- buttons ---------- */
+button, a.inline-flex, #filters a { transition: transform .2s var(--ease-spring), box-shadow .25s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+button:hover:not(:disabled), a.inline-flex:hover { transform: translateY(-1px); }
+button:active:not(:disabled), a.inline-flex:active { transform: translateY(0) scale(.96); }
+body > header .bg-emerald-600:hover { box-shadow: 0 6px 16px -4px rgba(5,150,105,.45); }
+
+/* ---------- main sections spacing: vertical gaps <= 0.75rem ---------- */
+main {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.75rem !important;
+    gap: 0.625rem !important;
+}
+
+/* ---------- windows: rounded + staggered pop-in ---------- */
+main > section.grid > div,
+main > #filters,
+main > div.bg-white {
+    border-radius: var(--win-radius) !important;
+    animation: hypr-pop .6s var(--ease-out) both;
+}
+main > section.grid > div:nth-child(1) { animation-delay: .05s; }
+main > section.grid > div:nth-child(2) { animation-delay: .10s; }
+main > section.grid > div:nth-child(3) { animation-delay: .15s; }
+main > section.grid > div:nth-child(4) { animation-delay: .20s; }
+main > section.grid > div:nth-child(5) { animation-delay: .25s; }
+main > #filters           { animation-delay: .30s; }
+main > div.bg-white       { animation-delay: .38s; }
+
+/* KPI cards: compact padding, ~24px numbers, ~32px icon, reduced gap */
+main > section.grid {
+    gap: 0.5rem !important;
+}
+main > section.grid > div {
+    padding: 0.5rem 0.75rem !important;
+    position: relative;
+    overflow: hidden;
+    transition: transform .35s var(--ease-spring), box-shadow .35s ease, border-color .3s ease;
+}
+main > section.grid > div p.text-2xl {
+    font-size: 1.5rem !important;       /* ~24px */
+    line-height: 1.25 !important;
+    margin-top: 0.25rem !important;
+}
+main > section.grid > div > div:last-child {
+    width: 2rem !important;             /* ~32px icon container */
+    height: 2rem !important;
+    min-width: 2rem !important;
+    font-size: 1rem !important;
+    border-radius: 8px !important;
+    transition: transform .45s var(--ease-spring);
+}
+main > section.grid > div::after {          /* spotlight follows the cursor */
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 50%), rgba(16,185,129,.10), transparent 70%);
+    transition: opacity .3s ease;
+}
+main > section.grid > div:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -10px rgba(15,23,42,.18); }
+main > section.grid > div:hover::after { opacity: 1; }
+main > section.grid > div:hover > div:last-child { transform: rotate(-8deg) scale(1.12); }
+main > section.grid > div .bg-blue-600 { transform-origin: left; animation: hypr-bar 1.1s var(--ease-out) .5s both; }   /* utilisation bar fills in */
+
+/* ---------- active window: slowly travelling border on the table ---------- */
+main > div.bg-white { position: relative; box-shadow: 0 10px 30px -14px rgba(15,23,42,.25); }
+main > div.bg-white::before {
+    content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    border-radius: inherit; padding: 1.5px;
+    background: conic-gradient(from var(--hypr-angle), transparent 0 62%, #10b981 82%, #2563eb 94%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: hypr-spin 7s linear infinite;
+    opacity: .85;
+}
+
+/* ---------- filters ---------- */
+#filters input[type="text"], #filters select { border-radius: 10px; transition: box-shadow .25s ease, border-color .25s ease, background-color .25s ease, transform .25s var(--ease-spring); }
+#filters input[type="text"]:focus { transform: translateY(-1px); box-shadow: 0 6px 18px -8px rgba(16,185,129,.45); }
+
+/* ---------- table ---------- */
+.aoi-tbody tr.aoi-row { cursor: pointer; }
+.aoi-tbody tr.aoi-row:focus-visible { outline: 2px solid #10b981; outline-offset: -2px; background-color: #f0fdf4; }
+.aoi-tbody tr.aoi-row:focus-visible .aoi-td:first-child { box-shadow: inset 3px 0 0 #10b981; }
+.aoi-tbody .aoi-row { animation: hypr-row .45s var(--ease-out) both; transition: background-color .15s ease; }
+.aoi-tbody .aoi-row:nth-child(1)  { animation-delay: .02s; } .aoi-tbody .aoi-row:nth-child(2)  { animation-delay: .04s; }
+.aoi-tbody .aoi-row:nth-child(3)  { animation-delay: .06s; } .aoi-tbody .aoi-row:nth-child(4)  { animation-delay: .08s; }
+.aoi-tbody .aoi-row:nth-child(5)  { animation-delay: .10s; } .aoi-tbody .aoi-row:nth-child(6)  { animation-delay: .12s; }
+.aoi-tbody .aoi-row:nth-child(7)  { animation-delay: .14s; } .aoi-tbody .aoi-row:nth-child(8)  { animation-delay: .16s; }
+.aoi-tbody .aoi-row:nth-child(9)  { animation-delay: .18s; } .aoi-tbody .aoi-row:nth-child(10) { animation-delay: .20s; }
+.aoi-tbody .aoi-row:nth-child(n+11) { animation-delay: .22s; }
+.aoi-tbody .aoi-row:hover { background-color: #f8fafc; }
+.aoi-tbody .aoi-row:hover .aoi-td:first-child { box-shadow: inset 3px 0 0 #10b981; }   /* focus marker */
+.aoi-td:first-child { transition: box-shadow .2s ease; }
+.aoi-td a, .aoi-td button { display: inline-flex; border-radius: 8px; transition: transform .2s var(--ease-spring), background-color .2s ease, color .2s ease; }
+.aoi-td a:hover, .aoi-td button:hover { transform: translateY(-2px) scale(1.15); }
+.aoi-td span.rounded-md, .aoi-td span.rounded-full { transition: transform .25s var(--ease-spring); }
+.aoi-row:hover td span.rounded-md, .aoi-row:hover td span.rounded-full { transform: scale(1.08); }
+
+
+/* ---------- rack map ---------- */
+main > div.bg-white section.grid > a,
+main > div.bg-white section .grid > a,
+main > div.bg-white section .grid > div { border-radius: 9px; animation: hypr-cell .45s var(--ease-spring) both; }
+main > div.bg-white section .grid > a   { transition: transform .22s var(--ease-spring), box-shadow .22s ease; }
+main > div.bg-white section .grid > a:hover { transform: translateY(-3px) scale(1.1); box-shadow: 0 8px 16px -6px rgba(15,23,42,.28); position: relative; z-index: 2; }
+main > div.bg-white section .grid > :nth-child(5n+1) { animation-delay: .00s; }
+main > div.bg-white section .grid > :nth-child(5n+2) { animation-delay: .03s; }
+main > div.bg-white section .grid > :nth-child(5n+3) { animation-delay: .06s; }
+main > div.bg-white section .grid > :nth-child(5n+4) { animation-delay: .09s; }
+main > div.bg-white section .grid > :nth-child(5n)   { animation-delay: .12s; }
+
+/* ---------- modal: moved to assets/css/modal-glass.css ---------- */
+
+/* ---------- toasts / flash ---------- */
+main > div.rounded-md { border-radius: 12px !important; animation: hypr-slide .45s var(--ease-spring) both; }
+#flash-container > div { border-radius: 12px; animation: hypr-flash .4s var(--ease-spring) both; box-shadow: 0 10px 24px -10px rgba(15,23,42,.3); }
+
+/* ---------- scrollbar a touch rounder ---------- */
+::-webkit-scrollbar-thumb { border: 2px solid #f1f5f9; border-radius: 8px; background-clip: padding-box; }
+
+/* ---------- accessibility: honour reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+@media print { *, *::before, *::after { animation: none !important; } main > div.bg-white::before { display: none; } }
+
+/* Layout guard: sections inside <main> must never shrink (otherwise the rack map overlaps the table) */
+main > * { flex-shrink: 0; }
+
+
+/* ==========================================================================
+   Glass dropdowns  (minimal · frosted · Hyprland-style)
+   Targets every <select>: toolbar filters, page-size, Add/Edit modal.
+   - closed state: frosted pill, hairline border, soft emerald focus ring
+   - open list  : frosted floating panel (Chrome/Edge 135+ via appearance: base-select;
+                  other browsers keep the native list, only the closed state is styled)
+   Colours reuse the page palette (slate + emerald).
+   ========================================================================== */
+#filters select,
+#add-entry-modal select,
+#page-size-select {
+    --g-bg: rgba(255, 255, 255, .62);
+    --g-bg-hover: rgba(255, 255, 255, .88);
+    --g-line: rgba(148, 163, 184, .38);
+    --g-accent: #10b981;
+    --g-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+
+    appearance: none;
+    -webkit-appearance: none;
+    padding: .25rem 1.8rem .25rem .65rem;
+    border: 1px solid var(--g-line);
+    border-radius: 8px;
+    background-color: var(--g-bg);
+    background-image: var(--g-chevron);
+    background-repeat: no-repeat;
+    background-position: right .55rem center;
+    background-size: 0.9rem;
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+    backdrop-filter: blur(10px) saturate(1.4);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 1px 2px rgba(15, 23, 42, .05);
+    color: #334155;
+    font-size: var(--ctl-fs, .75rem);
+    line-height: normal;
+    cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s var(--ease-spring, ease);
+}
+#filters select:hover:not(:disabled),
+#add-entry-modal select:hover:not(:disabled),
+#page-size-select:hover:not(:disabled) {
+    background-color: var(--g-bg-hover);
+    border-color: rgba(16, 185, 129, .55);
+}
+#filters select:focus,
+#add-entry-modal select:focus,
+#page-size-select:focus {
+    outline: none;
+    border-color: var(--g-accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 0 0 3px rgba(16, 185, 129, .16);
+}
+#filters select:disabled,
+#add-entry-modal select:disabled,
+#page-size-select:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    background-color: rgba(241, 245, 249, .7);
+}
+/* native list fallback (browsers without base-select) */
+#filters select option,
+#add-entry-modal select option,
+#page-size-select option { background: #fff; color: #334155; }
+
+/* Frosted open list + custom indicator where the browser supports styling the picker */
+@supports (appearance: base-select) {
+    #filters select,
+    #add-entry-modal select,
+    #page-size-select,
+    #filters select::picker(select),
+    #add-entry-modal select::picker(select),
+    #page-size-select::picker(select) { appearance: base-select; }
+
+    #filters select,
+    #add-entry-modal select,
+    #page-size-select {
+        background-image: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+    }
+    /* drop the native selected-option mirror styling quirks */
+    #filters select > button,
+    #add-entry-modal select > button,
+    #page-size-select > button { all: unset; display: contents; }
+
+    #filters select::picker-icon,
+    #add-entry-modal select::picker-icon,
+    #page-size-select::picker-icon {
+        content: '';
+        width: .9rem;
+        height: .9rem;
+        flex: none;
+        background: var(--g-chevron) center / contain no-repeat;
+        transition: transform .25s var(--ease-spring, ease);
+    }
+    #filters select:open::picker-icon,
+    #add-entry-modal select:open::picker-icon,
+    #page-size-select:open::picker-icon { transform: rotate(180deg); }
+
+    /* the floating panel */
+    #filters select::picker(select),
+    #add-entry-modal select::picker(select),
+    #page-size-select::picker(select) {
+        box-sizing: border-box;
+        margin-block: 6px;
+        padding: 5px;
+        min-width: anchor-size(width);
+        max-height: min(320px, 60vh);
+        border: 1px solid rgba(255, 255, 255, .7);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .74);
+        -webkit-backdrop-filter: blur(18px) saturate(1.6);
+        backdrop-filter: blur(18px) saturate(1.6);
+        box-shadow: 0 0 0 1px rgba(148, 163, 184, .28), 0 18px 40px -12px rgba(15, 23, 42, .35), inset 0 1px 0 rgba(255, 255, 255, .8);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, .6) transparent;
+        /* open / close animation */
+        opacity: 0;
+        transform: translateY(-6px) scale(.98);
+        transform-origin: top center;
+        transition: opacity .18s ease, transform .22s var(--ease-spring, ease), overlay .22s allow-discrete, display .22s allow-discrete;
+    }
+    #filters select::picker(select):popover-open,
+    #add-entry-modal select::picker(select):popover-open,
+    #page-size-select::picker(select):popover-open { opacity: 1; transform: none; }
+    @starting-style {
+        #filters select::picker(select):popover-open,
+        #add-entry-modal select::picker(select):popover-open,
+        #page-size-select::picker(select):popover-open { opacity: 0; transform: translateY(-6px) scale(.98); }
+    }
+
+    /* rows */
+    #filters select option,
+    #add-entry-modal select option,
+    #page-size-select option {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .45rem .65rem;
+        border-radius: 9px;
+        background: transparent;
+        color: #475569;
+        font-size: .75rem;
+        cursor: pointer;
+        transition: background-color .15s ease, color .15s ease;
+    }
+    #filters select option::checkmark,
+    #add-entry-modal select option::checkmark,
+    #page-size-select option::checkmark { display: none; }
+    #filters select option:hover,
+    #filters select option:focus-visible,
+    #add-entry-modal select option:hover,
+    #add-entry-modal select option:focus-visible,
+    #page-size-select option:hover,
+    #page-size-select option:focus-visible {
+        background: rgba(16, 185, 129, .12);
+        color: #065f46;
+        outline: none;
+    }
+    #filters select option:checked,
+    #add-entry-modal select option:checked,
+    #page-size-select option:checked {
+        background: rgba(16, 185, 129, .16);
+        color: #047857;
+        font-weight: 600;
+        box-shadow: inset 2px 0 0 var(--g-accent);
+    }
+    #filters select option:disabled,
+    #add-entry-modal select option:disabled,
+    #page-size-select option:disabled { opacity: .45; cursor: not-allowed; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    #filters select, #add-entry-modal select, #page-size-select { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: #fff; }
+}
+
+/* ---- Glass dropdowns v2: richer (gradient edge, dark frosted panel, staggered rows) ---- */
+#filters select:focus,
+#add-entry-modal select:focus,
+#page-size-select:focus,
+#filters select:hover:not(:disabled),
+#add-entry-modal select:hover:not(:disabled),
+#page-size-select:hover:not(:disabled) {
+    border-color: transparent;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .9), rgba(255, 255, 255, .9)),
+        linear-gradient(135deg, #34d399, #22d3ee 55%, #818cf8);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 100% 100%;
+}
+#filters select:focus,
+#add-entry-modal select:focus,
+#page-size-select:focus {
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, .18), 0 8px 22px -10px rgba(34, 211, 238, .55);
+}
+
+@supports (appearance: base-select) {
+    #filters select::picker(select),
+    #add-entry-modal select::picker(select),
+    #page-size-select::picker(select) {
+        padding: 6px;
+        border: 1px solid transparent;
+        border-radius: 16px;
+        background:
+            linear-gradient(rgba(15, 23, 42, .72), rgba(15, 23, 42, .72)) padding-box,
+            linear-gradient(135deg, rgba(52, 211, 153, .75), rgba(34, 211, 238, .35) 50%, rgba(129, 140, 248, .65)) border-box;
+        -webkit-backdrop-filter: blur(22px) saturate(1.9);
+        backdrop-filter: blur(22px) saturate(1.9);
+        box-shadow: 0 24px 48px -14px rgba(2, 6, 23, .55), 0 0 28px -8px rgba(52, 211, 153, .35), inset 0 1px 0 rgba(255, 255, 255, .12);
+        scrollbar-color: rgba(255, 255, 255, .25) transparent;
+    }
+    #filters select option,
+    #add-entry-modal select option,
+    #page-size-select option {
+        position: relative;
+        padding: .5rem .75rem .5rem 1.6rem;
+        color: #cbd5e1;
+        letter-spacing: .01em;
+    }
+    /* status dot on the left */
+    #filters select option::before,
+    #add-entry-modal select option::before,
+    #page-size-select option::before {
+        content: '';
+        position: absolute;
+        left: .7rem;
+        top: 50%;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: rgba(148, 163, 184, .45);
+        transform: translateY(-50%);
+        transition: background-color .15s ease, box-shadow .15s ease, transform .2s var(--ease-spring, ease);
+    }
+    #filters select option::checkmark,
+    #add-entry-modal select option::checkmark,
+    #page-size-select option::checkmark {
+        display: block;
+        content: '✓';
+        order: 2;
+        margin-left: auto;
+        color: #6ee7b7;
+        font-size: .7rem;
+    }
+    #filters select option:hover,
+    #filters select option:focus-visible,
+    #add-entry-modal select option:hover,
+    #add-entry-modal select option:focus-visible,
+    #page-size-select option:hover,
+    #page-size-select option:focus-visible {
+        background: rgba(255, 255, 255, .09);
+        color: #fff;
+    }
+    #filters select option:hover::before,
+    #add-entry-modal select option:hover::before,
+    #page-size-select option:hover::before { background: #22d3ee; transform: translateY(-50%) scale(1.3); }
+    #filters select option:checked,
+    #add-entry-modal select option:checked,
+    #page-size-select option:checked {
+        background: linear-gradient(90deg, rgba(52, 211, 153, .22), rgba(52, 211, 153, .06));
+        color: #a7f3d0;
+        font-weight: 600;
+        box-shadow: none;
+    }
+    #filters select option:checked::before,
+    #add-entry-modal select option:checked::before,
+    #page-size-select option:checked::before { background: #34d399; box-shadow: 0 0 8px 1px rgba(52, 211, 153, .8); }
+
+    /* rows slide in one after another */
+    #filters select::picker(select):popover-open option,
+    #add-entry-modal select::picker(select):popover-open option,
+    #page-size-select::picker(select):popover-open option { animation: g-opt .28s var(--ease-out, ease) both; }
+    #filters select::picker(select):popover-open option:nth-child(2),
+    #add-entry-modal select::picker(select):popover-open option:nth-child(2),
+    #page-size-select::picker(select):popover-open option:nth-child(2) { animation-delay: .025s; }
+    #filters select::picker(select):popover-open option:nth-child(3),
+    #add-entry-modal select::picker(select):popover-open option:nth-child(3),
+    #page-size-select::picker(select):popover-open option:nth-child(3) { animation-delay: .05s; }
+    #filters select::picker(select):popover-open option:nth-child(4),
+    #add-entry-modal select::picker(select):popover-open option:nth-child(4),
+    #page-size-select::picker(select):popover-open option:nth-child(4) { animation-delay: .075s; }
+    #filters select::picker(select):popover-open option:nth-child(n+5),
+    #add-entry-modal select::picker(select):popover-open option:nth-child(n+5),
+    #page-size-select::picker(select):popover-open option:nth-child(n+5) { animation-delay: .1s; }
+}
+@keyframes g-opt { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+/* ---- Glass dropdowns v3: LIGHT frosted glass + motion (overrides v2 dark panel) ---- */
+@property --g-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes g-spin   { to { --g-ang: 360deg; } }
+@keyframes g-sheen  { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
+@keyframes g-glow   { 0%, 100% { box-shadow: 0 0 0 3px rgba(52,211,153,.16), 0 8px 22px -10px rgba(34,211,238,.5); }
+                      50%      { box-shadow: 0 0 0 4px rgba(52,211,153,.26), 0 10px 28px -8px rgba(34,211,238,.7); } }
+@keyframes g-pop    { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 70% { transform: scale(1.35) rotate(6deg); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes g-pulse  { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,.55); } 100% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } }
+@keyframes g-panel  { from { opacity: 0; transform: translateY(-10px) scale(.96); filter: blur(8px); }
+                      to   { opacity: 1; transform: none; filter: blur(0); } }
+
+/* closed select: lift on hover, press on click, breathing glow while focused/open */
+:is(#filters, #add-entry-modal) select:hover:not(:disabled),
+#page-size-select:hover:not(:disabled) { transform: translateY(-1px); }
+:is(#filters, #add-entry-modal) select:active:not(:disabled),
+#page-size-select:active:not(:disabled) { transform: translateY(0) scale(.975); transition-duration: .08s; }
+:is(#filters, #add-entry-modal) select:focus,
+#page-size-select:focus { animation: g-glow 2.4s ease-in-out infinite; }
+
+@supports (appearance: base-select) {
+    /* spinning gradient edge on the open list (same idea as the Hyprland active-window border) */
+    :is(#filters, #add-entry-modal) select::picker(select),
+    #page-size-select::picker(select) {
+        border: 1.5px solid transparent;
+        border-radius: 16px;
+        background:
+            linear-gradient(rgba(248, 253, 252, .84), rgba(248, 253, 252, .84)) padding-box,
+            conic-gradient(from var(--g-ang), #34d399, #22d3ee, #818cf8, #34d399) border-box;
+        -webkit-backdrop-filter: blur(24px) saturate(1.9);
+        backdrop-filter: blur(24px) saturate(1.9);
+        box-shadow: 0 22px 46px -16px rgba(15, 23, 42, .32), 0 0 30px -8px rgba(52, 211, 153, .4), inset 0 1px 0 rgba(255, 255, 255, .9);
+        animation: g-spin 5s linear infinite;
+        transform-origin: top left;
+    }
+    :is(#filters, #add-entry-modal) select::picker(select):popover-open,
+    #page-size-select::picker(select):popover-open { animation: g-spin 5s linear infinite, g-panel .32s var(--ease-spring, ease) both; }
+
+    /* rows: dark-on-light text */
+    :is(#filters, #add-entry-modal) select option,
+    #page-size-select option { color: #475569; overflow: hidden; }
+    :is(#filters, #add-entry-modal) select option::before,
+    #page-size-select option::before { background: rgba(100, 116, 139, .4); }
+    :is(#filters, #add-entry-modal) select option:hover,
+    :is(#filters, #add-entry-modal) select option:focus-visible,
+    #page-size-select option:hover,
+    #page-size-select option:focus-visible {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .14), rgba(34, 211, 238, .08));
+        color: #047857;
+        transform: translateX(3px);
+    }
+    :is(#filters, #add-entry-modal) select option:hover::before,
+    #page-size-select option:hover::before { background: #10b981; transform: translateY(-50%) scale(1.4); }
+    :is(#filters, #add-entry-modal) select option:checked,
+    #page-size-select option:checked {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .05));
+        color: #047857;
+        font-weight: 600;
+    }
+    :is(#filters, #add-entry-modal) select option:checked::before,
+    #page-size-select option:checked::before { background: #10b981; box-shadow: none; animation: g-pulse 1.6s ease-out infinite; }
+    :is(#filters, #add-entry-modal) select option::checkmark,
+    #page-size-select option::checkmark { color: #059669; font-weight: 700; }
+    :is(#filters, #add-entry-modal) select::picker(select):popover-open option:checked::checkmark,
+    #page-size-select::picker(select):popover-open option:checked::checkmark { animation: g-pop .4s var(--ease-spring, ease) .12s both; }
+
+    /* light sweep across a row on hover */
+    :is(#filters, #add-entry-modal) select option::after,
+    #page-size-select option::after {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 40%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .7), transparent);
+        transform: translateX(-120%) skewX(-18deg);
+        pointer-events: none;
+    }
+    :is(#filters, #add-entry-modal) select option:hover::after,
+    #page-size-select option:hover::after { animation: g-sheen .65s ease; }
+
+    /* chevron nudges down on hover, flips when open */
+    :is(#filters, #add-entry-modal) select:hover:not(:open)::picker-icon,
+    #page-size-select:hover:not(:open)::picker-icon { transform: translateY(2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    :is(#filters, #add-entry-modal) select, #page-size-select,
+    :is(#filters, #add-entry-modal) select::picker(select), #page-size-select::picker(select) { animation: none !important; }
+}
+
+
+/* ==========================================================================
+   Filter Bar Layout Alignment & Compact Dropdown Clarity
+   - Keeps 100% of the original Hyprland & Glass v1-v3 animations intact
+   - Uses CSS variables: --ctl-h (2rem), --ctl-fs (0.8125rem), --opt-fs (0.8125rem)
+   - Removes .aoi-search-tag, adds ellipsis to search input & placeholder
+   - Sets 1200px grid: minmax(200px, 1.3fr) repeat(4, minmax(110px, 1fr)) with 0.375rem gap
+   - Reduces font-weight to 500 (hover/selected 600) and compacts option padding
+   ========================================================================== */
+
+/* 1. Compact control height & aligned responsive Grid/Flex layout in #filters */
+#filters {
+    padding: 0.625rem !important;  /* p-2.5 */
+}
+
+#filters .aoi-filter-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+#filters .aoi-filter-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.375rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+}
+
+@media (min-width: 640px) {
+    #filters .aoi-filter-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    #filters .aoi-search-wrap {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 1200px) {
+    #filters .aoi-filter-form {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.375rem;
+    }
+    #filters .aoi-filter-controls {
+        grid-template-columns: minmax(200px, 1.3fr) repeat(4, minmax(110px, 1fr));
+        gap: 0.375rem;
+    }
+    #filters .aoi-search-wrap {
+        grid-column: auto;
+    }
+}
+
+#filters .aoi-filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+    flex-shrink: 0;
+}
+
+/* Uniform var(--ctl-h) height, 8px radius, and crisp box-sizing across all toolbar controls */
+#filters #barcode-search-input,
+#filters select,
+#page-size-select,
+#filters .aoi-icon-btn {
+    height: var(--ctl-h);          /* 2rem / 32px uniform height */
+    min-height: var(--ctl-h);
+    box-sizing: border-box;
+    border-radius: 8px;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+#filters #barcode-search-input {
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+    color: #0f172a;
+    padding-left: 2.25rem;
+    padding-right: 0.75rem;
+    text-overflow: ellipsis;
+    border-color: rgba(100, 116, 139, 0.45);
+}
+#filters #barcode-search-input::placeholder {
+    color: #475569;
+    font-weight: 500;
+    text-overflow: ellipsis;
+}
+
+#filters .aoi-filter-controls > select {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#filters .page-size-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+#filters .page-size-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+}
+
+#page-size-select {
+    min-width: 4.25rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+#filters .aoi-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ctl-h);           /* 2rem x 2rem square button matching control height */
+    height: var(--ctl-h);
+    padding: 0;
+    font-size: 0.8125rem;
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(100, 116, 139, 0.45);
+}
+
+/* 2. Dropdown Text & Option Division (preserving original Glass CSS & animations) */
+#filters select,
+#add-entry-modal select,
+#page-size-select {
+    --g-line: rgba(100, 116, 139, 0.48);
+    --g-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%230f172a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    color: #0f172a;
+    font-size: var(--ctl-fs);
+    font-weight: 500;
+}
+
+/* Native fallback option readability */
+#filters select option,
+#add-entry-modal select option,
+#page-size-select option {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-size: var(--opt-fs);
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+}
+#add-entry-modal select optgroup {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+@supports (appearance: base-select) {
+    /* Slightly higher opacity on the light frosted glass panel so text contrast stays ultra-crisp */
+    :is(#filters, #add-entry-modal) select::picker(select),
+    #page-size-select::picker(select) {
+        background:
+            linear-gradient(rgba(255, 255, 255, .95), rgba(248, 250, 252, .95)) padding-box,
+            conic-gradient(from var(--g-ang), #34d399, #22d3ee, #818cf8, #34d399) border-box;
+        padding: 5px;
+    }
+
+    /* High-contrast dark typography + compact option division */
+    :is(#filters, #add-entry-modal) select option,
+    #page-size-select option {
+        padding: 0.4rem 0.75rem 0.4rem 1.6rem;
+        color: #0f172a;
+        font-size: var(--opt-fs);
+        font-weight: 500;
+        line-height: 1.35;
+        border-radius: 6px;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.15); /* Light thin divider */
+        margin-block: 1px;
+    }
+
+    /* Distinct divider below the first "All (...)" default option */
+    #filters select option:first-child {
+        border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+        margin-bottom: 2px;
+        background-color: rgba(241, 245, 249, 0.75);
+        font-weight: 600;
+    }
+
+    :is(#filters, #add-entry-modal) select option:last-child,
+    #page-size-select option:last-child {
+        border-bottom: none;
+    }
+
+    /* Clear left indicator dot */
+    :is(#filters, #add-entry-modal) select option::before,
+    #page-size-select option::before {
+        width: 5px;
+        height: 5px;
+        background: rgba(51, 65, 85, 0.55);
+    }
+
+    /* High-contrast hover & focus state */
+    :is(#filters, #add-entry-modal) select option:hover,
+    :is(#filters, #add-entry-modal) select option:focus-visible,
+    #page-size-select option:hover,
+    #page-size-select option:focus-visible {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .15), rgba(34, 211, 238, .10));
+        color: #064e3b;
+        font-weight: 600;
+    }
+
+    /* High-contrast selected/checked state */
+    :is(#filters, #add-entry-modal) select option:checked,
+    #page-size-select option:checked {
+        background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .08));
+        color: #064e3b;
+        font-weight: 600;
+    }
+
+    :is(#filters, #add-entry-modal) select option::checkmark,
+    #page-size-select option::checkmark {
+        color: #047857;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    /* Clear separation for <optgroup> inside the Add/Edit modal Shelf select */
+    #add-entry-modal select optgroup {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #0f172a;
+        padding-top: 4px;
+        margin-top: 3px;
+        border-top: 1px solid rgba(100, 116, 139, 0.25);
+    }
+    #add-entry-modal select optgroup:first-of-type {
+        border-top: none;
+        margin-top: 0;
+    }
+}
+
+/* ==========================================================================
+   Glass search  ·  calm version
+   Frosted glass bar + one thin light slowly travelling round the border.
+   No sparkles / aurora / pulses (easy on the eyes). Effects JS: assets/js/search-fx.js
+   ========================================================================== */
+
+@property --sf-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes sf-spin { to { --sf-ang: 360deg; } }
+
+.aoi-search-glass {
+    --sf-h: 2.5rem;
+    --sf-r: 12px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: var(--sf-h);
+    border-radius: var(--sf-r);
+    background: linear-gradient(135deg, rgba(255,255,255,.80), rgba(241,245,249,.55));
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+            backdrop-filter: blur(14px) saturate(1.5);
+    border: 1px solid rgba(148,163,184,.40);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 6px 16px -12px rgba(15,23,42,.30);
+    transition: border-color .3s ease, box-shadow .3s ease;
+}
+.aoi-search-glass:hover { border-color: rgba(16,185,129,.45); }
+.aoi-search-glass:focus-within {
+    border-color: rgba(16,185,129,.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 0 0 3px rgba(16,185,129,.12);
+}
+
+/* one thin light slowly running round the edge */
+.aoi-search-glass::before {
+    content: "";
+    position: absolute; inset: -1px; z-index: 3; pointer-events: none;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(from var(--sf-ang), transparent 0 80%, rgba(16,185,129,.9) 92%, rgba(34,211,238,.9) 97%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: sf-spin 12s linear infinite;
+}
+
+.aoi-search-icon {
+    flex: none; display: grid; place-items: center;
+    width: 2.5rem; height: 100%;
+    color: #475569; font-size: .85rem;
+    transition: color .25s ease;
+}
+.aoi-search-glass:focus-within .aoi-search-icon { color: #059669; }
+.aoi-search-ring { display: none; }
+
+#filters .aoi-search-glass #barcode-search-input {
+    flex: 1 1 auto; min-width: 0;
+    height: 100%; min-height: 0;
+    padding: 0 .35rem 0 0;
+    border: 0; border-radius: 0;
+    background: transparent;
+    box-shadow: none; outline: none; transform: none;
+    color: #0f172a; caret-color: #10b981;
+    font-size: .8125rem; font-weight: 500;
+    text-overflow: ellipsis;
+}
+#filters .aoi-search-glass #barcode-search-input:focus { box-shadow: none; transform: none; border: 0; }
+#filters .aoi-search-glass #barcode-search-input::placeholder { color: #64748b; font-weight: 500; opacity: 1; }
+
+/* result count chip (static) */
+.aoi-search-count {
+    flex: none; display: inline-flex; align-items: center; gap: .3rem;
+    margin-right: .3rem; padding: .15rem .5rem;
+    border-radius: 999px; border: 1px solid rgba(16,185,129,.35);
+    background: rgba(16,185,129,.12); color: #065f46;
+    font: 600 .6875rem/1 'JetBrains Mono', 'Fira Code', monospace; white-space: nowrap;
+}
+.aoi-search-count[hidden] { display: none; }
+.aoi-search-count em { font-style: normal; font-weight: 500; opacity: .7; }
+.aoi-search-count.is-zero { border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.10); color: #9f1239; }
+
+/* clear button */
+.aoi-search-clear {
+    flex: none; display: none; place-items: center;
+    width: 1.5rem; height: 1.5rem; margin-right: .4rem;
+    border: 1px solid rgba(148,163,184,.45); border-radius: 50%;
+    background: rgba(255,255,255,.75); color: #475569; font-size: .6875rem; cursor: pointer;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.aoi-search-glass.has-value .aoi-search-clear { display: grid; }
+.aoi-search-clear:hover { background: #fff1f2; border-color: rgba(244,63,94,.5); color: #e11d48; }
+.aoi-search-clear:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+/* "/" keycap hint */
+.aoi-search-kbd {
+    position: absolute; right: .55rem; top: 50%; margin-top: -.6rem;
+    min-width: 1.2rem; height: 1.2rem; padding: 0 .3rem;
+    display: grid; place-items: center;
+    border: 1px solid rgba(148,163,184,.55); border-bottom-width: 2px; border-radius: 6px;
+    background: rgba(255,255,255,.8); color: #475569;
+    font: 600 .6875rem/1 'JetBrains Mono', 'Fira Code', monospace;
+}
+.aoi-search-glass:focus-within .aoi-search-kbd,
+.aoi-search-glass.has-value .aoi-search-kbd { display: none; }
+
+.aoi-search-aurora, .aoi-search-bar { display: none; }
+
+@media (max-width: 639px) { .aoi-search-kbd, .aoi-search-count em { display: none; } }
+@media (prefers-reduced-motion: reduce) { .aoi-search-glass::before { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .aoi-search-glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; } }
+@media print { .aoi-search-glass::before { display: none; } }
+
+
+/* ==========================================================================
+   Glass clock (header) · calm: frosted pill, tabular digits, one soft "live" dot
+   ========================================================================== */
+@keyframes clk-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+.aoi-clock {
+    display: inline-flex; align-items: center; gap: .65rem;
+    padding: .3rem .8rem .3rem .4rem;
+    border-radius: 12px;
+    border: 1px solid rgba(148,163,184,.40);
+    background: linear-gradient(135deg, rgba(255,255,255,.80), rgba(241,245,249,.55));
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+            backdrop-filter: blur(14px) saturate(1.5);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 6px 16px -12px rgba(15,23,42,.30);
+}
+.aoi-clock-ico {
+    position: relative; flex: none;
+    display: grid; place-items: center;
+    width: 2.1rem; height: 2.1rem; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(16,185,129,.18), rgba(34,211,238,.14));
+    border: 1px solid rgba(16,185,129,.30);
+    color: #047857; font-size: .95rem;
+}
+.aoi-clock-dot {
+    position: absolute; top: -2px; right: -2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #10b981; box-shadow: 0 0 0 2px #fff;
+    animation: clk-live 3s ease-in-out infinite;
+}
+.aoi-clock-body { display: flex; flex-direction: column; line-height: 1.1; }
+.aoi-clock-shift { font-size: .625rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+.aoi-clock-row { display: flex; align-items: baseline; gap: .6rem; margin-top: .15rem; }
+.aoi-clock-time {
+    font: 600 1.125rem/1 'JetBrains Mono', 'Fira Code', monospace;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: #0f172a;
+}
+.aoi-clock-sec { color: #10b981; font-weight: 500; }
+.aoi-clock-date { font-size: .75rem; font-weight: 500; color: #475569; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { .aoi-clock-dot { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .aoi-clock { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; } }
+
+/* Confirm Delete glass popup stacking & pill tint */
+#delete-board-confirm.gm-overlay { z-index: 65; }
+.gm-shelf-pill.is-danger { color: #be123c; background: rgba(255,241,242,.9); border-color: rgba(244,63,94,.45); }
+
+/* ==========================================================================
+   Defect Matrix Table (shown when Shelf = ALL, in place of Rack Map)
+   - Sticky top header + sticky bottom footer
+   - Sticky first 2 left columns (Number Code, Shelf) on horizontal scroll
+   - Equal-width narrow mono Defect columns + row/column hover highlighting
+   ========================================================================== */
+#defect-matrix-wrapper:empty { min-height: 120px; }
+#defect-matrix-wrapper[aria-busy="true"] .dm-table-scroll[data-has-rows="1"] { opacity: .55; }
+
+.dm-table-scroll {
+    max-height: clamp(280px, 48vh, 480px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+    transition: opacity .15s ease;
+}
+
+.dm-table {
+    width: 100%;
+    min-width: max-content;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.dm-th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: max-content;
+    padding: 0.4rem 0.65rem;
+    background-color: #1e293b;
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 10.5px;
+    line-height: 1.25;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, .14);
+    border-bottom: 2px solid #0f172a;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.dm-th:last-child { border-right: 0; }
+.dm-th[data-col="code"]    { background-color: #1d4ed8; border-bottom-color: #1e3a8a; }
+.dm-th[data-col="shelf"]   { background-color: #0e7490; border-bottom-color: #164e63; }
+.dm-th[data-col="product"] { background-color: #4338ca; border-bottom-color: #312e81; }
+.dm-th[data-col="status"]  { background-color: #d97706; border-bottom-color: #78350f; }
+.dm-th[data-defect-code] {
+    background-color: #334155;
+    border-bottom-color: #0f172a;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    padding: 0.4rem 0.55rem;
+    cursor: help;
+}
+.dm-th[data-defect-code="OTHER"] {
+    text-transform: none;
+}
+
+/* Column header highlight when row has that defect or cursor hovers that column */
+.dm-th.is-col-active {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-bottom-color: #991b1b !important;
+    box-shadow: inset 0 -2px 0 #fde047;
+}
+.dm-th.is-col-cursor:not(.is-col-active) {
+    background-color: #0284c7 !important;
+    border-bottom-color: #075985 !important;
+}
+
+/* Sticky left columns: 1 = Number Code, 2 = Shelf (starts at header width, expands with data) */
+.dm-sticky-col-1 {
+    position: sticky;
+    left: 0;
+    width: max-content;
+}
+.dm-sticky-col-2 {
+    position: sticky;
+    left: var(--dm-col1-w, 110px);
+    width: max-content;
+    border-right: 1px solid #94a3b8 !important;
+    box-shadow: 3px 0 6px -2px rgba(15, 23, 42, 0.14);
+}
+thead .dm-sticky-col-1,
+thead .dm-sticky-col-2 { z-index: 30; }
+tbody .dm-sticky-col-1,
+tbody .dm-sticky-col-2 { z-index: 10; background-color: #ffffff; }
+tfoot .dm-sticky-col-1,
+tfoot .dm-sticky-col-2 { z-index: 25; background-color: #f1f5f9; }
+
+.dm-td {
+    width: max-content;
+    padding: 0.3rem 0.65rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: #1e293b;
+    background-color: #ffffff;
+    font-family: 'Poppins', 'Inter', 'Prompt', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    border-bottom: 1px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    transition: background-color .12s ease;
+}
+.dm-td:last-child { border-right: 0; }
+.dm-td[data-col="code"] {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11.5px;
+}
+.dm-td .badge-glow-good,
+.dm-td .badge-glow-defect {
+    width: 1.25rem;
+    height: 1.25rem;
+    box-shadow: none;
+    animation: none;
+}
+
+.dm-td-defect {
+    width: max-content;
+    padding: 0.25rem 0.4rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.dm-td-defect.is-hit {
+    background-color: #fff1f2;
+}
+
+/* Row interactivity */
+.dm-tbody tr.dm-row { cursor: pointer; }
+.dm-tbody tr.dm-row:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.dm-tbody tr.dm-row:hover .dm-td,
+.dm-tbody tr.dm-row:focus-visible .dm-td {
+    background-color: #f1f5f9;
+}
+.dm-tbody tr.dm-row:hover .dm-td-defect.is-hit,
+.dm-tbody tr.dm-row:focus-visible .dm-td-defect.is-hit {
+    background-color: #ffe4e6;
+}
+.dm-tbody tr.dm-row:hover .dm-sticky-col-1,
+.dm-tbody tr.dm-row:focus-visible .dm-sticky-col-1 {
+    background-color: #f1f5f9;
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+.dm-tbody tr.dm-row:hover .dm-sticky-col-2,
+.dm-tbody tr.dm-row:focus-visible .dm-sticky-col-2 {
+    background-color: #f1f5f9;
+}
+
+/* Defect hit / miss indicators */
+.dm-hit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 9999px;
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.14);
+    transition: transform .18s var(--ease-spring, ease);
+}
+.dm-hit-badge.is-other {
+    background-color: #ffe4e6;
+    border-color: #fda4af;
+    color: #e11d48;
+    cursor: help;
+}
+.dm-row:hover .dm-hit-badge {
+    transform: scale(1.12);
+}
+.dm-miss-dash {
+    color: #cbd5e1;
+    font-size: 11px;
+    user-select: none;
+}
+
+/* Footer summary row */
+.dm-tfoot-td {
+    position: sticky;
+    bottom: 0;
+    z-index: 15;
+    padding: 0.35rem 0.3rem;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    background-color: #f1f5f9;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 700;
+    border-top: 2px solid #94a3b8;
+    border-right: 1px solid #cbd5e1;
+    transition: background-color .15s ease, color .15s ease;
+}
+.dm-tfoot-td:last-child { border-right: 0; }
+.dm-tfoot-td.is-nonzero {
+    color: #dc2626;
+    background-color: #fef2f2;
+}
+.dm-tfoot-td.is-zero {
+    color: #94a3b8;
+    font-weight: 500;
+}
+.dm-tfoot-td.is-col-active {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    box-shadow: inset 0 2px 0 #dc2626;
+}
+
+/* Legend active chip highlight */
+.dm-legend-item.is-legend-active {
+    background-color: #fee2e2;
+    color: #991b1b;
+    box-shadow: 0 0 0 1px #fca5a5;
+}
+.dm-legend-item.is-legend-active b {
+    color: #dc2626;
+}
+
