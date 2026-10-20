@@ -1,6 +1,7 @@
 # AOI Inspection System - Offline Mode Guide
 
-This project is designed to run **100% offline** - no internet connection, Docker, or external services required!
+This project runs **without an internet connection**: every frontend asset is served locally.
+It does need a **MySQL server** (the `db` service in docker-compose, or any MySQL 8 that PHP can reach). There is no SQLite fallback.
 
 ## ✅ What's Already Offline
 
@@ -12,36 +13,49 @@ All frontend assets are served locally:
 - **Custom Styles**: `assets/css/{base,theme,components}/` (one file per component), `assets/css/fonts.css`, `assets/css/fonts-ui.css`
 - **Application Logic**: `assets/js/{core,components}/` + `assets/js/main.js` (load order: `includes/assets.php`)
 
-## 🗄️ Database: SQLite (Offline) / MySQL (Production)
+## 🗄️ Database: MySQL only
 
-The system automatically detects the environment:
-- **MySQL**: Used when `DB_HOST` environment variable is set (Docker/production)
-- **SQLite**: Automatic fallback for offline/development mode (zero-config)
+`db()` in `config/database.php` connects to **MySQL only** (PHP extension `pdo_mysql`):
+- Host, port, user and password come from `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS` (defaults match `docker-compose.yml`).
+- The database name comes from `AOI_DB_NAME` (default `Master_AoI`). `DB_NAME` is ignored on purpose, because docker-compose shares it with the other projects in `./src`.
+- On first connect the database is created (`CREATE DATABASE IF NOT EXISTS`, needs the CREATE privilege) and `runMigrations()` creates or updates the tables. Migrations are idempotent and run on every request. No seed data is inserted.
+- If MySQL cannot be reached, the page stops with `Database connection failed: ...`. Nothing falls back to SQLite.
 
-The SQLite database file is created at `data/aoi.sqlite` on first run.
+The `sqlite` branch inside `runMigrations()` exists **only for automated tests**: a test passes an in-memory SQLite PDO to `runMigrations()` / `saveBoardRecord()` directly. The application itself never opens SQLite and writes nothing to `data/`. Do not remove that branch; the tests use it.
 
-## 🚀 Quick Start (Offline Mode)
+## 🚀 Quick Start
 
-### Linux/macOS
+### Docker (recommended)
+```bash
+cd /path/to/my-php-app
+docker compose up -d
+# App: http://localhost:8080/aoi-web-php/   phpMyAdmin: http://localhost:8081
+```
+
+### PHP built-in server (Linux/macOS)
+Needs PHP 8.1+ with `pdo_mysql` and a reachable MySQL, e.g. the Docker `db` service published on port 3306:
 ```bash
 cd /path/to/aoi-web-php
-./start-offline.sh
+DB_HOST=127.0.0.1 ./start-offline.sh
 # Or specify a custom port:
-./start-offline.sh 3000
+DB_HOST=127.0.0.1 ./start-offline.sh 3000
 ```
 
 ### Windows
 ```cmd
 cd C:\path\to\aoi-web-php
+set DB_HOST=127.0.0.1
 start-offline.bat
 # Or specify a custom port:
 start-offline.bat 3000
 ```
 
+> `start-offline.sh` / `start-offline.bat` still print "Database: SQLite" and refuse to start without `pdo_sqlite`. That text is outdated: the app uses MySQL, so `pdo_mysql` is the extension it actually needs. If `pdo_sqlite` is missing, use the manual command below.
+
 ### Manual (Any Platform)
 ```bash
-# Ensure you have PHP 8.1+ with pdo_sqlite extension
-php -S 0.0.0.0:8080 -t . index.php
+# PHP 8.1+ with pdo_mysql; MySQL reachable at DB_HOST:DB_PORT
+DB_HOST=127.0.0.1 php -S 0.0.0.0:8080 -t . index.php
 ```
 
 Then open **http://localhost:8080** in your browser.
@@ -49,14 +63,15 @@ Then open **http://localhost:8080** in your browser.
 ## 📋 Requirements
 
 - **PHP 8.1+** (8.2/8.3 recommended)
-- Required PHP extensions (usually built-in):
+- **MySQL 8** reachable from PHP (docker-compose `db` service, or your own server)
+- Required PHP extensions:
   - `pdo`
-  - `pdo_sqlite`
+  - `pdo_mysql`
   - `session`
   - `json`
   - `mbstring`
 
-Check with: `php -m | grep -E "pdo|sqlite|session|json|mbstring"`
+Check with: `php -m | grep -E "pdo|mysql|session|json|mbstring"`
 
 ## 🔧 Configuration
 
@@ -64,18 +79,21 @@ Check with: `php -m | grep -E "pdo|sqlite|session|json|mbstring"`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_HOST` | (unset) | MySQL host. If set, uses MySQL instead of SQLite |
-| `DB_NAME` | `smt_machine_request` | MySQL database name |
+| `DB_HOST` | `db` | MySQL host. `db` is the docker-compose service name; from the host machine use `127.0.0.1` |
+| `DB_PORT` | `3306` | MySQL port |
 | `DB_USER` | `root` | MySQL username |
 | `DB_PASS` | `rootpassword` | MySQL password |
-| `DB_PORT` | `3306` | MySQL port |
+| `AOI_DB_NAME` | `Master_AoI` | This project's database (created automatically when the user may CREATE) |
 
-### For Production (MySQL)
+`DB_NAME` is not read by this project.
+
+### Another MySQL server
 ```bash
 export DB_HOST=your-mysql-host
-export DB_NAME=your-database
+export DB_PORT=3306
 export DB_USER=your-user
 export DB_PASS=your-password
+export AOI_DB_NAME=Master_AoI
 ./start-offline.sh 8080
 ```
 
@@ -87,10 +105,14 @@ aoi-web-php/
 ├── includes/                 # request state, POST actions, page data, CSV export, asset load order
 ├── components/               # page sections: header, kpi-cards, filters, data-table, rack-map, board-modal/, popups/ ...
 ├── config/
-│   └── database.php          # DB config (MySQL + SQLite auto-fallback)
+│   └── database.php          # MySQL connection + idempotent migrations (sqlite branch: automated tests only)
 ├── api/
-│   ├── boards.php            # Data API (GET) - works with both DBs
-│   └── delete.php            # Delete API (POST) - works with both DBs
+│   ├── boards.php            # Data API (GET)
+│   └── delete.php            # Delete API (POST)
+├── scripts/
+│   └── check-duplicate-codes.php  # Read-only CLI report: duplicate Number Codes, zone mismatches, index status
+├── tests/
+│   └── number-code-test.php  # CLI regression tests on throwaway MySQL databases (see README.md)
 ├── assets/
 │   ├── css/
 │   │   ├── base/ theme/ components/   # Custom styles, one file per component
@@ -106,54 +128,31 @@ aoi-web-php/
 │   ├── webfonts/             # Font Awesome webfonts (woff2, ttf)
 │   ├── fonts/                # Inter, JetBrains Mono, Noto Sans Thai (woff)
 │   └── fonts/ui/             # Poppins, Inter, Prompt (woff2)
-├── data/                     # SQLite database (auto-created)
-│   └── aoi.sqlite
-├── start-offline.sh          # Linux/macOS startup script
-├── start-offline.bat         # Windows startup script
+├── start-offline.sh          # Linux/macOS startup script (PHP built-in server)
+├── start-offline.bat         # Windows startup script (PHP built-in server)
 └── setup.php                 # One-time Grid.js downloader (already run)
 ```
 
-## 🔄 Switching Between Modes
+## 🔄 Docker vs PHP built-in server
 
-### Offline → Online (MySQL)
-```bash
-# Set MySQL environment variables
-export DB_HOST=db
-export DB_NAME=smt_machine_request
-export DB_USER=root
-export DB_PASS=rootpassword
+Both use the same MySQL database; only the web server differs.
 
-# Restart server
-./start-offline.sh
-```
+| Feature | Docker (Apache) | PHP built-in server |
+|---------|-----------------|---------------------|
+| Start | `docker compose up -d` | `DB_HOST=127.0.0.1 ./start-offline.sh` |
+| URL | http://localhost:8080/aoi-web-php/ | http://localhost:8080 |
+| Database | MySQL (`db` service) | MySQL (`DB_HOST`, e.g. `127.0.0.1`) |
+| Concurrency | High | Low (single process) |
+| Backup | `mysqldump` | `mysqldump` |
 
-### Online → Offline
-```bash
-# Unset MySQL variables
-unset DB_HOST
-
-# Restart server (will use SQLite)
-./start-offline.sh
-```
-
-## 🐳 Docker vs Offline
-
-| Feature | Docker (MySQL) | Offline (SQLite) |
-|---------|----------------|------------------|
-| Setup time | ~30 sec | ~2 sec |
-| Persistence | Docker volume | Local file `data/aoi.sqlite` |
-| Concurrency | High | Low-Medium (WAL mode enabled) |
-| Backup | `mysqldump` | Copy `data/aoi.sqlite` |
-| Portability | Requires Docker | Single PHP binary |
-
-## 📦 Backing Up Data (Offline Mode)
+## 📦 Backing Up Data
 
 ```bash
-# Simple file copy
-cp data/aoi.sqlite data/aoi.sqlite.backup.$(date +%Y%m%d)
+# Docker: dump the project database from the host
+docker exec php_app_db mysqldump -uroot -prootpassword Master_AoI > backup_$(date +%Y%m%d).sql
 
-# Or export to SQL
-sqlite3 data/aoi.sqlite .dump > backup.sql
+# Restore
+docker exec -i php_app_db mysql -uroot -prootpassword Master_AoI < backup_YYYYMMDD.sql
 ```
 
 ## 🛠️ Troubleshooting
@@ -161,21 +160,19 @@ sqlite3 data/aoi.sqlite .dump > backup.sql
 ### "Could not find driver" error
 ```bash
 # Ubuntu/Debian
-sudo apt-get install php-sqlite3 php-pdo
+sudo apt-get install php-mysql
 
 # CentOS/RHEL/Fedora
-sudo dnf install php-pdo php-sqlite3
+sudo dnf install php-mysqlnd
 
 # macOS (Homebrew)
-brew install php  # includes sqlite3
+brew install php  # includes pdo_mysql
 ```
 
-### "Permission denied" on SQLite file
-```bash
-chmod 755 data/
-chmod 644 data/aoi.sqlite
-# Or run server as same user who created the file
-```
+### "Database connection failed"
+MySQL is not reachable at `DB_HOST:DB_PORT`:
+- Docker: run `docker compose up -d db` and wait until the container is healthy.
+- From the host machine use `DB_HOST=127.0.0.1`; the name `db` only resolves inside Docker.
 
 ### Port already in use
 ```bash
@@ -196,7 +193,7 @@ After starting offline mode, verify:
 - [ ] Page loads at http://localhost:8080
 - [ ] Thai fonts render correctly (Prompt font)
 - [ ] Font Awesome icons display (microchip, plus, trash, etc.)
-- [ ] Table loads with seed data (22 rows)
+- [ ] Table loads (empty on a new database: no seed data)
 - [ ] Search/filter works
 - [ ] Add/Edit modal opens
 - [ ] Save new record works
@@ -208,7 +205,7 @@ After starting offline mode, verify:
 
 ## 📝 Notes
 
-1. **First run**: SQLite database and tables are created automatically with seed data
+1. **First run**: the MySQL database (`Master_AoI` by default) and its tables are created automatically; no seed data
 2. **Session storage**: Uses PHP file-based sessions (default) - works offline
 3. **CSRF protection**: Enabled by default, works offline
 4. **No build step**: All assets are pre-compiled and ready to use

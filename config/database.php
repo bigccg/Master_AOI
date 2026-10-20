@@ -29,6 +29,17 @@ const DEFAULT_SHEET  = 'B200_Gen';
 
 // Single source of truth for Zone -> Sheet keys mapping.
 // Edit here and the entire system (URL validation, tabs, KPI, Rack Map, Defect Matrix, table, export) follows.
+//
+// !! Do NOT move an existing sheet to another zone here. Every record stores its zone in boards.zone and the
+//    screens filter on it (`WHERE zone = ? AND sheet = ?`), so the sheet's existing records would disappear.
+//    Adding a new sheet, or giving an empty zone (AIXZ / Automotive) its sheets, needs no data change.
+//    A sheet key belongs to exactly one zone (sheetZone() returns the first match).
+//    If a sheet really must move, do it while nobody is saving to that sheet:
+//      1. Back up the database.
+//      2. UPDATE boards SET zone = '<new zone>' WHERE sheet = '<sheet>';   e.g. zone = 'AIXZ' WHERE sheet = 'CD300'
+//      3. Move the sheet key to the new zone below and deploy.
+//      4. Run the UPDATE from step 2 once more (catches rows saved in between), then check with
+//         php scripts/check-duplicate-codes.php: section [2] (zone mismatch) must say "None found".
 const ZONES = [
     'General'    => ['CD300', 'A150_Gen', 'B200_Gen', 'C250_Gen'],
     'AIXZ'       => [],
@@ -65,10 +76,15 @@ const CODE_PREFIX   = 'AOI-P1';
 const CODE_TZ       = 'Asia/Bangkok';   // month boundary follows factory local time
 const CODE_MAX_RUN  = 999;
 
+// Deferred unique indexes (runMigrations): while existing duplicates block uq_code / uq_sheet_shelf, their
+// duplicate check and error_log run at most once per this many seconds (flag file in sys_get_temp_dir()).
+const MIGRATION_RECHECK_SECONDS = 3600;
+
 // UX Copy (What happened + Why + How to fix, Thai / English)
 const ALL_SIZE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในแท็บรวมทุกขนาดได้ เนื่องจากต้องระบุชีตและชั้นวางปลายทาง กรุณาเลือกแท็บชีตด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Size Magazine because a target sheet is required. Please select a sheet tab first.';
 const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ยังไม่มีชีตในระบบ กรุณาสลับไปโซนที่มีชีต (เช่น General) และเลือกชีตก่อน / Cannot add a record because this zone has no sheets configured yet. Please switch to an active zone first.';
 const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
+const CODE_LOCK_BUSY_ERROR = 'ยังไม่ได้บันทึกรายการนี้ เนื่องจากระบบกำลังออก Number Code ให้ผู้ใช้งานอื่นอยู่ กรุณากดบันทึกอีกครั้ง / This record was not saved because the system is issuing a Number Code to another user. Please click Save again.';
 
 // Status styling map: status => [container classes, text class, label text]
 const STATUS_STYLE = [
@@ -390,6 +406,7 @@ function nextNumberCode(PDO $pdo, ?DateTimeInterface $at = null): string
  * Concurrency strategy:
  * 1. Acquires MySQL advisory lock `GET_LOCK('aoi_board_number_code', 5)` so concurrent saves across any sheet/zone
  *    serialize their `nextNumberCode()` read + INSERT without colliding on the shared monthly sequence.
+ *    If the lock is not granted (timeout = 0, error = NULL) nothing is inserted: returns status 503 + CODE_LOCK_BUSY_ERROR.
  * 2. Keeps a 5-attempt retry loop on MySQL error 1062 (duplicate key on `uq_code` / `uq_sheet_code`) as a second
  *    line of defense, plus an explicit app-level duplicate check in case `uq_code` migration was deferred.
  *
@@ -585,6 +602,10 @@ function saveBoardRecord(PDO $pdo, array $input): array
             if ($driver === 'mysql') {
                 $lockSt  = $pdo->query("SELECT GET_LOCK('aoi_board_number_code', 5)");
                 $hasLock = ((int)$lockSt->fetchColumn() === 1);
+                if (!$hasLock) {
+                    // Another save holds the lock past the timeout (or GET_LOCK failed): never INSERT unlocked
+                    throw new RuntimeException(CODE_LOCK_BUSY_ERROR, 503);
+                }
             }
 
             $ins = $pdo->prepare(
@@ -647,7 +668,7 @@ function saveBoardRecord(PDO $pdo, array $input): array
     } catch (RuntimeException $e) {
         return [
             'success'     => false,
-            'status_code' => 422,
+            'status_code' => $e->getCode() === 503 ? 503 : 422, // 503 = Number Code lock busy, retry
             'errors'      => [$e->getMessage()],
             'message'     => '',
             'id'          => $id,
@@ -701,6 +722,40 @@ function saveBoardRecord(PDO $pdo, array $input): array
             }
         }
     }
+}
+
+/**
+ * Flag file that throttles the duplicate check of a unique index runMigrations() could not add yet:
+ * one per database + index, e.g. /tmp/aoi-Master_AoI-uq_code.flag; its mtime is the time of the last check.
+ */
+function migrationFlagFile(PDO $pdo, string $index): string
+{
+    $dbName = (string)$pdo->query('SELECT DATABASE()')->fetchColumn();
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'aoi-' . preg_replace('/[^A-Za-z0-9_]/', '_', $dbName) . "-$index.flag";
+}
+
+/**
+ * runMigrations() runs on every db() call, so while duplicates keep a unique index out, its GROUP BY check
+ * and error_log() would repeat on every request. Returns false while $flag is younger than
+ * MIGRATION_RECHECK_SECONDS; otherwise refreshes $flag first (parallel requests then skip) and returns true.
+ * A missing, expired or future-dated flag never blocks the check; an unwritable temp dir just means
+ * checking on every call, as before.
+ */
+function migrationCheckDue(string $flag): bool
+{
+    clearstatcache(true, $flag);
+    $mtime = @filemtime($flag);
+    if ($mtime !== false) {
+        $age = time() - $mtime;
+        if ($age >= 0 && $age < MIGRATION_RECHECK_SECONDS) {
+            return false;
+        }
+    }
+    $isNew = !is_file($flag);
+    if (@touch($flag) && $isNew) {
+        @chmod($flag, 0666); // web server and CLI may run as different users: let either refresh it
+    }
+    return true;
 }
 
 /**
@@ -816,21 +871,26 @@ function runMigrations(PDO $pdo): void
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_code'"
         )->fetchColumn();
         if ($codeIdx === 0) {
-            $dupCodes = (int)$pdo->query(
-                'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY code HAVING COUNT(*) > 1) d'
-            )->fetchColumn();
-            if ($dupCodes === 0) {
-                $oldSheetCodeIdx = (int)$pdo->query(
-                    "SELECT COUNT(*) FROM information_schema.STATISTICS
-                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_code'"
+            // Check (and log) at most once per MIGRATION_RECHECK_SECONDS while duplicates remain, see migrationCheckDue()
+            $codeFlag = migrationFlagFile($pdo, 'uq_code');
+            if (migrationCheckDue($codeFlag)) {
+                $dupCodes = (int)$pdo->query(
+                    'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY code HAVING COUNT(*) > 1) d'
                 )->fetchColumn();
-                if ($oldSheetCodeIdx > 0) {
-                    $pdo->exec('ALTER TABLE boards DROP INDEX uq_sheet_code, ADD UNIQUE KEY uq_code (code)');
+                if ($dupCodes === 0) {
+                    $oldSheetCodeIdx = (int)$pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.STATISTICS
+                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_code'"
+                    )->fetchColumn();
+                    if ($oldSheetCodeIdx > 0) {
+                        $pdo->exec('ALTER TABLE boards DROP INDEX uq_sheet_code, ADD UNIQUE KEY uq_code (code)');
+                    } else {
+                        $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_code (code)');
+                    }
+                    @unlink($codeFlag); // the index exists now, so the flag is never read again
                 } else {
-                    $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_code (code)');
+                    error_log("AOI: $dupCodes Number Code(s) are duplicated across sheets, so uq_code was not added. Review them with: php scripts/check-duplicate-codes.php (rechecked at most every " . intdiv(MIGRATION_RECHECK_SECONDS, 60) . ' min).');
                 }
-            } else {
-                error_log("AOI: $dupCodes Number Code(s) are duplicated across sheets; uq_code not added until duplicates are resolved (run scripts/check-duplicate-codes.php).");
             }
         }
 
@@ -840,13 +900,18 @@ function runMigrations(PDO $pdo): void
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_shelf'"
         )->fetchColumn();
         if ($shelfIdx === 0) {
-            $dupShelves = (int)$pdo->query(
-                'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1) d'
-            )->fetchColumn();
-            if ($dupShelves === 0) {
-                $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_sheet_shelf (sheet, shelf_no)');
-            } else {
-                error_log("AOI: $dupShelves shelf(s) hold more than one record; uq_sheet_shelf not added until duplicates are fixed.");
+            // Same throttle as uq_code above
+            $shelfFlag = migrationFlagFile($pdo, 'uq_sheet_shelf');
+            if (migrationCheckDue($shelfFlag)) {
+                $dupShelves = (int)$pdo->query(
+                    'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1) d'
+                )->fetchColumn();
+                if ($dupShelves === 0) {
+                    $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_sheet_shelf (sheet, shelf_no)');
+                    @unlink($shelfFlag);
+                } else {
+                    error_log("AOI: $dupShelves shelf(s) hold more than one record, so uq_sheet_shelf was not added. Find them with: SELECT sheet, shelf_no, COUNT(*) FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1; (rechecked at most every " . intdiv(MIGRATION_RECHECK_SECONDS, 60) . ' min).');
+                }
             }
         }
     }
@@ -897,8 +962,11 @@ function runMigrations(PDO $pdo): void
 
 /**
  * Get PDO instance (singleton with retry logic)
+ *
+ * $migrate = false only connects and selects the database: no CREATE DATABASE and no runMigrations().
+ * Used by read-only CLI tools (scripts/check-duplicate-codes.php); the first call in a process decides.
  */
-function db(): PDO
+function db(bool $migrate = true): PDO
 {
     static $pdo = null;
     if ($pdo !== null) return $pdo;
@@ -945,10 +1013,12 @@ function db(): PDO
     }
 
     // Own database for this project (needs CREATE privilege, e.g. root in docker-compose)
-    try {
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-    } catch (PDOException $e) {
-        // no privilege: fall through, USE below fails with a clear message if it doesn't exist
+    if ($migrate) {
+        try {
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `$name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        } catch (PDOException $e) {
+            // no privilege: fall through, USE below fails with a clear message if it doesn't exist
+        }
     }
     try {
         $pdo->exec("USE `$name`");
@@ -957,7 +1027,9 @@ function db(): PDO
         exit('Database "' . h($name) . '" is not available: ' . h($e->getMessage()));
     }
 
-    runMigrations($pdo);
+    if ($migrate) {
+        runMigrations($pdo);
+    }
 
     return $pdo;
 }
