@@ -2,8 +2,13 @@
  * Shared page state (zone, sheet, filters, paging) + DOM roots set on init.
  */
 
+// Zones + sheets from the database (components/layout/scripts.php -> topologyForJs()); replaced by applyTopology()
+const EMPTY_TOPOLOGY = { defaultZone: '', zoneOrder: [], zones: {}, sheets: {} };
+const topo = () => window.TOPOLOGY || EMPTY_TOPOLOGY;
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
 const state = {
-    zone: 'General',
+    zone: topo().defaultZone,
     sheet: 'ALL',
     page: 1,
     pageSize: 10,
@@ -25,24 +30,63 @@ let matrixWrapper = null;
 
 let currentSheetData = null;
 
+// Mirrors the PHP helpers in config/database.php: direct links accept disabled zones / sheets, tabs show enabled ones only
+function defaultZoneJs() {
+    return topo().defaultZone;
+}
+
 function normalizeZoneJs(z) {
-    const zones = window.ZONES || { General: ['CD300', 'A150_Gen', 'B200_Gen', 'C250_Gen'], AIXZ: [], Automotive: [] };
     const key = String(z || '').trim();
-    return Object.prototype.hasOwnProperty.call(zones, key) ? key : 'General';
+    return hasOwn(topo().zones, key) ? key : defaultZoneJs();
 }
 
-function getZoneSheetKeysJs(z = state.zone) {
-    const zones = window.ZONES || { General: ['CD300', 'A150_Gen', 'B200_Gen', 'C250_Gen'], AIXZ: [], Automotive: [] };
-    const norm = normalizeZoneJs(z);
-    return Array.isArray(zones[norm]) ? zones[norm] : [];
+function zoneMetaJs(z) {
+    const key = normalizeZoneJs(z);
+    return topo().zones[key] || { label: key, short: key, active: false, sheets: [] };
 }
 
+function sheetMetaJs(sh) {
+    return hasOwn(topo().sheets, sh) ? topo().sheets[sh] : null;
+}
+
+// Sheet keys of a zone in tab order: enabled only (tabs), or incl. disabled ones
+function getZoneSheetKeysJs(z = state.zone, includeDisabled = false) {
+    return zoneMetaJs(z).sheets.filter(k => includeDisabled || sheetMetaJs(k)?.active);
+}
+
+// Does the zone have sheets whose records can be shown (enabled or disabled)? Adding: insertBlockedReasonJs()
 function zoneHasSheetsJs(z = state.zone) {
-    return getZoneSheetKeysJs(z).length > 0;
+    return getZoneSheetKeysJs(z, true).length > 0;
+}
+
+function defaultSheetForZoneJs(z = state.zone) {
+    return getZoneSheetKeysJs(z)[0] || '';
 }
 
 function resolveSheetInZoneJs(z, sh) {
-    const keys = getZoneSheetKeysJs(z);
     if (!sh || sh === 'ALL') return 'ALL';
-    return keys.includes(sh) ? sh : 'ALL';
+    return getZoneSheetKeysJs(z, true).includes(sh) ? sh : 'ALL';
+}
+
+// Same order and messages as insertBlockedReason() in PHP; '' = a new record may be added
+function insertBlockedReasonJs(z = state.zone, sh = state.sheet) {
+    const zone = zoneMetaJs(z);
+    if (getZoneSheetKeysJs(z, true).length === 0) return EMPTY_ZONE_INSERT_MSG;
+    if (!zone.active) return INACTIVE_ZONE_INSERT_MSG;
+    if (getZoneSheetKeysJs(z).length === 0) return NO_ACTIVE_SHEET_INSERT_MSG;
+    if (getZoneSheetKeysJs(z, true).includes(sh) && !sheetMetaJs(sh)?.active) return INACTIVE_SHEET_INSERT_MSG;
+    if (!sh || sh === 'ALL' || !getZoneSheetKeysJs(z).includes(sh)) return ALL_SIZE_INSERT_MSG;
+    return '';
+}
+
+// Zone selector text, same as zoneOptionLabel() in PHP
+function zoneOptionLabelJs(z) {
+    const zone = topo().zones[z];
+    if (!zone) return String(z);
+    const enabled = getZoneSheetKeysJs(z).length;
+    let suffix;
+    if (!zone.active) suffix = ' (ปิดใช้งาน / Disabled)';
+    else if (enabled > 0) suffix = ` (${enabled} ชีต)`;
+    else suffix = getZoneSheetKeysJs(z, true).length > 0 ? ' (ไม่มีชีตที่เปิดใช้งาน / No active sheets)' : ' (ยังไม่มีชีต / No sheets)';
+    return zone.label + suffix;
 }

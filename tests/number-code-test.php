@@ -8,7 +8,7 @@
  *   (จ) scripts/check-duplicate-codes.php runs from the CLI, changes nothing, refuses web requests
  *   (ฉ) web: saving in General works; empty zones (AIXZ / Automotive) are rejected with EMPTY_ZONE_INSERT_ERROR
  *
- * Connects with DB_HOST / DB_PORT / DB_USER / DB_PASS (same defaults as db()), creates throwaway databases
+ * Connects with DB_HOST / DB_PORT / DB_USER / DB_PASS (required, no fallback credentials), creates throwaway databases
  * aoi_test_<run>_* and drops them at the end; Master_AoI is never touched. Needs CREATE / DROP DATABASE
  * (root in docker-compose). (ง) holds GET_LOCK('aoi_board_number_code') for about 15 s in total.
  *
@@ -130,8 +130,11 @@ function connect(?string $dbName = null): TestPdo
 {
     $host = getenv('DB_HOST') ?: 'db';
     $port = getenv('DB_PORT') ?: '3306';
-    $user = getenv('DB_USER') ?: 'root';
-    $pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'rootpassword';
+    $user = getenv('DB_USER');
+    $pass = getenv('DB_PASS');
+    if (!is_string($user) || $user === '' || !is_string($pass)) {
+        throw new RuntimeException('DB_USER / DB_PASS are not set (no fallback credentials in code)');
+    }
     $pdo  = new TestPdo("mysql:host=$host;port=$port;charset=utf8mb4", $user, $pass, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

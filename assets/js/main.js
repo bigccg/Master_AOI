@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     pagerFooter   = document.getElementById('pagination-footer');
     matrixWrapper = document.getElementById('defect-matrix-wrapper');
 
-    // Initialize state from URL params (validated against ZONES and zone's SHEETS)
+    // Initialize state from URL params (validated against window.TOPOLOGY: the zones + sheets tables)
     const params     = new URLSearchParams(window.location.search);
-    state.zone       = normalizeZoneJs(params.get('zone') || window.initialZone || 'General');
+    state.zone       = normalizeZoneJs(params.get('zone') || window.initialZone || defaultZoneJs());
     state.sheet      = resolveSheetInZoneJs(state.zone, params.get('sheet') || window.initialSheet || 'ALL');
     state.search     = params.get('q') || '';
     state.shelf      = params.get('shelf') || 'ALL';

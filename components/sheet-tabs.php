@@ -17,12 +17,8 @@
               aria-controls="sheet-tabs-list table-wrapper defect-matrix rack-map"
               title="สลับโซนเพื่อกรองชีต ตาราง และสรุปผลเฉพาะโซนที่เลือก / Switch zone to filter sheets, records, and metrics"
               class="bg-white border border-slate-300 text-slate-900 text-xs rounded-md py-1 px-2.5 pr-7 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer font-semibold">
-        <?php foreach (ZONES as $zKey => $zSheets):
-            $zLabel  = ZONE_META[$zKey]['label'] ?? $zKey;
-            $zCount  = count($zSheets);
-            $zSuffix = $zCount > 0 ? " ({$zCount} ชีต)" : ' (ยังไม่มีชีต / No sheets)';
-        ?>
-          <option value="<?= h($zKey) ?>" <?= $zone === $zKey ? 'selected' : '' ?>><?= h($zLabel . $zSuffix) ?></option>
+        <?php foreach (selectableZones($zone) as $zKey): ?>
+          <option value="<?= h($zKey) ?>" <?= $zone === $zKey ? 'selected' : '' ?>><?= h(zoneOptionLabel($zKey)) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -43,7 +39,7 @@
           $allActive = ($sheet === 'ALL');
           $allHref   = '?' . http_build_query(['zone' => $zone, 'sheet' => 'ALL']);
         ?>
-        <a href="<?= h($allHref) ?>" data-sheet="ALL" id="tab-ALL" role="tab" aria-selected="<?= $allActive ? 'true' : 'false' ?>" tabindex="<?= $allActive ? '0' : '-1' ?>" title="ดูข้อมูลรวมทุกชีตภายในโซน <?= h($zone) ?> / View all sheets within <?= h($zone) ?> zone" class="<?= $allActive ? 'px-4 py-1 rounded text-xs font-bold bg-white text-emerald-800 shadow-sm border-t-2 border-t-emerald-600 border-x border-b border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' : 'px-3.5 py-1 rounded text-xs font-medium bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' ?>">
+        <a href="<?= h($allHref) ?>" data-sheet="ALL" id="tab-ALL" role="tab" aria-selected="<?= $allActive ? 'true' : 'false' ?>" tabindex="<?= ($allActive || !$isSheetActive) ? '0' : '-1' ?>" title="ดูข้อมูลรวมทุกชีตภายในโซน <?= h($zone) ?> / View all sheets within <?= h($zone) ?> zone" class="<?= $allActive ? 'px-4 py-1 rounded text-xs font-bold bg-white text-emerald-800 shadow-sm border-t-2 border-t-emerald-600 border-x border-b border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' : 'px-3.5 py-1 rounded text-xs font-medium bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' ?>">
           <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block bg-blue-600" aria-hidden="true"></span>
           <span class="tab-label">ทุกขนาด (All Size Magazine)</span>
           <span class="tab-count bg-emerald-100 text-emerald-800 text-[10px] px-1.5 rounded font-mono <?= $allSheetsCount === 0 ? 'opacity-50' : '' ?>"><?= $allSheetsCount ?></span>
@@ -53,11 +49,31 @@
             $href   = '?' . http_build_query(['zone' => $zone, 'sheet' => $key]);
             $n      = $tabCounts[$key] ?? 0; ?>
           <a href="<?= h($href) ?>" data-sheet="<?= h($key) ?>" id="tab-<?= h($key) ?>" role="tab" aria-selected="<?= $active ? 'true' : 'false' ?>" tabindex="<?= $active ? '0' : '-1' ?>" title="เลือกชีต <?= h($label) ?> (โซน <?= h($zone) ?>) / Select sheet <?= h($label) ?>" class="<?= $active ? 'px-4 py-1 rounded text-xs font-bold bg-white text-emerald-800 shadow-sm border-t-2 border-t-emerald-600 border-x border-b border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' : 'px-3.5 py-1 rounded text-xs font-medium bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer' ?>">
-            <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block <?= $dot ?>" aria-hidden="true"></span>
+            <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block <?= h($dot) ?>" aria-hidden="true"></span>
             <span class="tab-label"><?= h($label) ?></span>
             <span class="tab-count bg-emerald-100 text-emerald-800 text-[10px] px-1.5 rounded font-mono <?= $n === 0 ? 'opacity-50' : '' ?>"><?= $n ?></span>
           </a>
         <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
+    <!-- Disabled zone / sheet notes (not tabs): rendered again by renderSheetTabNotes() in sheet-tabs.js -->
+    <div id="sheet-tabs-notes" class="flex items-center gap-1 shrink-0">
+      <?php if ($hasZoneSheets && !zoneIsActive($zone)): ?>
+        <span role="status" title="ผู้ดูแลระบบปิดใช้งานโซนนี้ จึงไม่แสดงในตัวเลือกโซนและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังดูและส่งออกได้ / An administrator disabled this zone: it is hidden from the zone selector and takes no new records. Existing records can still be viewed and exported." class="px-3 py-1 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-eye" aria-hidden="true"></i><span>โซนนี้ถูกปิดใช้งาน · ดูได้อย่างเดียว / Zone disabled · view only</span>
+        </span>
+      <?php elseif ($hasZoneSheets && !$currentZoneSheets): ?>
+        <span role="status" title="<?= h(NO_ACTIVE_SHEET_INSERT_ERROR) ?>" class="px-3 py-1 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-amber-600" aria-hidden="true"></i><span>ยังไม่มีชีตที่เปิดใช้งาน / No active sheets</span>
+        </span>
+      <?php endif; ?>
+      <?php if (!$isSheetActive): ?>
+        <span id="sheet-disabled-pill" role="status" title="ชีตนี้ไม่แสดงในแท็บและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ / This sheet is hidden from the tabs and takes no new records; its existing records can still be viewed, edited and exported." class="px-3 py-1 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-eye" aria-hidden="true"></i>
+          <span>ชีต <?= h($sheet) ?> ถูกปิดใช้งาน · ดูได้อย่างเดียว / Sheet <?= h($sheet) ?> disabled · view only</span>
+          <span class="tab-count bg-amber-100 text-amber-800 text-[10px] px-1.5 rounded font-mono"><?= (int)($sheetCounts[$sheet] ?? 0) ?></span>
+        </span>
       <?php endif; ?>
     </div>
   </nav>

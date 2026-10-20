@@ -19,20 +19,19 @@ if (!$editRow && isset($_GET['edit'])) {
 // KPI & Tab counts (scoped to the selected Zone, independent of search/dropdown filters)
 // ──────────────────────────────────────────────
 
-$tabCounts = [];
-foreach (array_keys($currentZoneSheets) as $shKey) {
-    $tabCounts[$shKey] = 0;
-}
+// Every sheet of the zone, disabled ones included: they have no tab but still belong to All Size Magazine
+$sheetCounts = array_fill_keys($zoneSheetKeys, 0);
 if ($hasZoneSheets) {
     $tcSt = $pdo->prepare('SELECT sheet, COUNT(*) c FROM boards WHERE zone = ? GROUP BY sheet');
     $tcSt->execute([$zone]);
     foreach ($tcSt as $r) {
-        if (isset($tabCounts[$r['sheet']])) {
-            $tabCounts[$r['sheet']] = (int)$r['c'];
+        if (isset($sheetCounts[$r['sheet']])) {
+            $sheetCounts[$r['sheet']] = (int)$r['c'];
         }
     }
 }
-$allSheetsCount = array_sum($tabCounts);
+$tabCounts      = array_intersect_key($sheetCounts, $currentZoneSheets);
+$allSheetsCount = array_sum($sheetCounts);
 
 $cnt = ['G' => 0, 'D' => 0, 'GD' => 0];
 if (!$hasZoneSheets) {
@@ -57,7 +56,7 @@ if (!$hasZoneSheets) {
     $magCount    = 1;
     $capacity    = 0;
     $usedShelves = 0;
-    foreach (array_keys($currentZoneSheets) as $shKey) {
+    foreach ($zoneSheetKeys as $shKey) {
         $shMag = magazineCount($pdo, $shKey);
         if ($shMag > $magCount) $magCount = $shMag;
         $shCap = $shMag * MAGAZINE_SIZE;
@@ -80,7 +79,7 @@ if (!$hasZoneSheets) {
             $cnt[$r['status']] = (int)$r['c'];
         }
     }
-    $total       = $tabCounts[$sheet] ?? array_sum($cnt);
+    $total       = $sheetCounts[$sheet] ?? array_sum($cnt);
     $pctG        = $total ? (int)round($cnt['G'] / $total * 100) : 0;
     $magCount    = magazineCount($pdo, $sheet);
     $capacity    = max(1, $magCount * MAGAZINE_SIZE);
@@ -123,6 +122,7 @@ if ($hasZoneSheets && $modalSheet !== '') {
         $util        = min(100, (int)round($usedShelves / max(1, $capacity) * 100));
     }
     $isMax = ($modalUsedShelves >= $modalCapacity);
+    $canAddMagazine = $magCount < MAGAZINE_LIMIT && sheetIsActive($modalSheet);
 
     for ($n = 1; $n <= $modalCapacity; $n++) {
         if (empty($takenBy[$n])) {
@@ -135,6 +135,7 @@ if ($hasZoneSheets && $modalSheet !== '') {
     $modalCapacity    = 0;
     $modalUsedShelves = 0;
     $isMax            = false;
+    $canAddMagazine   = false;
     $last             = false;
 }
 

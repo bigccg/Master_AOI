@@ -12,10 +12,11 @@ require_once __DIR__ . '/../config/database.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $zone              = normalizeZone(qs('zone', DEFAULT_ZONE));
-$currentZoneSheets = zoneSheets($zone);
-$hasZoneSheets     = !empty($currentZoneSheets);
+$currentZoneSheets = zoneSheets($zone);              // enabled sheets = the sheet tabs
+$zoneSheetKeys     = array_keys(zoneSheets($zone, true));   // + disabled ones: their records still count and open
+$hasZoneSheets     = !empty($zoneSheetKeys);
 
-// Validate sheet within the selected zone; if not in zone, fallback to 'ALL' of that zone
+// Validate sheet within the selected zone; if not in zone (or deleted), fallback to 'ALL' of that zone
 $sheet       = resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
 $isAllSheets = ($sheet === 'ALL');
 $modalSheet  = $isAllSheets ? defaultSheetForZone($zone) : $sheet;
@@ -24,12 +25,9 @@ $pdo = db();
 $sp  = $isAllSheets ? 'ALL' : ($sheet !== '' ? shelfPrefix($sheet) : '');
 
 // ──────────────────────────────────────────────
-// Tab counts (scoped strictly to the selected Zone)
+// Tab counts (scoped strictly to the selected Zone): every sheet incl. disabled ones, + ALL
 // ──────────────────────────────────────────────
-$tabCounts = [];
-foreach (array_keys($currentZoneSheets) as $k) {
-    $tabCounts[$k] = 0;
-}
+$tabCounts = array_fill_keys($zoneSheetKeys, 0);
 if ($hasZoneSheets) {
     $tcSt = $pdo->prepare('SELECT sheet, COUNT(*) c FROM boards WHERE zone = ? GROUP BY sheet');
     $tcSt->execute([$zone]);
@@ -79,7 +77,7 @@ if (!$hasZoneSheets) {
     $maxMagCount      = 1;
     $totalCapacity    = 0;
     $totalUsedShelves = 0;
-    foreach (array_keys($currentZoneSheets) as $shKey) {
+    foreach ($zoneSheetKeys as $shKey) {
         $shMag = magazineCount($pdo, $shKey);
         if ($shMag > $maxMagCount) $maxMagCount = $shMag;
         $shCap = $shMag * MAGAZINE_SIZE;
@@ -221,7 +219,7 @@ echo json_encode([
     'success' => true,
     'data' => [
         'zone'         => $zone,
-        'zone_label'   => ZONE_META[$zone]['label'] ?? $zone,
+        'zone_label'   => zoneLabel($zone),
         'has_sheets'   => $hasZoneSheets,
         'zone_sheets'  => $zoneSheetsList,
         'sheet'        => $sheet,
@@ -246,7 +244,8 @@ echo json_encode([
             'used_shelves' => $modalUsedShelves,
             'magazines'    => $magazines,
             'next_range'   => [$nextFrom, $nextTo],
-            'can_add_mag'  => ($hasZoneSheets && $modalMagCount < MAGAZINE_LIMIT),
+            'can_add_mag'  => ($hasZoneSheets && $modalMagCount < MAGAZINE_LIMIT && sheetIsActive($modalSheet)),
+            'add_mag_note' => ($modalSheet !== '' && !sheetIsActive($modalSheet)) ? INACTIVE_SHEET_MAGAZINE_ERROR : '',
         ],
         'free_shelves'  => $freeShelves,
         'free_by_mag'   => $freeByMag,

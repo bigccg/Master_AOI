@@ -1,0 +1,14 @@
+# Apache 2.4: keeps the non-public files of this project off the web.
+# php:8.2-apache serves /var/www/ with "AllowOverride All"; mod_rewrite is not enabled, so nothing here needs it.
+# The PHP built-in server (start-offline.sh) ignores .htaccess: index.php blocks the same paths in its router.
+# Folders with server-side code only (config/ includes/ components/ tests/ scripts/ docs/) have their own .htaccess.
+
+Options -Indexes
+
+# Dot files and dot folders: .git/, .htaccess, .env, editor swap files ...
+RedirectMatch 404 /\.
+
+# Archives, backups, dumps, logs, docs and shell scripts that end up in the folder are never served
+<FilesMatch "\.(zip|tar|t?gz|7z|rar|bak|old|orig|swp|tmp|log|sql|sqlite|md|sh|bat|dist)$">
+    Require all denied
+</FilesMatch>

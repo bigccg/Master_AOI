@@ -17,7 +17,7 @@ async function loadTable(refreshMatrix = true) {
         }
     }
 
-    // Fast path when the selected zone has no sheets configured (e.g. AIXZ, Automotive)
+    // Fast path when the selected zone has no sheets configured yet (e.g. a newly added zone)
     if (!zoneHasSheetsJs(state.zone)) {
         inflight?.abort();
         view.status = 'ready';

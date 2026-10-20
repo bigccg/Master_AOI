@@ -17,7 +17,7 @@ header('Content-Type: application/json; charset=utf-8');
 // ──────────────────────────────────────────────
 
 $zone          = normalizeZone(qs('zone', DEFAULT_ZONE));
-$hasZoneSheets = zoneHasSheets($zone);
+$hasZoneSheets = zoneHasSheets($zone, true);   // disabled sheets still show their records
 $sheet         = resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
 
 $rawLimit = qs('limit', (string)PER_PAGE);

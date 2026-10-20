@@ -46,7 +46,7 @@ function renderRackMap(rack, sp) {
                   <button type="submit" class="px-3 py-1 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700 cursor-pointer">ยืนยัน / Confirm</button>
                   <button type="button" onclick="toggleAddMag(false)" class="px-3 py-1 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก / Cancel</button>
                 </form>
-              </div>` : `<span class="text-slate-600">ครบจำนวนสูงสุดแล้ว</span>`}
+              </div>` : `<span class="text-slate-600">${h(rack.add_mag_note || 'ครบจำนวนสูงสุดแล้ว')}</span>`}
         `;
     } else if (maxBanner) {
         maxBanner.remove();
@@ -197,7 +197,9 @@ function setupRackMapEvents() {
     document.getElementById('rack-map')?.addEventListener('click', (e) => {
         const emptyBtn = e.target.closest('button[data-shelf]');
         if (emptyBtn) {
-            openRackConfirm(emptyBtn.dataset.shelf);
+            const blocked = insertBlockedReasonJs(state.zone, state.sheet);   // e.g. a disabled sheet opened by link
+            if (blocked) showFlash('err', blocked);
+            else openRackConfirm(emptyBtn.dataset.shelf);
             return;
         }
         const editBtn = e.target.closest('button[data-action="edit"]');

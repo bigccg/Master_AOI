@@ -1,0 +1,2 @@
+# Server-side only (included by PHP or run from the CLI): never served over the web. See ../.htaccess
+Require all denied

@@ -48,7 +48,7 @@ function setupDelegation() {
     // Browser navigation (Back / Forward)
     window.addEventListener('popstate', () => {
         const params     = new URLSearchParams(window.location.search);
-        const zn         = normalizeZoneJs(params.get('zone') || 'General');
+        const zn         = normalizeZoneJs(params.get('zone') || defaultZoneJs());
         const sh         = resolveSheetInZoneJs(zn, params.get('sheet') || 'ALL');
         state.zone       = zn;
         state.sheet      = sh;
@@ -58,8 +58,7 @@ function setupDelegation() {
         state.status     = params.get('status') || 'ALL';
         state.other      = params.get('other') || 'ALL';
 
-        const zoneSelect = document.getElementById('zone-select');
-        if (zoneSelect) zoneSelect.value = state.zone;
+        renderZoneSelect();   // a disabled zone is only listed while it is the current one
         const filterZone = document.getElementById('filter-zone');
         if (filterZone) filterZone.value = state.zone;
         const filterSheet = document.getElementById('filter-sheet');

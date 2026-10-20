@@ -35,7 +35,7 @@
 .gm-window .gm-input:not(:placeholder-shown) ~ .gm-tick { animation: gm-tick .4s cubic-bezier(.34,1.56,.64,1) both; }
 
 .gm-window .gm-input,
-#add-entry-modal select.gm-input {
+:is(#add-entry-modal, #topology-manager) select.gm-input {
     display: block; width: 100%; height: 40px; padding: 0 12px;
     border-radius: 12px; border: 1px solid rgba(148,163,184,.44);
     background-color: rgba(255,255,255,.64);
@@ -56,13 +56,13 @@
 .gm-window .gm-input[readonly] { background-color: rgba(241,245,249,.8); color: #334155; cursor: default; }
 
 /* the <select>s inherit the gradient-edge glass from components/glass-select.css — only size / font are aligned here */
-#add-entry-modal select.gm-input { padding-right: 34px; line-height: 38px; cursor: pointer; }
-#add-entry-modal select.gm-input:focus { transform: translateY(-1px); }
-#add-entry-modal select.gm-input.mono  { text-transform: none; }
-#add-entry-modal select.gm-input.is-max { color: #be123c; background-color: rgba(255,241,242,.85); border-color: rgba(244,63,94,.4); }
+:is(#add-entry-modal, #topology-manager) select.gm-input { padding-right: 34px; line-height: 38px; cursor: pointer; }
+:is(#add-entry-modal, #topology-manager) select.gm-input:focus { transform: translateY(-1px); }
+:is(#add-entry-modal, #topology-manager) select.gm-input.mono  { text-transform: none; }
+:is(#add-entry-modal, #topology-manager) select.gm-input.is-max { color: #be123c; background-color: rgba(255,241,242,.85); border-color: rgba(244,63,94,.4); }
 
 @supports (appearance: base-select) {
-    #add-entry-modal select.gm-input {
+    :is(#add-entry-modal, #topology-manager) select.gm-input {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -71,7 +71,7 @@
         padding-inline: 12px;
         line-height: 1;
     }
-    #add-entry-modal select.gm-input::picker-icon {
+    :is(#add-entry-modal, #topology-manager) select.gm-input::picker-icon {
         flex: none;
         margin-left: auto;
     }

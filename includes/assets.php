@@ -25,6 +25,7 @@ const CSS_FILES = [
     'components/popups/confirm.css',
     'components/board-modal/defect-panel.css',
     'components/glass-popup/responsive.css',
+    'components/topology-manager.css',      // after the glass popup: manager + admin.php build on it
 ];
 
 const JS_FILES = [
@@ -52,4 +53,10 @@ const JS_FILES = [
     'components/popups/rack-insert-confirm.js',
     'core/events.js',
     'main.js',
+];
+
+// Zone & Sheet manager: only sent to a signed-in administrator, inserted before main.js (components/layout/scripts.php)
+const ADMIN_JS_FILES = [
+    'components/popups/topology-confirm.js',
+    'components/topology-manager.js',
 ];

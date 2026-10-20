@@ -27,7 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postSheet = isset($zoneShts[$rawSheet]) ? $rawSheet : defaultSheetForZone($postZone);
 
     if ($action === 'add_magazine') {
-        if ($postSheet === '' || !isset(SHEETS[$postSheet])) {
+        if (isset(zoneSheets($postZone, true)[$rawSheet]) && !sheetIsActive($rawSheet)) {
+            $_SESSION['flash'] = ['err', INACTIVE_SHEET_MAGAZINE_ERROR];   // never fall back to another sheet
+            header('Location: ' . url(['edit' => null]));
+            exit;
+        }
+        if ($postSheet === '' || !sheetExists($postSheet)) {
             $_SESSION['flash'] = ['err', EMPTY_ZONE_INSERT_ERROR];
             header('Location: ' . url(['edit' => null]));
             exit;

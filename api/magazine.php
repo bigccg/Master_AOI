@@ -33,13 +33,15 @@ if (!hash_equals(csrf(), $csrfToken)) {
 
 $zone  = normalizeZone((string)($input['zone'] ?? DEFAULT_ZONE));
 $sheet = trim((string)($input['sheet'] ?? ''));
-if (!isset(zoneSheets($zone)[$sheet])) {
+if (!isset(zoneSheets($zone)[$sheet])) {   // enabled sheets only: a disabled sheet gets no new Magazine
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => !zoneHasSheets($zone)
+        'message' => !zoneHasSheets($zone, true)
             ? EMPTY_ZONE_INSERT_ERROR
-            : 'ไม่สามารถเพิ่ม Magazine ได้ เนื่องจากชีตที่ระบุไม่อยู่ในโซนที่เลือก กรุณาเลือกชีตใหม่ / Selected sheet does not belong to this zone.',
+            : (isset(zoneSheets($zone, true)[$sheet])
+                ? INACTIVE_SHEET_MAGAZINE_ERROR
+                : 'ไม่สามารถเพิ่ม Magazine ได้ เนื่องจากชีตที่ระบุไม่อยู่ในโซนที่เลือก กรุณาเลือกชีตใหม่ / Selected sheet does not belong to this zone.'),
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }

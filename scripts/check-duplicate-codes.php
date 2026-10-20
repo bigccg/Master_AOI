@@ -4,7 +4,7 @@
  *
  * Reports what keeps runMigrations() from adding the system-wide unique index `uq_code`:
  *   [1] Number Codes used by more than one row (left over from the old per-sheet running number)
- *   [2] Rows whose `zone` column no longer matches sheetZone(sheet) in ZONES
+ *   [2] Rows whose `zone` column no longer matches the zone of their sheet in the `sheets` table
  *   [3] Whether the uq_code / uq_sheet_code indexes exist
  * Only SELECTs: never changes data, never renumbers, never runs migrations (connects with db(false)).
  *
@@ -136,6 +136,14 @@ try {
              FROM boards GROUP BY code HAVING COUNT(*) > 1 ORDER BY code"
         )->fetchAll();
 
+        // Zone & Sheet tables come with the migration that also seeds them; this read-only tool never migrates
+        $hasTopology = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('zones', 'sheets')"
+        )->fetchColumn() === 2;
+        if ($hasTopology) {
+            topology($pdo);   // sheetZone() below reads this database
+        }
+
         $zoneGroups = $hasZone ? $pdo->query(
             "SELECT sheet, zone, COUNT(*) AS cnt, GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS ids
              FROM boards GROUP BY sheet, zone ORDER BY sheet, zone"
@@ -200,21 +208,24 @@ if (!$dups) {
 }
 
 // ──────────────────────────────────────────────
-// [2] zone column vs ZONES config
+// [2] zone column vs the zone of each sheet (sheets table)
 // ──────────────────────────────────────────────
 
-heading('[2] แถวที่ zone ไม่ตรงกับ ZONES ใน config / Rows whose zone does not match ZONES');
+heading('[2] แถวที่ zone ไม่ตรงกับโซนของชีต (ตาราง sheets) / Rows whose zone does not match their sheet');
 
-$configuredSheets = array_merge(...array_values(ZONES));
-$mismatch = array_values(array_filter(
+$configuredSheets = $hasTopology ? array_map('strval', array_keys(topology()['sheets'])) : [];
+$mismatch = $hasTopology ? array_values(array_filter(
     $zoneGroups,
     static fn(array $g): bool => (string)$g['zone'] !== sheetZone((string)$g['sheet'])
-));
+)) : [];
 $mismatchRows = array_sum(array_map(static fn(array $g): int => (int)$g['cnt'], $mismatch));
 
 if (!$hasZone) {
     echo '    ข้ามการตรวจ: ยังไม่มีคอลัมน์ zone (ฐานข้อมูลยังไม่ผ่าน migration ล่าสุด) เปิดหน้าเว็บ 1 ครั้งแล้วรันสคริปต์นี้ใหม่' . PHP_EOL;
     echo '    Skipped: there is no zone column yet. Open the web page once, then run this script again.' . PHP_EOL;
+} elseif (!$hasTopology) {
+    echo '    ข้ามการตรวจ: ยังไม่มีตาราง zones / sheets (ฐานข้อมูลยังไม่ผ่าน migration ล่าสุด) เปิดหน้าเว็บ 1 ครั้งแล้วรันสคริปต์นี้ใหม่' . PHP_EOL;
+    echo '    Skipped: there are no zones / sheets tables yet. Open the web page once, then run this script again.' . PHP_EOL;
 } elseif (!$mismatch) {
     echo '    ไม่พบ / None found.' . PHP_EOL;
 } else {
@@ -224,25 +235,25 @@ if (!$hasZone) {
         array_map(static function (array $g) use ($configuredSheets): array {
             $ids  = explode(',', (string)$g['ids']);
             $more = count($ids) > 10 ? ' ... (+' . (count($ids) - 10) . ')' : '';
-            $want = in_array($g['sheet'], $configuredSheets, true) ? sheetZone((string)$g['sheet']) : '(not in ZONES)';
+            $want = in_array((string)$g['sheet'], $configuredSheets, true) ? sheetZone((string)$g['sheet']) : '(not in sheets)';
             return [$g['sheet'], $g['zone'], $want, $g['cnt'], implode(',', array_slice($ids, 0, 10)) . $more];
         }, $mismatch),
         [3]
     );
     explain(
-        ['แถวเหล่านี้เก็บ zone ไม่ตรงกับโซนของชีตใน ZONES (config/database.php)', 'These rows store a zone that differs from the zone of their sheet in ZONES.'],
-        ['ชีตถูกย้ายโซนใน config หลังบันทึกข้อมูล หน้าจอกรองด้วย zone + sheet จึงไม่แสดงแถวเหล่านี้',
-         'The sheet was moved to another zone in config after these rows were saved; screens filter by zone + sheet, so the rows are hidden.'],
-        ['สำรองข้อมูลก่อน แล้วรัน SQL ด้านล่าง (เช่นใน phpMyAdmin) ตามขั้นตอนที่ comment ของ ZONES',
-         'Back up first, then run the SQL below (e.g. in phpMyAdmin), as described in the ZONES comment.']
+        ['แถวเหล่านี้เก็บ zone ไม่ตรงกับโซนของชีตในตาราง sheets', 'These rows store a zone that differs from the zone of their sheet in the sheets table.'],
+        ['ข้อมูลถูกแก้นอกหน้าจัดการ (เช่นย้ายชีตด้วย SQL) หรือบันทึกพร้อมกับตอนที่ย้ายชีต หน้าจอกรองด้วย zone + sheet จึงไม่แสดงแถวเหล่านี้ในแท็บของชีต',
+         'Data was changed outside the manager (e.g. a sheet moved with SQL) or saved while the sheet was moved; screens filter by zone + sheet, so the sheet tab hides these rows.'],
+        ['สำรองข้อมูลก่อน แล้วรัน SQL ด้านล่าง (เช่นใน phpMyAdmin) แล้วรันสคริปต์นี้อีกครั้ง',
+         'Back up first, then run the SQL below (e.g. in phpMyAdmin) and run this script again.']
     );
     echo PHP_EOL;
     foreach (array_unique(array_column($mismatch, 'sheet')) as $sh) {
-        if (in_array($sh, $configuredSheets, true)) {
+        if (in_array((string)$sh, $configuredSheets, true)) {
             echo "    UPDATE boards SET zone = '" . sheetZone((string)$sh) . "' WHERE sheet = '$sh';" . PHP_EOL;
         } else {
-            echo "    -- ชีต $sh ไม่อยู่ใน ZONES: เพิ่มชีตกลับใน config/database.php ก่อน (SQL อย่างเดียวไม่ทำให้แถวกลับมาแสดง)" . PHP_EOL;
-            echo "    -- Sheet $sh is not in ZONES: add it back to config first (SQL alone will not bring the rows back)." . PHP_EOL;
+            echo "    -- ชีต $sh ไม่มีในตาราง sheets: สร้างชีตรหัสเดิมกลับในหน้า จัดการโซนและชีต ก่อน (SQL อย่างเดียวไม่ทำให้แถวกลับมาแสดงในแท็บ)" . PHP_EOL;
+            echo "    -- Sheet $sh is not in the sheets table: re-create it in Manage Zones & Sheets first (SQL alone does not give it a tab)." . PHP_EOL;
         }
     }
 }
@@ -305,8 +316,8 @@ if (!$dups && $hasCodeIdx) {
     echo "  Once this script finds no duplicates, uq_code is added automatically on the next web page load (the web rechecks at most every $recheckMin min)." . PHP_EOL;
 }
 if ($mismatch) {
-    echo "  ต้องแก้: มี $mismatchRows แถวที่ zone ไม่ตรงกับ ZONES (หัวข้อ [2]) แถวเหล่านี้จะไม่แสดงบนหน้าจอจนกว่าจะรัน SQL ที่แนะนำ" . PHP_EOL;
-    echo "  Action needed: $mismatchRows row(s) have a zone that does not match ZONES (section [2]); they stay hidden until the suggested SQL is run." . PHP_EOL;
+    echo "  ต้องแก้: มี $mismatchRows แถวที่ zone ไม่ตรงกับโซนของชีต (หัวข้อ [2]) แถวเหล่านี้จะไม่แสดงในแท็บของชีตจนกว่าจะรัน SQL ที่แนะนำ" . PHP_EOL;
+    echo "  Action needed: $mismatchRows row(s) have a zone that does not match their sheet (section [2]); the sheet tab hides them until the suggested SQL is run." . PHP_EOL;
 }
 
 exit(($dups || $mismatch) ? 2 : 0);

@@ -75,17 +75,20 @@ Check with: `php -m | grep -E "pdo|mysql|session|json|mbstring"`
 
 ## 🔧 Configuration
 
-### Environment Variables (Optional)
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DB_HOST` | `db` | MySQL host. `db` is the docker-compose service name; from the host machine use `127.0.0.1` |
 | `DB_PORT` | `3306` | MySQL port |
-| `DB_USER` | `root` | MySQL username |
-| `DB_PASS` | `rootpassword` | MySQL password |
+| `DB_USER` | **required** | MySQL username. There is no default in the code any more; docker-compose.yml sets it for the `web` service |
+| `DB_PASS` | **required** | MySQL password (may be empty, but must be set). Without `DB_USER` / `DB_PASS` every page stops with "Database is not configured" |
 | `AOI_DB_NAME` | `Master_AoI` | This project's database (created automatically when the user may CREATE) |
+| `AOI_ADMIN_PASSWORD_HASH` | *(unset = admin pages closed)* | `password_hash()` of the administrator password for "Manage Zones & Sheets". Create it with `php scripts/admin-password-hash.php`; see README "ผู้ดูแลระบบ / Administrator" |
 
 `DB_NAME` is not read by this project.
+
+With the PHP built-in server, export the credentials first, e.g. `DB_HOST=127.0.0.1 DB_USER=root DB_PASS='…' ./start-offline.sh`.
 
 ### Another MySQL server
 ```bash
@@ -106,13 +109,17 @@ aoi-web-php/
 ├── components/               # page sections: header, kpi-cards, filters, data-table, rack-map, board-modal/, popups/ ...
 ├── config/
 │   └── database.php          # MySQL connection + idempotent migrations (sqlite branch: automated tests only)
+├── admin.php                 # Administrator sign-in / sign-out (Zone & Sheet manager only)
 ├── api/
 │   ├── boards.php            # Data API (GET)
-│   └── delete.php            # Delete API (POST)
+│   ├── delete.php            # Delete API (POST)
+│   └── topology.php          # Zone & Sheet manager API (administrators only)
 ├── scripts/
-│   └── check-duplicate-codes.php  # Read-only CLI report: duplicate Number Codes, zone mismatches, index status
+│   ├── check-duplicate-codes.php  # Read-only CLI report: duplicate Number Codes, zone mismatches, index status
+│   └── admin-password-hash.php    # CLI: create AOI_ADMIN_PASSWORD_HASH
 ├── tests/
-│   └── number-code-test.php  # CLI regression tests on throwaway MySQL databases (see README.md)
+│   ├── number-code-test.php  # CLI regression tests on throwaway MySQL databases (see README.md)
+│   └── topology-test.php     # CLI tests: zones / sheets tables, manager rules, admin gate, web exposure
 ├── assets/
 │   ├── css/
 │   │   ├── base/ theme/ components/   # Custom styles, one file per component
@@ -149,10 +156,11 @@ Both use the same MySQL database; only the web server differs.
 
 ```bash
 # Docker: dump the project database from the host
-docker exec php_app_db mysqldump -uroot -prootpassword Master_AoI > backup_$(date +%Y%m%d).sql
+# (the password comes from the db container's own MYSQL_ROOT_PASSWORD, so it is not typed here)
+docker exec php_app_db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" Master_AoI' > backup_$(date +%Y%m%d).sql
 
 # Restore
-docker exec -i php_app_db mysql -uroot -prootpassword Master_AoI < backup_YYYYMMDD.sql
+docker exec -i php_app_db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" Master_AoI' < backup_YYYYMMDD.sql
 ```
 
 ## 🛠️ Troubleshooting

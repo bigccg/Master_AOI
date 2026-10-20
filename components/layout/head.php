@@ -6,7 +6,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>AOI Inspection & Shelf Management System | ระบบบันทึกและจัดการสต็อกบอร์ด AOI</title>
+<title><?= h($pageTitle ?? 'AOI Inspection & Shelf Management System | ระบบบันทึกและจัดการสต็อกบอร์ด AOI') ?></title>
 <!-- Favicons & App Icons -->
 <link rel="icon" type="image/x-icon" href="favicon.ico"/>
 <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png"/>

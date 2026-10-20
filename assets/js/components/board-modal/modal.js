@@ -151,12 +151,9 @@ function setModalDeleteVisible(visible) {
 }
 
 function openAddModal() {
-    if (!zoneHasSheetsJs(state.zone)) {
-        showFlash('err', EMPTY_ZONE_INSERT_MSG);
-        return;
-    }
-    if (state.sheet === 'ALL') {
-        showFlash('err', ALL_SIZE_INSERT_MSG);
+    const blocked = insertBlockedReasonJs(state.zone, state.sheet);
+    if (blocked) {
+        showFlash('err', blocked);
         return;
     }
     clearModalErrors();
@@ -210,7 +207,7 @@ async function openEditModal(id) {
 
         const d = json.data;
         activeModalZone  = d.zone || state.zone;
-        activeModalSheet = d.sheet || (state.sheet === 'ALL' ? 'B200_Gen' : state.sheet);
+        activeModalSheet = d.sheet || (state.sheet === 'ALL' ? defaultSheetForZoneJs(activeModalZone) : state.sheet);
 
         const modalZone = document.getElementById('modal-zone');
         if (modalZone) modalZone.value = activeModalZone;

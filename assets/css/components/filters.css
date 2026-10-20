@@ -162,7 +162,7 @@
 
 /* 2. Dropdown Text & Option Division (preserving original Glass CSS & animations) */
 #filters select,
-#add-entry-modal select,
+:is(#add-entry-modal, #topology-manager) select,
 #page-size-select,
 #zone-select {
     --g-line: rgba(100, 116, 139, 0.48);
@@ -174,7 +174,7 @@
 
 /* Native fallback option readability */
 #filters select option,
-#add-entry-modal select option,
+:is(#add-entry-modal, #topology-manager) select option,
 #page-size-select option,
 #zone-select option {
     background-color: #ffffff;
@@ -183,7 +183,7 @@
     font-weight: 500;
     padding: 0.4rem 0.75rem;
 }
-#add-entry-modal select optgroup {
+:is(#add-entry-modal, #topology-manager) select optgroup {
     background-color: #f1f5f9;
     color: #0f172a;
     font-weight: 600;
@@ -192,7 +192,7 @@
 
 @supports (appearance: base-select) {
     /* Slightly higher opacity on the light frosted glass panel so text contrast stays ultra-crisp */
-    :is(#filters, #add-entry-modal) select::picker(select),
+    :is(#filters, #add-entry-modal, #topology-manager) select::picker(select),
     #page-size-select::picker(select),
     #zone-select::picker(select) {
         background:
@@ -202,7 +202,7 @@
     }
 
     /* High-contrast dark typography + compact option division */
-    :is(#filters, #add-entry-modal) select option,
+    :is(#filters, #add-entry-modal, #topology-manager) select option,
     #page-size-select option,
     #zone-select option {
         padding: 0.4rem 0.75rem 0.4rem 1.6rem;
@@ -224,14 +224,14 @@
         font-weight: 600;
     }
 
-    :is(#filters, #add-entry-modal) select option:last-child,
+    :is(#filters, #add-entry-modal, #topology-manager) select option:last-child,
     #page-size-select option:last-child,
     #zone-select option:last-child {
         border-bottom: none;
     }
 
     /* Clear left indicator dot */
-    :is(#filters, #add-entry-modal) select option::before,
+    :is(#filters, #add-entry-modal, #topology-manager) select option::before,
     #page-size-select option::before,
     #zone-select option::before {
         width: 5px;
@@ -240,8 +240,8 @@
     }
 
     /* High-contrast hover & focus state */
-    :is(#filters, #add-entry-modal) select option:hover,
-    :is(#filters, #add-entry-modal) select option:focus-visible,
+    :is(#filters, #add-entry-modal, #topology-manager) select option:hover,
+    :is(#filters, #add-entry-modal, #topology-manager) select option:focus-visible,
     #page-size-select option:hover,
     #page-size-select option:focus-visible,
     #zone-select option:hover,
@@ -252,7 +252,7 @@
     }
 
     /* High-contrast selected/checked state */
-    :is(#filters, #add-entry-modal) select option:checked,
+    :is(#filters, #add-entry-modal, #topology-manager) select option:checked,
     #page-size-select option:checked,
     #zone-select option:checked {
         background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .08));
@@ -260,7 +260,7 @@
         font-weight: 600;
     }
 
-    :is(#filters, #add-entry-modal) select option::checkmark,
+    :is(#filters, #add-entry-modal, #topology-manager) select option::checkmark,
     #page-size-select option::checkmark,
     #zone-select option::checkmark {
         color: #047857;
@@ -269,7 +269,7 @@
     }
 
     /* Clear separation for <optgroup> inside the Add/Edit modal Shelf select */
-    #add-entry-modal select optgroup {
+    :is(#add-entry-modal, #topology-manager) select optgroup {
         font-size: 0.8125rem;
         font-weight: 600;
         color: #0f172a;
@@ -277,7 +277,7 @@
         margin-top: 3px;
         border-top: 1px solid rgba(100, 116, 139, 0.25);
     }
-    #add-entry-modal select optgroup:first-of-type {
+    :is(#add-entry-modal, #topology-manager) select optgroup:first-of-type {
         border-top: none;
         margin-top: 0;
     }

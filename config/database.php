@@ -7,6 +7,14 @@
 declare(strict_types=1);
 
 if (session_status() === PHP_SESSION_NONE) {
+    // HttpOnly (no script access) + SameSite=Lax (not sent on cross-site POSTs); strict mode refuses session ids
+    // the server never issued. The administrator sign-in (includes/admin-auth.php) relies on this cookie.
+    ini_set('session.use_strict_mode', '1');
+    session_set_cookie_params([
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    ]);
     session_start();
 }
 
@@ -24,22 +32,18 @@ const RACK_PER_PAGE  = 6;     // Magazines shown per Rack Map page
 const PER_PAGE       = 10;    // Default page size (also used as fallback)
 const MAX_ALL_ROWS   = 5000;  // Hard safety cap when limit=all
 
+// Default + protected zone: links without a valid ?zone= open it, and it can never be disabled or deleted.
 const DEFAULT_ZONE   = 'General';
-const DEFAULT_SHEET  = 'B200_Gen';
 
-// Single source of truth for Zone -> Sheet keys mapping.
-// Edit here and the entire system (URL validation, tabs, KPI, Rack Map, Defect Matrix, table, export) follows.
-//
-// !! Do NOT move an existing sheet to another zone here. Every record stores its zone in boards.zone and the
-//    screens filter on it (`WHERE zone = ? AND sheet = ?`), so the sheet's existing records would disappear.
-//    Adding a new sheet, or giving an empty zone (AIXZ / Automotive) its sheets, needs no data change.
-//    A sheet key belongs to exactly one zone (sheetZone() returns the first match).
-//    If a sheet really must move, do it while nobody is saving to that sheet:
-//      1. Back up the database.
-//      2. UPDATE boards SET zone = '<new zone>' WHERE sheet = '<sheet>';   e.g. zone = 'AIXZ' WHERE sheet = 'CD300'
-//      3. Move the sheet key to the new zone below and deploy.
-//      4. Run the UPDATE from step 2 once more (catches rows saved in between), then check with
-//         php scripts/check-duplicate-codes.php: section [2] (zone mismatch) must say "None found".
+// ──────────────────────────────────────────────
+// DEPRECATED: first-run seed of the Zone & Sheet tables
+// ──────────────────────────────────────────────
+// Zones and sheets live in the `zones` / `sheets` tables, managed by administrators in
+// "จัดการโซนและชีต / Manage Zones & Sheets" (api/topology.php). seedTopology() copies the constants below into
+// those tables ONCE, while `zones` is still empty, and nothing else may read them: use topology(), zoneSheets(),
+// sheetZone(), shelfPrefix() ... instead. Editing them changes nothing in a database that is already seeded.
+const DEFAULT_SHEET  = 'B200_Gen';   // deprecated, unused: a zone's default sheet is now its first enabled sheet
+
 const ZONES = [
     'General'    => ['CD300', 'A150_Gen', 'B200_Gen', 'C250_Gen'],
     'AIXZ'       => [],
@@ -68,6 +72,22 @@ const SHELF_PREFIX = [
     'B200_Gen' => 'B',
     'C250_Gen' => 'C',
 ];
+// ── end of deprecated seed ──
+
+// Sheet tab dot colours an administrator can pick: Tailwind classes the page already uses (the four seeded
+// sheets' colours + the rack map's Bare / Bad Mark / fallback colours). sheets.dot_color only accepts these;
+// any other value read from the table is rendered as SHEET_DOT_FALLBACK.
+const SHEET_DOT_PALETTE = [
+    'bg-lime-500'    => 'เขียวมะนาว / Lime',
+    'bg-yellow-400'  => 'เหลือง / Yellow',
+    'bg-emerald-500' => 'เขียวมรกต / Emerald',
+    'bg-amber-400'   => 'อำพัน / Amber',
+    'bg-sky-500'     => 'ฟ้า / Sky',
+    'bg-blue-500'    => 'น้ำเงิน / Blue',
+    'bg-violet-600'  => 'ม่วง / Violet',
+    'bg-slate-500'   => 'เทา / Slate',
+];
+const SHEET_DOT_FALLBACK = 'bg-slate-500';
 
 // Number Code format: AOI-P1-(YY)-(MM)-(000)
 //   AOI-P1 = fixed prefix (Factory P1), YY/MM = year/month of entry,
@@ -83,6 +103,10 @@ const MIGRATION_RECHECK_SECONDS = 3600;
 // UX Copy (What happened + Why + How to fix, Thai / English)
 const ALL_SIZE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในแท็บรวมทุกขนาดได้ เนื่องจากต้องระบุชีตและชั้นวางปลายทาง กรุณาเลือกแท็บชีตด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Size Magazine because a target sheet is required. Please select a sheet tab first.';
 const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ยังไม่มีชีตในระบบ กรุณาสลับไปโซนที่มีชีต (เช่น General) และเลือกชีตก่อน / Cannot add a record because this zone has no sheets configured yet. Please switch to an active zone first.';
+const INACTIVE_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดูและส่งออกได้ตามปกติ กรุณาสลับไปโซนอื่นที่เปิดใช้งาน / Cannot add a record because an administrator disabled this zone. Existing records can still be viewed and exported. Please switch to an active zone.';
+const NO_ACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากชีตทั้งหมดในโซนนี้ถูกปิดใช้งาน กรุณาสลับไปโซนที่มีชีตเปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งานชีต / Cannot add a record because every sheet in this zone is disabled. Switch to a zone with an active sheet, or ask an administrator to enable one.';
+const INACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในชีตนี้ได้ เนื่องจากชีตถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ตามปกติ กรุณาเลือกชีตอื่นที่เปิดใช้งานจากแท็บด้านบน / Cannot add a record to this sheet because an administrator disabled it. Existing records can still be viewed, edited and exported. Please pick an active sheet tab above.';
+const INACTIVE_SHEET_MAGAZINE_ERROR = 'เพิ่ม Magazine ไม่ได้ เนื่องจากชีตนี้ถูกปิดใช้งานโดยผู้ดูแลระบบ กรุณาเลือกชีตที่เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งานชีตก่อน / Cannot add a Magazine because an administrator disabled this sheet. Pick an active sheet, or ask an administrator to enable it first.';
 const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
 const CODE_LOCK_BUSY_ERROR = 'ยังไม่ได้บันทึกรายการนี้ เนื่องจากระบบกำลังออก Number Code ให้ผู้ใช้งานอื่นอยู่ กรุณากดบันทึกอีกครั้ง / This record was not saved because the system is issuing a Number Code to another user. Please click Save again.';
 
@@ -120,86 +144,245 @@ const DEFECT_LABELS = [
 ];
 
 // ──────────────────────────────────────────────
-// Zone & Sheet Helpers
+// Zone & Sheet Helpers (zones / sheets tables, see topology())
 // ──────────────────────────────────────────────
+//
+// Enabled vs disabled (is_active = 0): a disabled zone or sheet keeps its records and still opens from a direct
+// link or export (normalizeZone / resolveSheetInZone accept it), but it is left out of the zone selector and the
+// sheet tabs and takes no new records or Magazines (zoneSheets() without $includeDisabled, insertBlockedReason()).
+// A deleted key no longer exists, so links to it fall back as before: zone -> DEFAULT_ZONE, sheet -> 'ALL'.
 
-/** Validate zone against ZONES whitelist; fallback to DEFAULT_ZONE ('General') */
+/**
+ * Zone & Sheet topology from the `zones` / `sheets` tables, the source of truth (seeded once by seedTopology()).
+ * Read once per request and cached:
+ *   'zones'  => [zoneKey  => ['key', 'label', 'short_label', 'sort_order', 'is_active', 'created_at', 'sheets' => [sheetKey, ...]]]
+ *   'sheets' => [sheetKey => ['key', 'zone', 'label', 'prefix', 'dot', 'sort_order', 'is_active', 'created_at']]
+ * Both maps follow sort_order and include disabled rows; the helpers below decide what a caller sees.
+ *
+ * $pdo picks the database. Helpers that take no handle read the database of the last call that passed one
+ * (runMigrations() and saveBoardRecord() pass theirs, so code that works on a given handle - tests, CLI tools -
+ * never falls through to db()); only with no handle at all is db() used. $refresh = true re-reads the tables,
+ * e.g. after an administrator changed them.
+ */
+function topology(?PDO $pdo = null, bool $refresh = false): array
+{
+    static $source = null;
+    static $cache  = null;
+
+    if ($pdo !== null && $pdo !== $source) {
+        $source = $pdo;
+        $cache  = null;
+    }
+    if ($source === null) {
+        $source = db();   // the first db() call may already fill $cache through runMigrations()
+    }
+    if ($cache === null || $refresh) {
+        $cache = loadTopology($source);
+    }
+    return $cache;
+}
+
+/** Read `zones` + `sheets` into the shape described at topology() */
+function loadTopology(PDO $pdo): array
+{
+    $topo = ['zones' => [], 'sheets' => []];
+    foreach ($pdo->query('SELECT zone_key, label, short_label, sort_order, is_active, created_at FROM zones ORDER BY sort_order, zone_key') as $r) {
+        $key = (string)$r['zone_key'];
+        $topo['zones'][$key] = [
+            'key'         => $key,
+            'label'       => (string)$r['label'],
+            'short_label' => (string)$r['short_label'],
+            'sort_order'  => (int)$r['sort_order'],
+            'is_active'   => (int)$r['is_active'] === 1,
+            'created_at'  => (string)$r['created_at'],
+            'sheets'      => [],
+        ];
+    }
+    foreach ($pdo->query('SELECT sheet_key, zone_key, label, shelf_prefix, dot_color, sort_order, is_active, created_at FROM sheets ORDER BY sort_order, sheet_key') as $r) {
+        $key  = (string)$r['sheet_key'];
+        $zone = (string)$r['zone_key'];
+        $dot  = (string)$r['dot_color'];
+        $topo['sheets'][$key] = [
+            'key'        => $key,
+            'zone'       => $zone,
+            'label'      => (string)$r['label'],
+            'prefix'     => (string)$r['shelf_prefix'],
+            'dot'        => isset(SHEET_DOT_PALETTE[$dot]) ? $dot : SHEET_DOT_FALLBACK,
+            'sort_order' => (int)$r['sort_order'],
+            'is_active'  => (int)$r['is_active'] === 1,
+            'created_at' => (string)$r['created_at'],
+        ];
+        if (isset($topo['zones'][$zone])) {
+            $topo['zones'][$zone]['sheets'][] = $key;
+        }
+    }
+    return $topo;
+}
+
+/** Validate zone against the zones table (enabled or disabled, so direct links keep working); fallback to DEFAULT_ZONE */
 function normalizeZone(?string $zone): string
 {
     $zone = trim((string)$zone);
-    return array_key_exists($zone, ZONES) ? $zone : DEFAULT_ZONE;
+    return isset(topology()['zones'][$zone]) ? $zone : DEFAULT_ZONE;
 }
 
-/** Return SHEETS subset belonging to $zone: [sheetKey => [label, dotClass], ...] */
-function zoneSheets(string $zone): array
+/**
+ * Sheets of $zone in tab order: [sheetKey => [label, dotClass], ...].
+ * Enabled sheets only (tabs, Add Board, Magazine); $includeDisabled adds the disabled ones (direct links, All Size totals).
+ */
+function zoneSheets(string $zone, bool $includeDisabled = false): array
 {
-    $zone = normalizeZone($zone);
+    $topo = topology();
     $out  = [];
-    foreach (ZONES[$zone] ?? [] as $shKey) {
-        if (isset(SHEETS[$shKey])) {
-            $out[$shKey] = SHEETS[$shKey];
+    foreach ($topo['zones'][normalizeZone($zone)]['sheets'] ?? [] as $shKey) {
+        $sh = $topo['sheets'][$shKey];
+        if ($includeDisabled || $sh['is_active']) {
+            $out[$shKey] = [$sh['label'], $sh['dot']];
         }
     }
     return $out;
 }
 
-/** Does $zone have at least one configured sheet? */
-function zoneHasSheets(string $zone): bool
+/** Does $zone have at least one enabled sheet (or any sheet with $includeDisabled)? */
+function zoneHasSheets(string $zone, bool $includeDisabled = false): bool
 {
-    return !empty(zoneSheets($zone));
+    return !empty(zoneSheets($zone, $includeDisabled));
 }
 
-/** Default concrete sheet for a zone (e.g. for $modalSheet), or '' when the zone has no sheets */
+/** Default concrete sheet for a zone (e.g. for $modalSheet): its first enabled sheet, or '' when it has none */
 function defaultSheetForZone(string $zone): string
 {
-    $sheets = zoneSheets($zone);
-    if (empty($sheets)) {
-        return '';
-    }
-    if (isset($sheets[DEFAULT_SHEET])) {
-        return DEFAULT_SHEET;
-    }
-    return (string)array_key_first($sheets);
+    return (string)array_key_first(zoneSheets($zone));
 }
 
 /**
- * Validate $sheet within $zone.
- * If $sheet is not 'ALL' and does not belong to $zone, fallback to 'ALL' (All Size Magazine of that zone).
+ * Validate $sheet within $zone: 'ALL', or any sheet of that zone incl. disabled ones (their records stay reachable
+ * by link / export). Anything else (deleted, unknown, another zone's sheet) falls back to $fallback.
  */
 function resolveSheetInZone(string $zone, ?string $sheet, string $fallback = 'ALL'): string
 {
-    $zone   = normalizeZone($zone);
-    $sheet  = trim((string)$sheet);
-    $sheets = zoneSheets($zone);
+    $sheet = trim((string)$sheet);
     if ($sheet === 'ALL') {
         return 'ALL';
     }
-    if (isset($sheets[$sheet])) {
-        return $sheet;
-    }
-    return $fallback;
+    return isset(zoneSheets($zone, true)[$sheet]) ? $sheet : $fallback;
 }
 
 /** Find which zone owns $sheet (defaults to DEFAULT_ZONE if unknown) */
 function sheetZone(string $sheet): string
 {
-    foreach (ZONES as $z => $sheetKeys) {
-        if (in_array($sheet, $sheetKeys, true)) {
-            return $z;
-        }
-    }
-    return DEFAULT_ZONE;
+    return topology()['sheets'][$sheet]['zone'] ?? DEFAULT_ZONE;
 }
 
-/** Label for KPI shelf range when viewing All Sheets in $zone, e.g. "All Sheets (CD, A, B, C)" */
+/** Is $sheet a sheet in the sheets table (enabled or disabled)? */
+function sheetExists(string $sheet): bool
+{
+    return $sheet !== '' && isset(topology()['sheets'][$sheet]);
+}
+
+function sheetIsActive(string $sheet): bool
+{
+    return (topology()['sheets'][$sheet]['is_active'] ?? false) === true;
+}
+
+function zoneIsActive(string $zone): bool
+{
+    return (topology()['zones'][$zone]['is_active'] ?? false) === true;
+}
+
+/** Zone display label, e.g. "ทั่วไป / General" */
+function zoneLabel(string $zone): string
+{
+    return topology()['zones'][$zone]['label'] ?? $zone;
+}
+
+/** Zones offered in the zone selector: every enabled zone, plus $current while a direct link shows a disabled one */
+function selectableZones(string $current): array
+{
+    $keys = [];
+    foreach (topology()['zones'] as $key => $z) {
+        if ($z['is_active'] || $key === $current) {
+            $keys[] = (string)$key;
+        }
+    }
+    return $keys;
+}
+
+/** Zone selector text: label + number of enabled sheets, e.g. "ทั่วไป / General (4 ชีต)" (JS: zoneOptionLabelJs) */
+function zoneOptionLabel(string $zone): string
+{
+    $z = topology()['zones'][$zone] ?? null;
+    if ($z === null) {
+        return $zone;
+    }
+    $enabled = count(zoneSheets($zone));
+    if (!$z['is_active']) {
+        $suffix = ' (ปิดใช้งาน / Disabled)';
+    } elseif ($enabled > 0) {
+        $suffix = " ({$enabled} ชีต)";
+    } else {
+        $suffix = zoneHasSheets($zone, true) ? ' (ไม่มีชีตที่เปิดใช้งาน / No active sheets)' : ' (ยังไม่มีชีต / No sheets)';
+    }
+    return $z['label'] . $suffix;
+}
+
+/**
+ * Why a new record cannot be saved to $sheet in $zone, or '' when it can (JS: insertBlockedReasonJs).
+ * Checked in the order a user can fix it: empty zone, disabled zone, no enabled sheet, disabled sheet, no sheet picked.
+ */
+function insertBlockedReason(string $zone, string $sheet): string
+{
+    $zone = normalizeZone($zone);
+    if (!zoneHasSheets($zone, true)) {
+        return EMPTY_ZONE_INSERT_ERROR;
+    }
+    if (!zoneIsActive($zone)) {
+        return INACTIVE_ZONE_INSERT_ERROR;
+    }
+    if (!zoneHasSheets($zone)) {
+        return NO_ACTIVE_SHEET_INSERT_ERROR;
+    }
+    if (isset(zoneSheets($zone, true)[$sheet]) && !sheetIsActive($sheet)) {
+        return INACTIVE_SHEET_INSERT_ERROR;
+    }
+    if ($sheet === '' || $sheet === 'ALL' || !isset(zoneSheets($zone)[$sheet])) {
+        return ALL_SIZE_INSERT_ERROR;
+    }
+    return '';
+}
+
+/** Label for KPI shelf range when viewing All Sheets in $zone, e.g. "All Sheets (CD, A, B, C)" (disabled sheets included) */
 function allSheetsRangeLabel(string $zone): string
 {
-    $sheets = array_keys(zoneSheets($zone));
+    $sheets = array_keys(zoneSheets($zone, true));
     if (empty($sheets)) {
         return 'All Sheets';
     }
-    $prefixes = array_map('shelfPrefix', $sheets);
+    $prefixes = array_map(static fn($sh): string => shelfPrefix((string)$sh), $sheets);
     return 'All Sheets (' . implode(', ', $prefixes) . ')';
+}
+
+/**
+ * Topology for the browser (window.TOPOLOGY in components/layout/scripts.php, api/topology.php responses).
+ * Order travels in arrays (zoneOrder, zones[].sheets): JS objects would reorder integer-like keys.
+ */
+function topologyForJs(): array
+{
+    $topo  = topology();
+    $zones = [];
+    foreach ($topo['zones'] as $key => $z) {
+        $zones[$key] = ['label' => $z['label'], 'short' => $z['short_label'], 'active' => $z['is_active'], 'sheets' => $z['sheets']];
+    }
+    $sheets = [];
+    foreach ($topo['sheets'] as $key => $sh) {
+        $sheets[$key] = ['label' => $sh['label'], 'dot' => $sh['dot'], 'prefix' => $sh['prefix'], 'zone' => $sh['zone'], 'active' => $sh['is_active']];
+    }
+    return [
+        'defaultZone' => DEFAULT_ZONE,
+        'zoneOrder'   => array_map('strval', array_keys($zones)),
+        'zones'       => (object)$zones,
+        'sheets'      => (object)$sheets,
+    ];
 }
 
 // ──────────────────────────────────────────────
@@ -326,7 +509,7 @@ function shelfFilterRange(string $f): ?array
  */
 function magazineCount(PDO $pdo, string $sheet): int
 {
-    if ($sheet === '' || !isset(SHEETS[$sheet])) {
+    if ($sheet === '' || !isset(topology($pdo)['sheets'][$sheet])) {
         return 0;
     }
     $st = $pdo->prepare('SELECT magazines FROM sheet_magazines WHERE sheet = ?');
@@ -340,7 +523,7 @@ function magazineCount(PDO $pdo, string $sheet): int
     return max(1, $stored, $needed);
 }
 
-/** Magazine / Slot text stored with a record, e.g. "B200_Gen Magazine 5th · Slot 10" */
+/** Magazine / Slot text stored with a record, e.g. "<sheet key> Magazine 5th · Slot 10" */
 function magazineSlotText(string $sheet, int $shelfNo): string
 {
     $magazine = intdiv($shelfNo - 1, MAGAZINE_SIZE) + 1;
@@ -356,16 +539,16 @@ function magazineSlotDisplay(array $row): string
     return 'Magazine ' . ordinal(intdiv($no - 1, MAGAZINE_SIZE) + 1) . ' · Slot ' . ((($no - 1) % MAGAZINE_SIZE) + 1);
 }
 
-/** Shelf letter prefix of a sheet (CD300 => CD, A150_Gen => A, ...) */
+/** Shelf letter prefix of a sheet (sheets.shelf_prefix, e.g. AX for shelves AX1, AX2 ...), '' for an unknown sheet */
 function shelfPrefix(string $sheet): string
 {
-    return SHELF_PREFIX[$sheet] ?? 'B';
+    return topology()['sheets'][$sheet]['prefix'] ?? '';
 }
 
-/** Shelf number from a shelf slot of this sheet (CD12 => 12), or null if the slot is not valid for the sheet */
+/** Shelf number from a shelf slot of this sheet (AX12 => 12), or null if the slot is not valid for the sheet */
 function parseShelf(string $sheet, string $shelf): ?int
 {
-    if ($sheet === '' || !isset(SHEETS[$sheet])) return null;
+    if (!sheetExists($sheet)) return null;
     if (!preg_match('/^' . preg_quote(shelfPrefix($sheet), '/') . '(\d{1,3})$/', $shelf, $m)) return null;
     return (int)$m[1] >= 1 ? (int)$m[1] : null;
 }
@@ -425,6 +608,8 @@ function nextNumberCode(PDO $pdo, ?DateTimeInterface $at = null): string
  */
 function saveBoardRecord(PDO $pdo, array $input): array
 {
+    topology($pdo);   // the zone / sheet checks below read the zones + sheets tables of this database
+
     $id      = (int)($input['id'] ?? 0);
     $zone    = normalizeZone((string)($input['zone'] ?? DEFAULT_ZONE));
     $sheet   = trim((string)($input['sheet'] ?? ''));
@@ -480,11 +665,10 @@ function saveBoardRecord(PDO $pdo, array $input): array
             $formErrors[] = 'รูปแบบ Number Code ไม่ถูกต้อง เนื่องจากระบบกำหนดรูปแบบเป็น ' . CODE_PREFIX . '-YY-MM-000 (เลขรัน 001-' . CODE_MAX_RUN . ') กรุณาแก้ไขให้ตรงรูปแบบ เช่น ' . CODE_PREFIX . '-25-12-023 / Invalid Number Code format. Expected ' . CODE_PREFIX . '-YY-MM-000 (001-' . CODE_MAX_RUN . ').';
         }
     } else {
-        // New record: validate zone has sheets and a concrete sheet in that zone was selected
-        if (!zoneHasSheets($zone)) {
-            $formErrors[] = EMPTY_ZONE_INSERT_ERROR;
-        } elseif ($sheet === '' || $sheet === 'ALL' || !isset(zoneSheets($zone)[$sheet])) {
-            $formErrors[] = ALL_SIZE_INSERT_ERROR;
+        // New record: the zone needs an enabled sheet and that sheet must be selected (disabled ones take no new records)
+        $blocked = insertBlockedReason($zone, $sheet);
+        if ($blocked !== '') {
+            $formErrors[] = $blocked;
         } else {
             $zone = sheetZone($sheet);
         }
@@ -492,7 +676,7 @@ function saveBoardRecord(PDO $pdo, array $input): array
 
     // Validate Shelf when a valid sheet is known
     $shelfNo = null;
-    if (isset(SHEETS[$sheet])) {
+    if (sheetExists($sheet)) {
         $sp      = shelfPrefix($sheet);
         $shelfNo = parseShelf($sheet, $shelf);
         if ($shelfNo === null) {
@@ -954,6 +1138,124 @@ function runMigrations(PDO $pdo): void
     if (!$hasMagSlot) {
         $pdo->exec("ALTER TABLE boards ADD COLUMN mag_slot VARCHAR(60) NULL");
     }
+
+    // Migration 7: Zone & Sheet tables (the source of truth, managed in api/topology.php) + their audit log.
+    // Keys are case-insensitive (MySQL utf8mb4_unicode_ci / SQLite NOCASE) and never change after creation.
+    if ($driver === 'sqlite') {
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS zones (
+                zone_key    VARCHAR(30) NOT NULL PRIMARY KEY COLLATE NOCASE,
+                label       VARCHAR(60) NOT NULL,
+                short_label VARCHAR(30) NOT NULL DEFAULT "",
+                sort_order  INTEGER     NOT NULL DEFAULT 0,
+                is_active   INTEGER     NOT NULL DEFAULT 1,
+                created_at  DATETIME    NOT NULL
+            )
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS sheets (
+                sheet_key    VARCHAR(30) NOT NULL PRIMARY KEY COLLATE NOCASE,
+                zone_key     VARCHAR(30) NOT NULL COLLATE NOCASE REFERENCES zones (zone_key),
+                label        VARCHAR(60) NOT NULL,
+                shelf_prefix VARCHAR(3)  NOT NULL UNIQUE COLLATE NOCASE,
+                dot_color    VARCHAR(30) NOT NULL,
+                sort_order   INTEGER     NOT NULL DEFAULT 0,
+                is_active    INTEGER     NOT NULL DEFAULT 1,
+                created_at   DATETIME    NOT NULL
+            )
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS topology_audit (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                action      VARCHAR(20) NOT NULL,
+                entity_type VARCHAR(10) NOT NULL,
+                entity_key  VARCHAR(30) NOT NULL,
+                before_json TEXT        NULL,
+                after_json  TEXT        NULL,
+                ip          VARCHAR(45) NOT NULL DEFAULT "",
+                created_at  DATETIME    NOT NULL
+            )
+        ');
+    } else {
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS zones (
+                zone_key    VARCHAR(30) NOT NULL PRIMARY KEY,
+                label       VARCHAR(60) NOT NULL,
+                short_label VARCHAR(30) NOT NULL DEFAULT "",
+                sort_order  INT         NOT NULL DEFAULT 0,
+                is_active   TINYINT(1)  NOT NULL DEFAULT 1,
+                created_at  DATETIME    NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS sheets (
+                sheet_key    VARCHAR(30) NOT NULL PRIMARY KEY,
+                zone_key     VARCHAR(30) NOT NULL,
+                label        VARCHAR(60) NOT NULL,
+                shelf_prefix VARCHAR(3)  NOT NULL,
+                dot_color    VARCHAR(30) NOT NULL,
+                sort_order   INT         NOT NULL DEFAULT 0,
+                is_active    TINYINT(1)  NOT NULL DEFAULT 1,
+                created_at   DATETIME    NOT NULL,
+                UNIQUE KEY uq_shelf_prefix (shelf_prefix),
+                KEY idx_zone_order (zone_key, sort_order),
+                CONSTRAINT fk_sheets_zone FOREIGN KEY (zone_key) REFERENCES zones (zone_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS topology_audit (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                action      VARCHAR(20) NOT NULL,
+                entity_type VARCHAR(10) NOT NULL,
+                entity_key  VARCHAR(30) NOT NULL,
+                before_json TEXT        NULL,
+                after_json  TEXT        NULL,
+                ip          VARCHAR(45) NOT NULL DEFAULT "",
+                created_at  DATETIME    NOT NULL,
+                KEY idx_entity (entity_type, entity_key, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+    }
+    seedTopology($pdo);
+    topology($pdo, true);   // (re)load; also makes $pdo the database of helpers that take no handle
+}
+
+/**
+ * First-run seed of `zones` / `sheets` from the deprecated ZONES / ZONE_META / SHEETS / SHELF_PREFIX constants.
+ * Runs only while `zones` is empty. DEFAULT_ZONE can never be deleted, so `zones` stays non-empty afterwards and
+ * later runs never re-seed or overwrite what administrators changed (not even once every sheet was deleted).
+ * One transaction: a failed first request leaves nothing behind; a parallel one finds the rows already there.
+ */
+function seedTopology(PDO $pdo): void
+{
+    if ((int)$pdo->query('SELECT COUNT(*) FROM zones')->fetchColumn() > 0) {
+        return;
+    }
+    $insert = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
+    $now    = date('Y-m-d H:i:s');
+
+    $pdo->beginTransaction();
+    try {
+        $zoneSt  = $pdo->prepare("$insert INTO zones (zone_key, label, short_label, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)");
+        $sheetSt = $pdo->prepare("$insert INTO sheets (sheet_key, zone_key, label, shelf_prefix, dot_color, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
+        $zoneOrder = 0;
+        foreach (ZONES as $zoneKey => $sheetKeys) {
+            $zoneOrder += 10;
+            $zoneSt->execute([$zoneKey, ZONE_META[$zoneKey]['label'] ?? $zoneKey, ZONE_META[$zoneKey]['short'] ?? $zoneKey, $zoneOrder, $now]);
+            $sheetOrder = 0;
+            foreach ($sheetKeys as $sheetKey) {
+                $sheetOrder += 10;
+                [$label, $dot] = SHEETS[$sheetKey];
+                $sheetSt->execute([$sheetKey, $zoneKey, $label, SHELF_PREFIX[$sheetKey], $dot, $sheetOrder, $now]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        if ((int)$pdo->query('SELECT COUNT(*) FROM zones')->fetchColumn() === 0) {
+            throw $e;
+        }
+    }
 }
 
 // ──────────────────────────────────────────────
@@ -981,8 +1283,13 @@ function db(bool $migrate = true): PDO
         http_response_code(500);
         exit('Invalid database name');
     }
-    $user = getenv('DB_USER') ?: 'root';
-    $pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'rootpassword';
+    // Credentials only from the environment (docker-compose.yml sets them for the web service); no fallback in code
+    $user = getenv('DB_USER');
+    $pass = getenv('DB_PASS');
+    if (!is_string($user) || $user === '' || !is_string($pass)) {
+        http_response_code(500);
+        exit('ยังเชื่อมต่อฐานข้อมูลไม่ได้ เนื่องจากยังไม่ได้ตั้งค่าตัวแปร DB_USER / DB_PASS (โค้ดไม่มีรหัสผ่านสำรองแล้ว) กรุณาตั้งค่าตาม OFFLINE.md แล้วลองใหม่ / Database is not configured: set the DB_USER and DB_PASS environment variables (see OFFLINE.md).');
+    }
     $port = getenv('DB_PORT') ?: '3306';
 
     $dsn = "mysql:host=$host;port=$port;charset=utf8mb4";   // no dbname: created/selected below

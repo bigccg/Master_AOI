@@ -28,7 +28,7 @@
           <i class="fa-solid fa-triangle-exclamation"></i> Magazine is Max
           <span class="font-normal text-red-600">— ชั้นวาง Shelf <?= h($sp) ?>1-<?= h($sp . $capacity) ?> เต็มทั้งหมดแล้ว กรุณาเพิ่ม Magazine เพื่อเปิดชั้นวางใหม่</span>
         </span>
-        <?php if ($magCount < MAGAZINE_LIMIT): ?>
+        <?php if ($canAddMagazine): ?>
           <div class="flex items-center gap-2">
             <button type="button" id="add-mag-btn" onclick="toggleAddMag(true)"
                     class="px-3 py-1 rounded-md bg-white border border-red-300 text-red-700 font-semibold hover:bg-red-100 cursor-pointer">
@@ -44,6 +44,8 @@
               <button type="button" onclick="toggleAddMag(false)" class="px-3 py-1 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก / Cancel</button>
             </form>
           </div>
+        <?php elseif (!sheetIsActive($modalSheet)): ?>
+          <span class="text-slate-600"><?= h(INACTIVE_SHEET_MAGAZINE_ERROR) ?></span>
         <?php else: ?>
           <span class="text-slate-600">ครบ <?= MAGAZINE_LIMIT ?> Magazine (สูงสุด) แล้ว</span>
         <?php endif; ?>
