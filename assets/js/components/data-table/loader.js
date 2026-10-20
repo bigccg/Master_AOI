@@ -2,8 +2,8 @@
  * Data table: AJAX loading (api/boards.php).
  */
 
-let reqSeq        = 0;
-let inflight      = null;
+let reqSeq   = 0;
+let inflight = null;
 
 function setBusy(on) {
     tableWrapper?.setAttribute('aria-busy', on ? 'true' : 'false');
@@ -12,9 +12,22 @@ function setBusy(on) {
 async function loadTable(refreshMatrix = true) {
     if (refreshMatrix) {
         syncShelfViewMode();
-        if (state.sheet === 'ALL') {
+        if (zoneHasSheetsJs(state.zone) && state.sheet === 'ALL') {
             loadDefectMatrix();
         }
+    }
+
+    // Fast path when the selected zone has no sheets configured (e.g. AIXZ, Automotive)
+    if (!zoneHasSheetsJs(state.zone)) {
+        inflight?.abort();
+        view.status = 'ready';
+        view.rows = [];
+        view.total = 0;
+        setBusy(false);
+        renderTable();
+        renderPagination();
+        document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total: 0, search: state.search } }));
+        return;
     }
 
     const seq = ++reqSeq;
@@ -70,7 +83,7 @@ async function loadTable(refreshMatrix = true) {
     document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total, search: state.search } }));
 
     if (json.truncated) {
-        showFlash('warn', `Showing first ${json.data.length} of ${total} — refine your search`);
+        showFlash('warn', `แสดง ${json.data.length} รายการแรกจากทั้งหมด ${total} รายการ กรุณาระบุคำค้นหาเพิ่มเติม / Showing first ${json.data.length} of ${total} — refine your search.`);
     }
 }
 

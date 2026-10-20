@@ -1,7 +1,7 @@
 <?php
 /**
- * API Endpoint: Get complete sheet metadata, KPIs, Rack Map, and Free Shelves (AJAX)
- * GET /api/sheet_data.php?sheet=...
+ * API Endpoint: Get complete zone + sheet metadata, KPIs, Rack Map, and Free Shelves (AJAX)
+ * GET /api/sheet_data.php?zone=...&sheet=...
  * Returns JSON: { success: bool, data: { ... } }
  */
 
@@ -11,160 +11,197 @@ require_once __DIR__ . '/../config/database.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$sheet = qs('sheet', DEFAULT_SHEET);
-if ($sheet !== 'ALL' && !isset(SHEETS[$sheet])) {
-    $sheet = DEFAULT_SHEET;
-}
-$isAllZones = ($sheet === 'ALL');
-$modalSheet = $isAllZones ? DEFAULT_SHEET : $sheet;
+$zone              = normalizeZone(qs('zone', DEFAULT_ZONE));
+$currentZoneSheets = zoneSheets($zone);
+$hasZoneSheets     = !empty($currentZoneSheets);
+
+// Validate sheet within the selected zone; if not in zone, fallback to 'ALL' of that zone
+$sheet       = resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
+$isAllSheets = ($sheet === 'ALL');
+$modalSheet  = $isAllSheets ? defaultSheetForZone($zone) : $sheet;
 
 $pdo = db();
-$sp = $isAllZones ? 'ALL' : shelfPrefix($sheet);
+$sp  = $isAllSheets ? 'ALL' : ($sheet !== '' ? shelfPrefix($sheet) : '');
 
 // ──────────────────────────────────────────────
-// Tab counts (always across all sheets)
+// Tab counts (scoped strictly to the selected Zone)
 // ──────────────────────────────────────────────
 $tabCounts = [];
-foreach ($pdo->query('SELECT sheet, COUNT(*) c FROM boards GROUP BY sheet') as $r) {
-    $tabCounts[$r['sheet']] = (int)$r['c'];
+foreach (array_keys($currentZoneSheets) as $k) {
+    $tabCounts[$k] = 0;
 }
-foreach (SHEETS as $k => $_v) {
-    if (!isset($tabCounts[$k])) {
-        $tabCounts[$k] = 0;
+if ($hasZoneSheets) {
+    $tcSt = $pdo->prepare('SELECT sheet, COUNT(*) c FROM boards WHERE zone = ? GROUP BY sheet');
+    $tcSt->execute([$zone]);
+    foreach ($tcSt as $r) {
+        if (isset($tabCounts[$r['sheet']])) {
+            $tabCounts[$r['sheet']] = (int)$r['c'];
+        }
     }
 }
 $tabCounts['ALL'] = array_sum($tabCounts);
 
+// Build zone_sheets array for dynamic tab rendering on the frontend
+$zoneSheetsList = [];
+foreach ($currentZoneSheets as $k => [$label, $dot]) {
+    $zoneSheetsList[] = [
+        'key'   => $k,
+        'label' => $label,
+        'dot'   => $dot,
+        'count' => $tabCounts[$k] ?? 0,
+    ];
+}
+
 // ──────────────────────────────────────────────
-// KPI
+// KPI (scoped to the selected Zone)
 // ──────────────────────────────────────────────
 $cnt = ['G' => 0, 'D' => 0, 'GD' => 0];
-if ($isAllZones) {
-    $st = $pdo->query('SELECT status, COUNT(*) c FROM boards GROUP BY status');
+if (!$hasZoneSheets) {
+    $total          = 0;
+    $pctG           = 0;
+    $magCount       = 0;
+    $capacity       = 0;
+    $usedShelves    = 0;
+    $util           = 0;
+    $maxShelf       = 0;
+    $shelfRangeText = 'ยังไม่มีชีตในโซนนี้ / No sheets in this zone';
+} elseif ($isAllSheets) {
+    $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE zone = ? GROUP BY status');
+    $st->execute([$zone]);
     foreach ($st as $r) {
         if (isset($cnt[$r['status']])) {
             $cnt[$r['status']] = (int)$r['c'];
         }
     }
-    $total = $tabCounts['ALL'];   // every board, incl. Other = Bare / Bad Mark (no G / D / G+D)
+    $total = $tabCounts['ALL'];   // every board in this zone, incl. Other = Bare / Bad Mark
     $pctG  = $total ? (int)round($cnt['G'] / $total * 100) : 0;
 
-    $maxMagCount = 1;
-    $totalCapacity = 0;
+    $maxMagCount      = 1;
+    $totalCapacity    = 0;
     $totalUsedShelves = 0;
-    foreach (array_keys(SHEETS) as $shKey) {
+    foreach (array_keys($currentZoneSheets) as $shKey) {
         $shMag = magazineCount($pdo, $shKey);
         if ($shMag > $maxMagCount) $maxMagCount = $shMag;
         $shCap = $shMag * MAGAZINE_SIZE;
         $totalCapacity += $shCap;
-        $uSt = $pdo->prepare('SELECT COUNT(DISTINCT shelf_no) FROM boards WHERE sheet = ? AND shelf_no BETWEEN 1 AND ?');
-        $uSt->execute([$shKey, $shCap]);
+        $uSt = $pdo->prepare('SELECT COUNT(DISTINCT shelf_no) FROM boards WHERE zone = ? AND sheet = ? AND shelf_no BETWEEN 1 AND ?');
+        $uSt->execute([$zone, $shKey, $shCap]);
         $totalUsedShelves += (int)$uSt->fetchColumn();
     }
-    $magCount    = $maxMagCount;
-    $capacity    = max(1, $totalCapacity);
-    $usedShelves = $totalUsedShelves;
-    $util        = min(100, (int)round($usedShelves / $capacity * 100));
-    $maxShelf    = (int)$pdo->query('SELECT COALESCE(MAX(shelf_no), 0) FROM boards')->fetchColumn();
-    $shelfRangeText = $total ? 'All Zones (CD, A, B, C)' : 'No boards yet';
+    $magCount       = $maxMagCount;
+    $capacity       = max(1, $totalCapacity);
+    $usedShelves    = $totalUsedShelves;
+    $util           = min(100, (int)round($usedShelves / $capacity * 100));
+    $maxShelfStmt   = $pdo->prepare('SELECT COALESCE(MAX(shelf_no), 0) FROM boards WHERE zone = ?');
+    $maxShelfStmt->execute([$zone]);
+    $maxShelf       = (int)$maxShelfStmt->fetchColumn();
+    $shelfRangeText = $total ? allSheetsRangeLabel($zone) : 'No boards yet';
 } else {
-    $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE sheet = ? GROUP BY status');
-    $st->execute([$sheet]);
+    $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE zone = ? AND sheet = ? GROUP BY status');
+    $st->execute([$zone, $sheet]);
     foreach ($st as $r) {
-        $cnt[$r['status']] = (int)$r['c'];
+        if (isset($cnt[$r['status']])) {
+            $cnt[$r['status']] = (int)$r['c'];
+        }
     }
-    $total = array_sum($cnt);
-    $pctG  = $total ? (int)round($cnt['G'] / $total * 100) : 0;
-    $magCount = magazineCount($pdo, $sheet);
-    $capacity = $magCount * MAGAZINE_SIZE;
-    $util     = min(100, (int)round($total / $capacity * 100));
+    $total       = $tabCounts[$sheet] ?? array_sum($cnt);
+    $pctG        = $total ? (int)round($cnt['G'] / $total * 100) : 0;
+    $magCount    = magazineCount($pdo, $sheet);
+    $capacity    = max(1, $magCount * MAGAZINE_SIZE);
+    $util        = min(100, (int)round($total / $capacity * 100));
 
-    $maxShelfStmt = $pdo->prepare('SELECT COALESCE(MAX(shelf_no), 0) FROM boards WHERE sheet = ?');
-    $maxShelfStmt->execute([$sheet]);
-    $maxShelf = (int)$maxShelfStmt->fetchColumn();
+    $maxShelfStmt = $pdo->prepare('SELECT COALESCE(MAX(shelf_no), 0) FROM boards WHERE zone = ? AND sheet = ?');
+    $maxShelfStmt->execute([$zone, $sheet]);
+    $maxShelf       = (int)$maxShelfStmt->fetchColumn();
     $shelfRangeText = $total ? "Shelf {$sp}1 - {$sp}{$maxShelf}" : 'No boards yet';
 }
 
 // ──────────────────────────────────────────────
-// Rack Map & Modal Free Shelves (for $modalSheet when ALL is active)
+// Rack Map & Modal Free Shelves (for $modalSheet when zone has sheets)
 // ──────────────────────────────────────────────
-$modalSp       = shelfPrefix($modalSheet);
-$modalMagCount = magazineCount($pdo, $modalSheet);
-$modalCapacity = $modalMagCount * MAGAZINE_SIZE;
-
-$st = $pdo->prepare('SELECT id, shelf, shelf_no, status, pcs_status, code, product FROM boards WHERE sheet = ?');
-$st->execute([$modalSheet]);
-$rack     = [];
-$rackInfo = [];
-$takenBy  = [];
-foreach ($st as $r) {
-    $no = (int)$r['shelf_no'];
-    $rack[$no]      = $r['status'];
-    $rackInfo[$no]  = [
-        'id'      => (int)$r['id'],
-        'shelf'   => $r['shelf'],
-        'code'    => $r['code'],
-        'product' => $r['product'],
-        'status'  => $r['status'],
-        'pcs_status' => $r['pcs_status']
-    ];
-    $takenBy[$no][] = (int)$r['id'];
-}
-
-$modalUsedShelves = count(array_filter(array_keys($takenBy), fn($k) => $k >= 1 && $k <= $modalCapacity));
-$isMax            = ($modalUsedShelves >= $modalCapacity);
-if (!$isAllZones) {
-    $usedShelves = $modalUsedShelves;
-}
-
-// Magazines structure for easy rendering
-$magazines = [];
-for ($mg = 1; $mg <= $modalMagCount; $mg++) {
-    [$from, $to] = magazineRange($mg);
-    $mgUsed = 0;
-    $shelvesList = [];
-    for ($n = $from; $n <= $to; $n++) {
-        $occupied = isset($rack[$n]);
-        if ($occupied) $mgUsed++;
-        $shelvesList[] = [
-            'no'       => $n,
-            'shelf'    => $modalSp . $n,
-            'occupied' => $occupied,
-            'status'   => $rack[$n] ?? null,
-            'data'     => $rackInfo[$n] ?? null
-        ];
-    }
-    $magazines[] = [
-        'mag'     => $mg,
-        'title'   => magazineTitle($mg),
-        'from'    => $from,
-        'to'      => $to,
-        'used'    => $mgUsed,
-        'full'    => ($mgUsed >= MAGAZINE_SIZE),
-        'shelves' => $shelvesList
-    ];
-}
-
-// ──────────────────────────────────────────────
-// Free Shelves (for $modalSheet)
-// ──────────────────────────────────────────────
+$rack        = [];
+$rackInfo    = [];
+$takenBy     = [];
+$magazines   = [];
 $freeShelves = [];
 $freeByMag   = [];
-for ($n = 1; $n <= $modalCapacity; $n++) {
-    if (empty($takenBy[$n])) {
-        $freeShelves[] = $n;
-        $mIdx = intdiv($n - 1, MAGAZINE_SIZE) + 1;
-        $freeByMag[$mIdx][] = [
-            'no'    => $n,
-            'shelf' => $modalSp . $n
+
+if ($hasZoneSheets && $modalSheet !== '') {
+    $modalSp       = shelfPrefix($modalSheet);
+    $modalMagCount = magazineCount($pdo, $modalSheet);
+    $modalCapacity = $modalMagCount * MAGAZINE_SIZE;
+
+    $st = $pdo->prepare('SELECT id, shelf, shelf_no, status, pcs_status, code, product FROM boards WHERE zone = ? AND sheet = ?');
+    $st->execute([$zone, $modalSheet]);
+    foreach ($st as $r) {
+        $no = (int)$r['shelf_no'];
+        $rack[$no]     = $r['status'];
+        $rackInfo[$no] = [
+            'id'         => (int)$r['id'],
+            'shelf'      => $r['shelf'],
+            'code'       => $r['code'],
+            'product'    => $r['product'],
+            'status'     => $r['status'],
+            'pcs_status' => $r['pcs_status'],
+        ];
+        $takenBy[$no][] = (int)$r['id'];
+    }
+
+    $modalUsedShelves = count(array_filter(array_keys($takenBy), fn($k) => $k >= 1 && $k <= $modalCapacity));
+    $isMax            = ($modalUsedShelves >= $modalCapacity);
+    if (!$isAllSheets) {
+        $usedShelves = $modalUsedShelves;
+        $util        = min(100, (int)round($usedShelves / max(1, $capacity) * 100));
+    }
+
+    for ($mg = 1; $mg <= $modalMagCount; $mg++) {
+        [$from, $to] = magazineRange($mg);
+        $mgUsed      = 0;
+        $shelvesList = [];
+        for ($n = $from; $n <= $to; $n++) {
+            $occupied = isset($rack[$n]);
+            if ($occupied) $mgUsed++;
+            $shelvesList[] = [
+                'no'       => $n,
+                'shelf'    => $modalSp . $n,
+                'occupied' => $occupied,
+                'status'   => $rack[$n] ?? null,
+                'data'     => $rackInfo[$n] ?? null,
+            ];
+        }
+        $magazines[] = [
+            'mag'     => $mg,
+            'title'   => magazineTitle($mg),
+            'from'    => $from,
+            'to'      => $to,
+            'used'    => $mgUsed,
+            'full'    => ($mgUsed >= MAGAZINE_SIZE),
+            'shelves' => $shelvesList,
         ];
     }
+
+    for ($n = 1; $n <= $modalCapacity; $n++) {
+        if (empty($takenBy[$n])) {
+            $freeShelves[] = $n;
+            $mIdx = intdiv($n - 1, MAGAZINE_SIZE) + 1;
+            $freeByMag[$mIdx][] = [
+                'no'    => $n,
+                'shelf' => $modalSp . $n,
+            ];
+        }
+    }
+} else {
+    $modalSp          = '';
+    $modalMagCount    = 0;
+    $modalCapacity    = 0;
+    $modalUsedShelves = 0;
+    $isMax            = false;
 }
 
-// Next code
+// Next system-wide Number Code
 $nextCode = '';
 try {
-    $nextCode = nextNumberCode($pdo, $modalSheet);
+    $nextCode = nextNumberCode($pdo);
 } catch (RuntimeException $e) {
     $nextCode = '';
 }
@@ -174,7 +211,7 @@ $magOptions = [];
 for ($mg = 1; $mg <= $magCount; $mg++) {
     $magOptions[] = [
         'value' => "M$mg",
-        'label' => magazineTitle($mg)
+        'label' => magazineTitle($mg),
     ];
 }
 
@@ -183,35 +220,38 @@ for ($mg = 1; $mg <= $magCount; $mg++) {
 echo json_encode([
     'success' => true,
     'data' => [
+        'zone'         => $zone,
+        'zone_label'   => ZONE_META[$zone]['label'] ?? $zone,
+        'has_sheets'   => $hasZoneSheets,
+        'zone_sheets'  => $zoneSheetsList,
         'sheet'        => $sheet,
         'shelf_prefix' => $sp,
         'kpi' => [
-            'total'        => $total,
-            'g'            => $cnt['G'],
-            'd'            => $cnt['D'],
-            'gd'           => $cnt['GD'],
-            'pct_g'        => $pctG,
-            'capacity'     => $capacity,
-            'used'         => $usedShelves,
-            'util'         => $util,
-            'max_shelf'    => $maxShelf,
-            'shelf_range'  => $shelfRangeText
+            'total'       => $total,
+            'g'           => $cnt['G'],
+            'd'           => $cnt['D'],
+            'gd'          => $cnt['GD'],
+            'pct_g'       => $pctG,
+            'capacity'    => $capacity,
+            'used'        => $usedShelves,
+            'util'        => $util,
+            'max_shelf'   => $maxShelf,
+            'shelf_range' => $shelfRangeText,
         ],
-        'tab_counts'   => $tabCounts,
+        'tab_counts' => $tabCounts,
         'rack' => [
-            'mag_count'      => $modalMagCount,
-            'is_max'         => $isMax,
-            'capacity'       => $modalCapacity,
-            'used_shelves'   => $modalUsedShelves,
-            'magazines'      => $magazines,
-            'next_range'     => [$nextFrom, $nextTo],
-            'can_add_mag'    => ($modalMagCount < MAGAZINE_LIMIT)
+            'mag_count'    => $modalMagCount,
+            'is_max'       => $isMax,
+            'capacity'     => $modalCapacity,
+            'used_shelves' => $modalUsedShelves,
+            'magazines'    => $magazines,
+            'next_range'   => [$nextFrom, $nextTo],
+            'can_add_mag'  => ($hasZoneSheets && $modalMagCount < MAGAZINE_LIMIT),
         ],
         'free_shelves'  => $freeShelves,
         'free_by_mag'   => $freeByMag,
         'next_code'     => $nextCode,
         'mag_options'   => $magOptions,
-        'defect_labels' => DEFECT_LABELS
-    ]
+        'defect_labels' => DEFECT_LABELS,
+    ],
 ], JSON_UNESCAPED_UNICODE);
-

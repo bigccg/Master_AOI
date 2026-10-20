@@ -1,12 +1,13 @@
 <?php
 /**
  * POST actions (non-AJAX fallback): Add Magazine + Save board. Sets $flash / $formErrors / $editRow.
+ * Uses shared saveBoardRecord() in config/database.php to avoid duplicate validation/retry logic.
  */
 
 declare(strict_types=1);
 
 // ──────────────────────────────────────────────
-// POST: Save (Add/Edit) & Delete (delete is handled by api/delete.php)
+// POST: Save (Add/Edit) & Add Magazine (delete is handled by api/delete.php)
 // ──────────────────────────────────────────────
 
 $flash = null;
@@ -19,140 +20,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Invalid CSRF token');
     }
 
-    $action = $_POST['action'] ?? '';
-    $postSheet = isset(SHEETS[$sheet]) ? $sheet : DEFAULT_SHEET;
+    $action    = (string)($_POST['action'] ?? '');
+    $postZone  = normalizeZone((string)($_POST['zone'] ?? $zone));
+    $zoneShts  = zoneSheets($postZone);
+    $rawSheet  = trim((string)($_POST['sheet'] ?? $sheet));
+    $postSheet = isset($zoneShts[$rawSheet]) ? $rawSheet : defaultSheetForZone($postZone);
 
     if ($action === 'add_magazine') {
+        if ($postSheet === '' || !isset(SHEETS[$postSheet])) {
+            $_SESSION['flash'] = ['err', EMPTY_ZONE_INSERT_ERROR];
+            header('Location: ' . url(['edit' => null]));
+            exit;
+        }
         // Only allowed when every shelf of the sheet is taken ("Magazine is Max") and after the Confirm click.
         $cnt      = magazineCount($pdo, $postSheet);
         $cap      = $cnt * MAGAZINE_SIZE;
-        $usedStmt = $pdo->prepare('SELECT COUNT(DISTINCT shelf_no) FROM boards WHERE sheet = ? AND shelf_no BETWEEN 1 AND ?');
-        $usedStmt->execute([$postSheet, $cap]);
+        $usedStmt = $pdo->prepare('SELECT COUNT(DISTINCT shelf_no) FROM boards WHERE zone = ? AND sheet = ? AND shelf_no BETWEEN 1 AND ?');
+        $usedStmt->execute([$postZone, $postSheet, $cap]);
         $used = (int)$usedStmt->fetchColumn();
 
         if ((int)($_POST['magazines'] ?? 0) !== $cnt) {
-            $_SESSION['flash'] = ['err', 'ข้อมูล Magazine เปลี่ยนไปแล้ว กรุณาตรวจสอบหน้าจอแล้วลองใหม่ / Magazine count changed, please retry.'];
+            $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากจำนวน Magazine ในระบบเปลี่ยนไปแล้ว กรุณารีเฟรชหน้าจอแล้วลองใหม่ / Magazine count changed, please refresh and retry.'];
         } elseif ($used < $cap) {
-            $_SESSION['flash'] = ['err', 'ยังมี Shelf ว่างอยู่ จึงยังไม่สามารถเพิ่ม Magazine ได้ / Free shelves remain.'];
+            $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากยังมีชั้นวาง (Shelf) ว่างอยู่ในชีตนี้ กรุณาใช้ชั้นวางที่ว่างก่อน / Free shelves remain in this sheet.'];
         } elseif ($cnt >= MAGAZINE_LIMIT) {
-            $_SESSION['flash'] = ['err', 'ครบจำนวน Magazine สูงสุดแล้ว (' . MAGAZINE_LIMIT . ') / Magazine limit reached.'];
+            $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากครบจำนวน Magazine สูงสุด (' . MAGAZINE_LIMIT . ') แล้ว / Maximum Magazine limit (' . MAGAZINE_LIMIT . ') reached.'];
         } else {
             $new = $cnt + 1;
             $up  = $pdo->prepare('UPDATE sheet_magazines SET magazines = ? WHERE sheet = ?');
             $up->execute([$new, $postSheet]);
             if ($up->rowCount() === 0) {
-                try { $pdo->prepare('INSERT INTO sheet_magazines (sheet, magazines) VALUES (?, ?)')->execute([$postSheet, $new]); }
-                catch (PDOException $e) { $up->execute([$new, $postSheet]); }
+                try {
+                    $pdo->prepare('INSERT INTO sheet_magazines (sheet, magazines) VALUES (?, ?)')->execute([$postSheet, $new]);
+                } catch (PDOException $e) {
+                    $up->execute([$new, $postSheet]);
+                }
             }
             [$from, $to] = magazineRange($new);
-            $_SESSION['flash'] = ['ok', 'เพิ่ม Magazine ' . ordinal($new) . " (Shelf $from-$to) ให้ชีต $postSheet เรียบร้อยแล้ว / Magazine added."];
+            $_SESSION['flash'] = ['ok', 'เพิ่ม Magazine ' . ordinal($new) . " (Shelf $from-$to) ให้ชีต $postSheet (โซน $postZone) เรียบร้อยแล้ว / Magazine added to $postSheet."];
         }
         header('Location: ' . url(['edit' => null]));
         exit;
     }
 
     if ($action === 'save') {
-        $id      = (int)($_POST['id'] ?? 0);
-        $code    = trim((string)($_POST['code'] ?? ''));
-        $shelf   = strtoupper(trim((string)($_POST['shelf'] ?? '')));
-        $product = strtoupper(trim((string)($_POST['product'] ?? '')));
-        $side    = trim((string)($_POST['side'] ?? ''));
-        $type    = trim((string)($_POST['board_type'] ?? ''));
-        $status  = (string)($_POST['board_status'] ?? '');
-        $pcs     = trim((string)($_POST['pcs'] ?? ''));
-        $defects = trim((string)($_POST['defects'] ?? ''));
+        $id = (int)($_POST['id'] ?? 0);
+        // When on All Size Magazine ("ALL"), new records cannot be inserted; edits resolve their own sheet inside saveBoardRecord()
+        $targetSheet = ($id === 0 && $isAllSheets && $rawSheet === 'ALL') ? 'ALL' : ($rawSheet !== '' ? $rawSheet : $sheet);
 
-        // All Size Magazine is view-only for new records: the user must pick a sheet first
-        if ($id === 0 && $isAllZones) $formErrors[] = ALL_SIZE_INSERT_ERROR;
+        $result = saveBoardRecord($pdo, array_merge($_POST, [
+            'zone'  => $postZone,
+            'sheet' => $targetSheet,
+        ]));
 
-        // Other = Bare / Bad Mark -> no Board Classification (locked empty in the form), so no defects either
-        $noClass = in_array($pcs, OTHER_NO_CLASS, true);
-        if ($noClass) { $status = ''; $defects = ''; }
-
-        // Number Code: new record -> generated by the server at save time (AOI-P1-YY-MM-000);
-        // existing record -> may be edited, but a changed code must keep the format.
-        $old = ['code' => '', 'shelf' => '', 'shelf_no' => 0];
-        if ($id > 0) {
-            $cur = $pdo->prepare('SELECT code, shelf, shelf_no FROM boards WHERE id = ? AND sheet = ?');
-            $cur->execute([$id, $postSheet]);
-            $old = $cur->fetch() ?: $old;
-            $oldCode = (string)$old['code'];
-            if ($code === '') $code = $oldCode;
-            if ($code !== $oldCode && !isValidNumberCode($code)) {
-                $formErrors[] = 'Number Code ต้องอยู่ในรูปแบบ ' . CODE_PREFIX . '-YY-MM-000 เช่น ' . CODE_PREFIX . '-25-12-023 (เลข running 001-999)';
-            }
-        } else {
-            try { $code = nextNumberCode($pdo, $postSheet); }
-            catch (RuntimeException $e) { $formErrors[] = $e->getMessage(); }
-        }
-        // Shelf: <sheet prefix><number> (CD300=CDn, A150_Gen=An, B200_Gen=Bn, C250_Gen=Cn), chosen from a dropdown.
-        // One shelf holds exactly one record per sheet, so an occupied shelf is rejected.
-        $sp      = shelfPrefix($postSheet);
-        $shelfNo = parseShelf($postSheet, $shelf);
-        if ($shelfNo === null) {
-            $formErrors[] = "กรุณาเลือก Shelf ของชีต $postSheet ({$sp}1, {$sp}2, ...)";
-        } else {
-            $shelf = $sp . $shelfNo;   // normalize, e.g. CD05 -> CD5
-            $limit = magazineCount($pdo, $postSheet) * MAGAZINE_SIZE;
-            if ($shelfNo > $limit) {
-                $formErrors[] = "Shelf $shelf เกินจำนวนชั้นของชีต $postSheet (ตอนนี้มีถึง {$sp}{$limit}) ต้องเพิ่ม Magazine ก่อน";
-            } else {
-                $taken = $pdo->prepare('SELECT id FROM boards WHERE sheet = ? AND shelf_no = ? AND id <> ?');
-                $taken->execute([$postSheet, $shelfNo, $id]);
-                if ($taken->fetch()) $formErrors[] = "Shelf $shelf มีงานอยู่แล้ว กรุณาเลือก Shelf อื่น";
-            }
-        }
-        if ($product === '' || strlen($product) > 40)    $formErrors[] = 'กรุณากรอก Product Model';
-        if ($side === '' || !in_array($side, BOARD_SIDES, true))     $formErrors[] = 'กรุณาเลือก Side';
-        if ($type === '' || !in_array($type, BOARD_TYPES, true))     $formErrors[] = 'กรุณาเลือก Board Type';
-        if (!$noClass && !in_array($status, ['G', 'D', 'GD'], true)) $formErrors[] = 'กรุณาเลือก Board Classification';
-        if ($pcs !== '' && !in_array($pcs, OTHER_OPTIONS, true))     $formErrors[] = 'Other ไม่ถูกต้อง';
-
-        if (!$formErrors && $id > 0) {
-            $dup = $pdo->prepare('SELECT id FROM boards WHERE sheet = ? AND code = ? AND id <> ?');
-            $dup->execute([$postSheet, $code, $id]);
-            if ($dup->fetch()) $formErrors[] = "Number Code \"$code\" มีอยู่แล้วในชีต $postSheet";
+        if ($result['success']) {
+            $_SESSION['flash'] = ['ok', $result['message']];
+            header('Location: ' . url(['edit' => null]));
+            exit;
         }
 
-        if (!$formErrors) {
-            try {
-                if ($id > 0) {
-                    $pdo->prepare('UPDATE boards SET code=?, shelf=?, shelf_no=?, mag_slot=?, product=?, side=?, board_type=?, status=?, pcs_status=?, defects=? WHERE id=? AND sheet=?')
-                        ->execute([$code, $shelf, $shelfNo, magazineSlotText($postSheet, $shelfNo), $product, $side, $type, $status, $pcs, $defects, $id, $postSheet]);
-                    $_SESSION['flash'] = ['ok', 'แก้ไขข้อมูลเรียบร้อยแล้ว / Record updated.'];
-                } else {
-                    // Two users may save at the same moment: on a duplicate Number Code take the next number and retry.
-                    $ins = $pdo->prepare('INSERT INTO boards (sheet, code, shelf, shelf_no, mag_slot, product, side, board_type, status, pcs_status, defects, created_at)
-                                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
-                    for ($try = 1; ; $try++) {
-                        try {
-                            $ins->execute([$postSheet, $code, $shelf, $shelfNo, magazineSlotText($postSheet, $shelfNo), $product, $side, $type, $status, $pcs, $defects, date('Y-m-d H:i:s')]);
-                            break;
-                        } catch (PDOException $e) {
-                            $shelfClash = str_contains($e->getMessage(), 'uq_sheet_shelf');
-                            if (($e->errorInfo[1] ?? 0) !== 1062 || $shelfClash || $try >= 5) throw $e;
-                            $code = nextNumberCode($pdo, $postSheet);
-                        }
-                    }
-                    $_SESSION['flash'] = ['ok', "บันทึกลงชีต $postSheet เรียบร้อยแล้ว (Number Code: $code, Shelf: $shelf) / Record added to $postSheet."];
-                }
-            } catch (PDOException $e) {
-                // Someone took the same shelf a moment ago (unique key on sheet + shelf_no)
-                if (($e->errorInfo[1] ?? 0) === 1062 && str_contains($e->getMessage(), 'uq_sheet_shelf')) {
-                    $formErrors[] = "Shelf $shelf มีงานอยู่แล้ว กรุณาเลือก Shelf อื่น";
-                } else {
-                    throw $e;
-                }
-            }
-            if (!$formErrors) {
-                header('Location: ' . url(['edit' => null]));
-                exit;
-            }
-        }
-        // Error -> keep modal open with values
-        $editRow = ['id' => $id, 'code' => $code, 'shelf' => $shelf, 'product' => $product, 'side' => $side,
-                    'board_type' => $type, 'status' => $status, 'pcs_status' => $pcs, 'defects' => $defects];
+        $formErrors = $result['errors'];
+        $editRow    = $result['edit_row'];
     }
 }
 
-if (isset($_SESSION['flash'])) { $flash = $_SESSION['flash']; unset($_SESSION['flash']); }
+if (isset($_SESSION['flash'])) {
+    $flash = $_SESSION['flash'];
+    unset($_SESSION['flash']);
+}

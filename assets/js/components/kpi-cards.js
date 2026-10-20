@@ -2,7 +2,7 @@
  * KPI cards (components/kpi-cards.php).
  */
 
-function renderKpi(kpi, sp) {
+function renderKpi(kpi, sp, hasSheets = zoneHasSheetsJs(state.zone)) {
     const elTotal = document.getElementById('kpi-total');
     const elRange = document.getElementById('kpi-shelf-range');
     const elGood = document.getElementById('kpi-good');
@@ -20,7 +20,9 @@ function renderKpi(kpi, sp) {
     if (elDefect) elDefect.textContent = kpi.d;
     if (elMixed) elMixed.textContent = kpi.gd;
     if (elUtilTitle) {
-        const utilPrefix = (sp === 'ALL' || state.sheet === 'ALL') ? 'All Zones' : `Rack ${h(sp)}`;
+        const utilPrefix = !hasSheets
+            ? 'No Sheets'
+            : ((sp === 'ALL' || state.sheet === 'ALL') ? 'All Sheets' : `Rack ${h(sp)}`);
         elUtilTitle.innerHTML = `${utilPrefix} Utilization <span class="text-slate-400">(${kpi.used}/${kpi.capacity})</span>`;
     }
     if (elUtilText) elUtilText.textContent = `${kpi.util}%`;

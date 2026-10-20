@@ -12,11 +12,13 @@ async function handleBoardFormSubmit(e) {
 
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังบันทึก / Saving...';
     }
 
     const formData = new FormData(form);
-    const targetSheet = activeModalSheet || (state.sheet === 'ALL' ? 'B200_Gen' : state.sheet);
+    const targetZone  = activeModalZone || state.zone;
+    const targetSheet = activeModalSheet || (state.sheet === 'ALL' ? '' : state.sheet);
+    formData.set('zone', targetZone);
     formData.set('sheet', targetSheet);
 
     try {
@@ -36,11 +38,11 @@ async function handleBoardFormSubmit(e) {
                 refreshSheetData(state.sheet)
             ]);
         } else {
-            showModalErrors(result.errors || ['บันทึกไม่สำเร็จ']);
+            showModalErrors(result.errors || ['บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่ / Save failed.']);
         }
     } catch (err) {
         console.error(err);
-        showModalErrors(['เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์']);
+        showModalErrors(['เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบเครือข่ายแล้วลองอีกครั้ง / Network error while saving.']);
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;

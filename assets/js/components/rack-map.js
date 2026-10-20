@@ -29,21 +29,22 @@ function renderRackMap(rack, sp) {
         maxBanner.innerHTML = `
             <span class="font-bold text-red-700 flex items-center gap-1.5">
               <i class="fa-solid fa-triangle-exclamation"></i> Magazine is Max
-              <span class="font-normal text-red-600">— Shelf ${h(sp)}1-${h(sp + rack.capacity)} เต็มทั้งหมด ไม่สามารถเลือก Shelf ใหม่ได้</span>
+              <span class="font-normal text-red-600">— ชั้นวาง Shelf ${h(sp)}1-${h(sp + rack.capacity)} เต็มทั้งหมดแล้ว กรุณาเพิ่ม Magazine เพื่อเปิดชั้นวางใหม่</span>
             </span>
             ${rack.can_add_mag ? `
               <div class="flex items-center gap-2">
                 <button type="button" id="add-mag-btn" onclick="toggleAddMag(true)"
                         class="px-3 py-1 rounded-md bg-white border border-red-300 text-red-700 font-semibold hover:bg-red-100 cursor-pointer">
-                  <i class="fa-solid fa-plus mr-1"></i>Add Magazine
+                  <i class="fa-solid fa-plus mr-1"></i>เพิ่ม Magazine / Add Magazine
                 </button>
                 <form id="add-mag-confirm" onsubmit="handleAddMagazine(event)" class="hidden items-center gap-2">
                   <input type="hidden" name="csrf" value="${h(getCsrf())}"/>
                   <input type="hidden" name="action" value="add_magazine"/>
+                  <input type="hidden" name="zone" value="${h(state.zone)}"/>
                   <input type="hidden" name="magazines" value="${rack.mag_count}"/>
                   <span class="text-slate-700">เพิ่ม <b>Magazine ${ordinal(rack.mag_count + 1)}</b> (Shelf ${rack.next_range[0]}-${rack.next_range[1]}) อีก 50 Shelf ?</span>
-                  <button type="submit" class="px-3 py-1 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700 cursor-pointer">Confirm</button>
-                  <button type="button" onclick="toggleAddMag(false)" class="px-3 py-1 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 cursor-pointer">Cancel</button>
+                  <button type="submit" class="px-3 py-1 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700 cursor-pointer">ยืนยัน / Confirm</button>
+                  <button type="button" onclick="toggleAddMag(false)" class="px-3 py-1 rounded-md bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก / Cancel</button>
                 </form>
               </div>` : `<span class="text-slate-600">ครบจำนวนสูงสุดแล้ว</span>`}
         `;
@@ -163,6 +164,7 @@ async function handleAddMagazine(e) {
     if (submitBtn) submitBtn.disabled = true;
 
     const formData = new FormData(form);
+    formData.set('zone', state.zone);
     formData.set('sheet', state.sheet);
 
     try {
@@ -180,10 +182,10 @@ async function handleAddMagazine(e) {
                 refreshSheetData(state.sheet)
             ]);
         } else {
-            showFlash('err', result.message || 'ไม่สามารถเพิ่ม Magazine ได้');
+            showFlash('err', result.message || 'ไม่สามารถเพิ่ม Magazine ได้ กรุณาลองอีกครั้ง / Could not add Magazine.');
         }
     } catch (err) {
-        showFlash('err', 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        showFlash('err', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่ / Network error while adding Magazine.');
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
@@ -192,7 +194,6 @@ window.handleAddMagazine = handleAddMagazine;
 
 // Listeners: empty shelf -> confirm insert, occupied shelf -> edit, magazine pager
 function setupRackMapEvents() {
-    // Rack Map clicks (empty shelf opens confirm, occupied shelf opens edit)
     document.getElementById('rack-map')?.addEventListener('click', (e) => {
         const emptyBtn = e.target.closest('button[data-shelf]');
         if (emptyBtn) {

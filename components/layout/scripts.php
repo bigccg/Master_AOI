@@ -6,8 +6,12 @@
 <!-- Bootstrap script for initial PHP state -->
 <script>
   window.csrfToken = <?= json_encode(csrf()) ?>;
+  window.initialZone = <?= json_encode($zone) ?>;
   window.initialSheet = <?= json_encode($sheet) ?>;
   window.currentNextCode = <?= json_encode($nextCode) ?>;
+  window.ZONES = <?= json_encode(ZONES, JSON_UNESCAPED_UNICODE) ?>;
+  window.ZONE_META = <?= json_encode(ZONE_META, JSON_UNESCAPED_UNICODE) ?>;
+  window.SHEETS = <?= json_encode(SHEETS, JSON_UNESCAPED_UNICODE) ?>;
   window.DEFECT_LABELS = <?= json_encode(DEFECT_LABELS, JSON_UNESCAPED_UNICODE) ?>;
   window.OTHER_NO_CLASS = <?= json_encode(OTHER_NO_CLASS) ?>;
   const PER_PAGE = <?= PER_PAGE ?>;

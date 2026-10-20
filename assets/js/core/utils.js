@@ -1,5 +1,5 @@
 /**
- * Helpers: CSRF, HTML escaping, ordinals, API URL + browser URL sync.
+ * Helpers: CSRF, HTML escaping, ordinals, API URL + browser URL sync (zone + sheet + filters).
  */
 
 const getCsrf = () => window.csrfToken ?? '';
@@ -18,6 +18,7 @@ function ordinal(n) {
 
 function buildApiUrl(overrides = {}) {
     const url = new URL('api/boards.php', window.location.href);
+    url.searchParams.set('zone', state.zone);
     url.searchParams.set('sheet', state.sheet);
     if (state.search) url.searchParams.set('search', state.search);
     if (state.shelf && state.shelf !== 'ALL') url.searchParams.set('shelf', state.shelf);
@@ -42,6 +43,7 @@ function buildApiUrl(overrides = {}) {
 
 function syncBrowserUrl() {
     const url = new URL(window.location.href);
+    url.searchParams.set('zone', state.zone);
     url.searchParams.set('sheet', state.sheet);
     if (state.search) url.searchParams.set('q', state.search); else url.searchParams.delete('q');
     if (state.shelf && state.shelf !== 'ALL') url.searchParams.set('shelf', state.shelf); else url.searchParams.delete('shelf');
@@ -49,9 +51,9 @@ function syncBrowserUrl() {
     if (state.status && state.status !== 'ALL') url.searchParams.set('status', state.status); else url.searchParams.delete('status');
     if (state.other && state.other !== 'ALL') url.searchParams.set('other', state.other); else url.searchParams.delete('other');
 
-    window.history.replaceState({ sheet: state.sheet }, '', url.toString());
+    window.history.replaceState({ zone: state.zone, sheet: state.sheet }, '', url.toString());
 
-    // Update Export button href
+    // Update Export button href (includes zone, sheet, and active filters)
     const exportBtn = document.getElementById('export-btn');
     if (exportBtn) {
         const expUrl = new URL(url.toString());

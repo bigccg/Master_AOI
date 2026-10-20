@@ -1,4 +1,4 @@
-/* Filter bar layout (components/filters.php) */
+/* Filter bar & Zone selector layout (components/filters.php, components/sheet-tabs.php) */
 
 /* ==========================================================================
    Filter Bar Layout Alignment & Compact Dropdown Clarity
@@ -68,6 +68,7 @@
 #filters #barcode-search-input,
 #filters select,
 #page-size-select,
+#zone-select,
 #filters .aoi-icon-btn {
     height: var(--ctl-h);          /* 2rem / 32px uniform height */
     min-height: var(--ctl-h);
@@ -75,6 +76,29 @@
     border-radius: 8px;
     font-size: var(--ctl-fs);
     font-weight: 500;
+}
+
+#zone-select {
+    min-width: 10.5rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-weight: 600;
+}
+
+@media (max-width: 639px) {
+    #sheet-tabs .aoi-zone-group {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #cbd5e1;
+        padding-right: 0;
+        padding-bottom: 0.375rem;
+        margin-right: 0;
+        justify-content: space-between;
+    }
+    #zone-select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
 }
 
 #filters #barcode-search-input {
@@ -139,7 +163,8 @@
 /* 2. Dropdown Text & Option Division (preserving original Glass CSS & animations) */
 #filters select,
 #add-entry-modal select,
-#page-size-select {
+#page-size-select,
+#zone-select {
     --g-line: rgba(100, 116, 139, 0.48);
     --g-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%230f172a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
     color: #0f172a;
@@ -150,7 +175,8 @@
 /* Native fallback option readability */
 #filters select option,
 #add-entry-modal select option,
-#page-size-select option {
+#page-size-select option,
+#zone-select option {
     background-color: #ffffff;
     color: #0f172a;
     font-size: var(--opt-fs);
@@ -167,7 +193,8 @@
 @supports (appearance: base-select) {
     /* Slightly higher opacity on the light frosted glass panel so text contrast stays ultra-crisp */
     :is(#filters, #add-entry-modal) select::picker(select),
-    #page-size-select::picker(select) {
+    #page-size-select::picker(select),
+    #zone-select::picker(select) {
         background:
             linear-gradient(rgba(255, 255, 255, .95), rgba(248, 250, 252, .95)) padding-box,
             conic-gradient(from var(--g-ang), #34d399, #22d3ee, #818cf8, #34d399) border-box;
@@ -176,7 +203,8 @@
 
     /* High-contrast dark typography + compact option division */
     :is(#filters, #add-entry-modal) select option,
-    #page-size-select option {
+    #page-size-select option,
+    #zone-select option {
         padding: 0.4rem 0.75rem 0.4rem 1.6rem;
         color: #0f172a;
         font-size: var(--opt-fs);
@@ -187,8 +215,9 @@
         margin-block: 1px;
     }
 
-    /* Distinct divider below the first "All (...)" default option */
-    #filters select option:first-child {
+    /* Distinct divider below the first default option */
+    #filters select option:first-child,
+    #zone-select option:first-child {
         border-bottom: 1px solid rgba(16, 185, 129, 0.35);
         margin-bottom: 2px;
         background-color: rgba(241, 245, 249, 0.75);
@@ -196,13 +225,15 @@
     }
 
     :is(#filters, #add-entry-modal) select option:last-child,
-    #page-size-select option:last-child {
+    #page-size-select option:last-child,
+    #zone-select option:last-child {
         border-bottom: none;
     }
 
     /* Clear left indicator dot */
     :is(#filters, #add-entry-modal) select option::before,
-    #page-size-select option::before {
+    #page-size-select option::before,
+    #zone-select option::before {
         width: 5px;
         height: 5px;
         background: rgba(51, 65, 85, 0.55);
@@ -212,7 +243,9 @@
     :is(#filters, #add-entry-modal) select option:hover,
     :is(#filters, #add-entry-modal) select option:focus-visible,
     #page-size-select option:hover,
-    #page-size-select option:focus-visible {
+    #page-size-select option:focus-visible,
+    #zone-select option:hover,
+    #zone-select option:focus-visible {
         background: linear-gradient(90deg, rgba(16, 185, 129, .15), rgba(34, 211, 238, .10));
         color: #064e3b;
         font-weight: 600;
@@ -220,14 +253,16 @@
 
     /* High-contrast selected/checked state */
     :is(#filters, #add-entry-modal) select option:checked,
-    #page-size-select option:checked {
+    #page-size-select option:checked,
+    #zone-select option:checked {
         background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .08));
         color: #064e3b;
         font-weight: 600;
     }
 
     :is(#filters, #add-entry-modal) select option::checkmark,
-    #page-size-select option::checkmark {
+    #page-size-select option::checkmark,
+    #zone-select option::checkmark {
         color: #047857;
         font-size: 0.75rem;
         font-weight: 700;

@@ -1,15 +1,15 @@
 <?php
 /**
- * Defect Matrix, shown on All Size Magazine (rows rendered by assets/js/components/defect-matrix.js).
+ * Defect Matrix, shown on All Size Magazine within the selected zone (rows rendered by assets/js/components/defect-matrix.js).
  * CSS: components/defect-matrix.css
  */
 ?>
-  <!-- Defect Matrix (shown when Sheets = ALL / All Size Magazine) -->
-  <section id="defect-matrix" class="mt-3 bg-slate-50 p-4 rounded-lg border border-slate-300 border-t-4 border-t-blue-600 shadow-md<?= $isAllZones ? '' : ' hidden' ?>">
+  <!-- Defect Matrix (shown when zone has sheets and Sheets = ALL / All Size Magazine) -->
+  <section id="defect-matrix" class="mt-3 bg-slate-50 p-4 rounded-lg border border-slate-300 border-t-4 border-t-blue-600 shadow-md<?= ($hasZoneSheets && $isAllSheets) ? '' : ' hidden' ?>">
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b-2 pb-2 border-slate-200">
       <div class="flex items-center gap-2">
         <i class="fa-solid fa-table-cells text-blue-600 text-sm"></i>
-        <h2 id="defect-matrix-title" class="text-xs font-bold uppercase tracking-wider text-slate-700">Defect Matrix: All Size Magazines (ตารางข้อบกพร่องทุกแม็กกาซีน)</h2>
+        <h2 id="defect-matrix-title" class="text-xs font-bold uppercase tracking-wider text-slate-700">Defect Matrix: All Size Magazines — โซน <?= h($zone) ?> (ตารางข้อบกพร่องทุกชีตในโซน)</h2>
         <span id="defect-matrix-counter" class="text-[11px] font-mono text-slate-500 bg-white border border-slate-200 rounded px-1.5 py-0.5"><?= $cnt['D'] + $cnt['GD'] ?> rows</span>
       </div>
       <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">

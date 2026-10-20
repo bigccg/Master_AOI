@@ -1,5 +1,5 @@
 /**
- * Data table: columns + table / row rendering (components/data-table.php).
+ * Data table: columns + table / row rendering + empty state for zones without sheets (components/data-table.php).
  */
 
 const COLUMNS = [
@@ -38,6 +38,21 @@ function hasActiveFilters() {
 }
 
 function bodyHtml() {
+    if (!zoneHasSheetsJs(state.zone)) {
+        return stateRowHtml(`
+            <div class="flex flex-col items-center gap-2 max-w-lg mx-auto" role="status" aria-live="polite">
+                <div class="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                </div>
+                <span class="text-sm font-semibold text-slate-800">${h(MSG.emptyZoneTitle(state.zone))}</span>
+                <span class="text-xs text-slate-500 leading-relaxed">${h(MSG.emptyZoneDesc(state.zone))}</span>
+                <button type="button" data-action="switch-default-zone"
+                        class="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-emerald-600 bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer">
+                    <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i>
+                    <span>${h(MSG.emptyZoneCta)}</span>
+                </button>
+            </div>`);
+    }
     if (view.status === 'loading') {
         return stateRowHtml(`
             <div class="flex flex-col items-center gap-2" role="status">
@@ -60,10 +75,13 @@ function bodyHtml() {
             </div>`);
     }
     if (view.rows.length === 0) {
+        const subText = hasActiveFilters()
+            ? MSG.emptyFiltered
+            : (state.sheet === 'ALL' ? MSG.emptyAllSheets : MSG.emptyNone);
         return stateRowHtml(`
             <div class="flex flex-col items-center gap-1">
                 <span class="text-sm font-medium text-slate-700">${h(MSG.empty)}</span>
-                <span>${h(hasActiveFilters() ? MSG.emptyFiltered : MSG.emptyNone)}</span>
+                <span>${h(subText)}</span>
             </div>`);
     }
     return view.rows.map(rowHtml).join('');
@@ -78,22 +96,22 @@ function renderTable() {
     tableWrapper.innerHTML = `
         <div class="aoi-table-scroll" data-has-rows="${hasRows ? '1' : '0'}">
             <table class="aoi-table">
-                <caption class="sr-only">Board records</caption>
+                <caption class="sr-only">Board records (${h(state.zone)})</caption>
                 <thead><tr>${head}</tr></thead>
                 <tbody class="aoi-tbody">${bodyHtml()}</tbody>
             </table>
         </div>`;
 }
 
-// Listeners: row click / keyboard opens Edit, Retry button
+// Listeners: row click / keyboard opens Edit, Retry button, Switch to General Zone CTA
 function setupTableEvents() {
-    // Table action buttons (Retry) & Row click to open Edit Mode
     tableWrapper?.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
         if (btn) {
             if (btn.dataset.action === 'delete') deleteBoard(btn.dataset.id, btn.dataset.code);
             else if (btn.dataset.action === 'edit') openEditModal(btn.dataset.id);
             else if (btn.dataset.action === 'retry') reloadTable();
+            else if (btn.dataset.action === 'switch-default-zone') switchZone('General');
             return;
         }
 

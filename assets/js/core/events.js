@@ -46,15 +46,24 @@ function setupDelegation() {
     });
 
     // Browser navigation (Back / Forward)
-    window.addEventListener('popstate', (e) => {
-        const params = new URLSearchParams(window.location.search);
-        const sh = params.get('sheet') || 'ALL';
-        state.sheet = sh;
-        state.search = params.get('q') || '';
-        state.shelf = params.get('shelf') || 'ALL';
+    window.addEventListener('popstate', () => {
+        const params     = new URLSearchParams(window.location.search);
+        const zn         = normalizeZoneJs(params.get('zone') || 'General');
+        const sh         = resolveSheetInZoneJs(zn, params.get('sheet') || 'ALL');
+        state.zone       = zn;
+        state.sheet      = sh;
+        state.search     = params.get('q') || '';
+        state.shelf      = params.get('shelf') || 'ALL';
         state.board_type = params.get('board_type') || 'ALL';
-        state.status = params.get('status') || 'ALL';
-        state.other = params.get('other') || 'ALL';
+        state.status     = params.get('status') || 'ALL';
+        state.other      = params.get('other') || 'ALL';
+
+        const zoneSelect = document.getElementById('zone-select');
+        if (zoneSelect) zoneSelect.value = state.zone;
+        const filterZone = document.getElementById('filter-zone');
+        if (filterZone) filterZone.value = state.zone;
+        const filterSheet = document.getElementById('filter-sheet');
+        if (filterSheet) filterSheet.value = state.sheet;
 
         const searchInput = document.getElementById('barcode-search-input');
         if (searchInput) searchInput.value = state.search;
@@ -67,7 +76,7 @@ function setupDelegation() {
         const filterOth = document.getElementById('filter-other');
         if (filterOth) filterOth.value = state.other;
 
-        updateTabActiveClasses(sh);
+        renderZoneTabs(zn, sh);
         syncShelfViewMode();
         loadTable();
         refreshSheetData(sh);

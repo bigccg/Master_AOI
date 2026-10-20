@@ -4,6 +4,9 @@
 
 const modal = document.getElementById('add-entry-modal');
 
+let activeModalZone  = null;
+let activeModalSheet = null;
+
 // INSERT / EDIT mode pill + breadcrumb + accent colour
 function gmSetMode(mode, code) {
     const win = document.getElementById('gm-window');
@@ -12,8 +15,10 @@ function gmSetMode(mode, code) {
     const set = (id, t) => { const n = document.getElementById(id); if (n) n.textContent = t; };
     set('gm-mode-text', mode === 'edit' ? 'EDIT' : 'INSERT');
     set('gm-path-tail', mode === 'edit' ? '/edit/' + (code || '') : '/new');
-    set('gm-path-sheet', state.sheet);
-    set('gm-st-sheet', state.sheet);
+    const z = activeModalZone || state.zone;
+    const s = activeModalSheet || state.sheet;
+    set('gm-path-sheet', `${z}/${s}`);
+    set('gm-st-sheet', `${z} · ${s}`);
 }
 
 // required-fields progress in the statusline (shelf, product, side, board type, board classification unless locked)
@@ -145,9 +150,11 @@ function setModalDeleteVisible(visible) {
     delBtn.classList.toggle('hidden', !visible);
 }
 
-let activeModalSheet = null;
-
 function openAddModal() {
+    if (!zoneHasSheetsJs(state.zone)) {
+        showFlash('err', EMPTY_ZONE_INSERT_MSG);
+        return;
+    }
     if (state.sheet === 'ALL') {
         showFlash('err', ALL_SIZE_INSERT_MSG);
         return;
@@ -159,12 +166,16 @@ function openAddModal() {
     if (form) form.reset();
     document.querySelectorAll('#board-form input[name="board_status"]').forEach(r => { r.checked = false; });
 
+    activeModalZone  = state.zone;
     activeModalSheet = state.sheet;
+
+    const modalZone = document.getElementById('modal-zone');
+    if (modalZone) modalZone.value = activeModalZone;
 
     document.getElementById('modal-id').value = '0';
     document.getElementById('modal-title-text').textContent = 'Add New AOI Board Record / บันทึกข้อมูลบอร์ดใหม่';
     document.getElementById('modal-title-icon').className = 'fa-solid fa-plus';
-    document.getElementById('modal-submit-label').textContent = `Save to ${activeModalSheet}`;
+    document.getElementById('modal-submit-label').textContent = `บันทึกลง ${activeModalSheet} / Save to ${activeModalSheet}`;
     gmSetMode('insert');
 
     const codeHidden = document.getElementById('modal-code');
@@ -180,7 +191,7 @@ function openAddModal() {
         updateModalFreeShelves(currentSheetData.free_by_mag, currentSheetData.free_shelves, currentSheetData.rack.capacity, currentSheetData.shelf_prefix, currentSheetData.rack.is_max);
     }
 
-    syncClassificationLock();   // form.reset() cleared Other, but not the radios' disabled state
+    syncClassificationLock();
     gmSyncProgress();
     gmSyncDefectChip();
     gmShow(modal);
@@ -193,17 +204,21 @@ async function openEditModal(id) {
     setModalDeleteVisible(false);
 
     try {
-        const res = await fetch(`api/get.php?id=${id}&sheet=${encodeURIComponent(state.sheet)}`);
+        const res = await fetch(`api/get.php?id=${id}&zone=${encodeURIComponent(state.zone)}&sheet=${encodeURIComponent(state.sheet)}`);
         const json = await res.json();
         if (!json.success || !json.data) throw new Error(json.message || 'Cannot load record');
 
         const d = json.data;
+        activeModalZone  = d.zone || state.zone;
         activeModalSheet = d.sheet || (state.sheet === 'ALL' ? 'B200_Gen' : state.sheet);
+
+        const modalZone = document.getElementById('modal-zone');
+        if (modalZone) modalZone.value = activeModalZone;
 
         document.getElementById('modal-id').value = d.id;
         document.getElementById('modal-title-text').textContent = 'Edit AOI Board Record / แก้ไขข้อมูลบอร์ด';
         document.getElementById('modal-title-icon').className = 'fa-solid fa-pen';
-        document.getElementById('modal-submit-label').textContent = 'Update record';
+        document.getElementById('modal-submit-label').textContent = 'บันทึกการแก้ไข / Update Record';
         gmSetMode('edit', d.code);
         setModalDeleteVisible(true);
 
@@ -212,9 +227,9 @@ async function openEditModal(id) {
             codeHidden.value = d.code || '';
         }
 
-        if (state.sheet === 'ALL' && d.sheet) {
+        if ((state.sheet === 'ALL' || state.zone !== activeModalZone) && d.sheet) {
             try {
-                const shRes = await fetch(`api/sheet_data.php?sheet=${encodeURIComponent(d.sheet)}`);
+                const shRes = await fetch(`api/sheet_data.php?zone=${encodeURIComponent(activeModalZone)}&sheet=${encodeURIComponent(d.sheet)}`);
                 const shJson = await shRes.json();
                 if (shJson?.success && shJson.data) {
                     updateModalFreeShelves(shJson.data.free_by_mag, shJson.data.free_shelves, shJson.data.rack.capacity, shJson.data.shelf_prefix, false, d.shelf);
@@ -259,7 +274,7 @@ async function openEditModal(id) {
         }
         setTimeout(() => prod?.focus({ preventScroll: true }), 120);
     } catch (err) {
-        showFlash('err', 'ไม่สามารถโหลดข้อมูลบอร์ดได้: ' + err.message);
+        showFlash('err', 'ไม่สามารถโหลดข้อมูลบอร์ดได้ กรุณาลองอีกครั้ง: ' + err.message);
     }
 }
 window.openEditModal = openEditModal;
@@ -271,7 +286,6 @@ window.closeModal = closeModal;
 
 // Listeners: Delete button inside Edit mode, backdrop click closes
 function setupBoardModalEvents() {
-    // Delete button inside Edit Modal
     document.getElementById('modal-delete-btn')?.addEventListener('click', async () => {
         const id = document.getElementById('modal-id')?.value;
         const code = document.getElementById('modal-code')?.value || '';

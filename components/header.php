@@ -1,8 +1,12 @@
 <?php
 /**
- * Top bar: logo, live clock, Export, New Board Entry + sheet tabs.
+ * Top bar: logo, live clock, Export, New Board Entry + Zone selector & sheet tabs.
  * JS: assets/js/components/clock.js, sheet-tabs.js · CSS: components/clock.css, theme/hyprland.css
  */
+$addBtnDisabled = !$hasZoneSheets || $isAllSheets;
+$addBtnTitle    = !$hasZoneSheets
+    ? EMPTY_ZONE_INSERT_ERROR
+    : ($isAllSheets ? ALL_SIZE_INSERT_ERROR : 'เพิ่มข้อมูลบอร์ดลงในชีต ' . $sheet . ' / Add board record to ' . $sheet);
 ?>
 <!-- ===== Header ===== -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
@@ -17,6 +21,10 @@
           <p class="text-xs text-slate-500 flex items-center gap-2">
             <span>ระบบบันทึกและจัดการสต็อกบอร์ด AOI</span>
             <span class="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+            <span id="header-zone-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-[11px]">
+              <i class="fa-solid fa-layer-group text-[10px]" aria-hidden="true"></i>
+              <span id="header-zone-text">โซน: <?= h(ZONE_META[$zone]['label'] ?? $zone) ?></span>
+            </span>
           </p>
         </div>
       </div>
@@ -34,11 +42,11 @@
           </div>
         </div>
         <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
-          <a href="<?= h(url(['export' => 1])) ?>" id="export-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition" title="Export CSV">
-            <i class="fa-solid fa-file-excel text-emerald-600"></i><span>Export</span>
+          <a href="<?= h(url(['zone' => $zone, 'sheet' => $sheet, 'export' => 1])) ?>" id="export-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition" title="ส่งออกไฟล์ CSV ของโซนและชีตที่เลือก / Export CSV for current zone & sheet">
+            <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>ส่งออก CSV / Export</span>
           </a>
-          <button type="button" id="new-entry-btn" onclick="openAddModal()" <?= $isAllZones ? 'disabled title="' . h(ALL_SIZE_INSERT_ERROR) . '"' : '' ?> class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600">
-            <i class="fa-solid fa-plus"></i><span>New Board Entry</span>
+          <button type="button" id="new-entry-btn" onclick="openAddModal()" <?= $addBtnDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"' ?> title="<?= h($addBtnTitle) ?>" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i><span>เพิ่มบอร์ด / Add Board</span>
           </button>
         </div>
       </div>

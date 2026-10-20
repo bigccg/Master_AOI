@@ -1,7 +1,10 @@
 <?php
 /**
- * KPI cards. JS: assets/js/components/kpi-cards.js
+ * KPI cards (scoped to selected Zone & Sheet). JS: assets/js/components/kpi-cards.js
  */
+$utilTitlePrefix = !$hasZoneSheets
+    ? 'No Sheets'
+    : ($isAllSheets ? 'All Sheets' : 'Rack ' . h(shelfPrefix($sheet)));
 ?>
   <!-- KPI -->
   <section class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
@@ -9,7 +12,7 @@
       <div>
         <p class="text-xs font-medium text-slate-500">Total Boards (ทั้งหมด)</p>
         <p class="text-2xl font-bold text-slate-900 mt-1 font-mono" id="kpi-total"><?= $total ?></p>
-        <p class="text-[11px] text-slate-400 mt-0.5" id="kpi-shelf-range"><?= $total ? ($isAllZones ? 'All Zones (CD, A, B, C)' : 'Shelf ' . h(shelfPrefix($sheet)) . '1 - ' . h(shelfPrefix($sheet)) . $maxShelf) : 'No boards yet' ?></p>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="kpi-shelf-range"><?= h($shelfRangeText) ?></p>
       </div>
       <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-layer-group"></i></div>
     </div>
@@ -43,7 +46,7 @@
 
     <div class="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between col-span-2 md:col-span-1">
       <div>
-        <p class="text-xs font-medium text-slate-500" id="kpi-util-title"><?= $isAllZones ? 'All Zones' : 'Rack ' . h(shelfPrefix($sheet)) ?> Utilization <span class="text-slate-400">(<?= $usedShelves ?>/<?= $capacity ?>)</span></p>
+        <p class="text-xs font-medium text-slate-500" id="kpi-util-title"><?= $utilTitlePrefix ?> Utilization <span class="text-slate-400">(<?= $usedShelves ?>/<?= $capacity ?>)</span></p>
         <p class="text-2xl font-bold text-slate-800 mt-1 font-mono" id="kpi-util-text"><?= $util ?>%</p>
         <div class="w-28 bg-slate-200 rounded-full h-1.5 mt-1.5 overflow-hidden">
           <div id="kpi-util-bar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style="width: <?= $util ?>%"></div>

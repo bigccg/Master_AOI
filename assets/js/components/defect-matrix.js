@@ -1,8 +1,8 @@
 /**
- * Defect Matrix shown on All Size Magazine (components/defect-matrix.php).
+ * Defect Matrix shown on All Size Magazine within the selected zone (components/defect-matrix.php).
  */
 
-let matrixReqSeq  = 0;
+let matrixReqSeq   = 0;
 let matrixInflight = null;
 
 function getDefectEntries() {
@@ -15,6 +15,7 @@ function getDefectEntries() {
 
 function buildMatrixApiUrl() {
     const url = new URL('api/boards.php', window.location.href);
+    url.searchParams.set('zone', state.zone);
     url.searchParams.set('sheet', state.sheet);
     url.searchParams.set('matrix', '1');
     if (state.search) url.searchParams.set('search', state.search);
@@ -30,8 +31,8 @@ function setMatrixBusy(on) {
 }
 
 async function loadDefectMatrix() {
-    const isAll = syncShelfViewMode();
-    if (!isAll) {
+    const isAllSheets = syncShelfViewMode();
+    if (!zoneHasSheetsJs(state.zone) || !isAllSheets) {
         matrixInflight?.abort();
         return;
     }
@@ -197,7 +198,7 @@ function renderDefectMatrix() {
     matrixWrapper.innerHTML = `
         <div class="dm-table-scroll" data-has-rows="${hasRows ? '1' : '0'}">
             <table class="dm-table">
-                <caption class="sr-only">Defect Matrix All Zones</caption>
+                <caption class="sr-only">Defect Matrix All Sheets</caption>
                 <thead><tr>${headHtml}</tr></thead>
                 <tbody class="dm-tbody">${tbodyInner}</tbody>
                 <tfoot>
@@ -266,7 +267,6 @@ function highlightMatrixRowAndCol(tr, td) {
 
 // Listeners: row click / keyboard opens Edit, Retry, row + column highlight
 function setupDefectMatrixEvents() {
-    // Defect Matrix interactions (click row to edit, retry button, keyboard Enter/Space, hover column highlight)
     matrixWrapper?.addEventListener('click', (e) => {
         const retryBtn = e.target.closest('button[data-action="retry-matrix"]');
         if (retryBtn) {

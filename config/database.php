@@ -6,7 +6,9 @@
 
 declare(strict_types=1);
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ──────────────────────────────────────────────
 // Constants
@@ -19,17 +21,34 @@ const SHIFT_LABEL   = 'Shift Day (08:00 - 20:00)';
 const MAGAZINE_SIZE  = 50;
 const MAGAZINE_LIMIT = 99;    // safety cap only (Shelf 1-4950); the Rack Map pages through them, 6 Magazines per page
 const RACK_PER_PAGE  = 6;     // Magazines shown per Rack Map page
-const PER_PAGE      = 10;           // Default page size (also used as fallback)
-const MAX_ALL_ROWS  = 5000;         // Hard safety cap when limit=all
-const DEFAULT_SHEET = 'B200_Gen';
-const ALL_SIZE_INSERT_ERROR = 'หน้า All Size Magazine ไม่สามารถเพิ่มข้อมูลได้ กรุณาเลือกชีตก่อน / Select a sheet before inserting a new record.';
+const PER_PAGE       = 10;    // Default page size (also used as fallback)
+const MAX_ALL_ROWS   = 5000;  // Hard safety cap when limit=all
 
-// Number Code format: AOI-P1-(YY)-(MM)-(000)
-//   AOI-P1 = fixed prefix (Factory P1), YY/MM = year/month of entry,
-//   000    = running number, counted per sheet, restarts at 001 every month.
-const CODE_PREFIX   = 'AOI-P1';
-const CODE_TZ       = 'Asia/Bangkok';   // month boundary follows factory local time
-const CODE_MAX_RUN  = 999;
+const DEFAULT_ZONE   = 'General';
+const DEFAULT_SHEET  = 'B200_Gen';
+
+// Single source of truth for Zone -> Sheet keys mapping.
+// Edit here and the entire system (URL validation, tabs, KPI, Rack Map, Defect Matrix, table, export) follows.
+const ZONES = [
+    'General'    => ['CD300', 'A150_Gen', 'B200_Gen', 'C250_Gen'],
+    'AIXZ'       => [],
+    'Automotive' => [],
+];
+
+// Zone display metadata (Thai / English)
+const ZONE_META = [
+    'General'    => ['label' => 'ทั่วไป / General',    'short' => 'General'],
+    'AIXZ'       => ['label' => 'AIXZ / โซน AIXZ',     'short' => 'AIXZ'],
+    'Automotive' => ['label' => 'ยานยนต์ / Automotive', 'short' => 'Automotive'],
+];
+
+// Sheet tabs: key => [label, dot color class]
+const SHEETS = [
+    'CD300'    => ['CD300',    'bg-lime-500'],
+    'A150_Gen' => ['A150_Gen', 'bg-yellow-400'],
+    'B200_Gen' => ['B200_Gen', 'bg-emerald-500'],
+    'C250_Gen' => ['C250_Gen', 'bg-amber-400'],
+];
 
 // Shelf slot format: <sheet prefix><number>, e.g. CD1, A12, B26, C25
 const SHELF_PREFIX = [
@@ -39,13 +58,17 @@ const SHELF_PREFIX = [
     'C250_Gen' => 'C',
 ];
 
-// Sheet tabs: key => [label, dot color class]
-const SHEETS = [
-    'CD300'       => ['CD300',       'bg-lime-500'],
-    'A150_Gen'    => ['A150_Gen',    'bg-yellow-400'],
-    'B200_Gen'    => ['B200_Gen',    'bg-emerald-500'],
-    'C250_Gen'    => ['C250_Gen',    'bg-amber-400'],
-];
+// Number Code format: AOI-P1-(YY)-(MM)-(000)
+//   AOI-P1 = fixed prefix (Factory P1), YY/MM = year/month of entry,
+//   000    = system-wide running number across all zones and sheets, restarts at 001 every month (Asia/Bangkok).
+const CODE_PREFIX   = 'AOI-P1';
+const CODE_TZ       = 'Asia/Bangkok';   // month boundary follows factory local time
+const CODE_MAX_RUN  = 999;
+
+// UX Copy (What happened + Why + How to fix, Thai / English)
+const ALL_SIZE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในแท็บรวมทุกขนาดได้ เนื่องจากต้องระบุชีตและชั้นวางปลายทาง กรุณาเลือกแท็บชีตด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Size Magazine because a target sheet is required. Please select a sheet tab first.';
+const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ยังไม่มีชีตในระบบ กรุณาสลับไปโซนที่มีชีต (เช่น General) และเลือกชีตก่อน / Cannot add a record because this zone has no sheets configured yet. Please switch to an active zone first.';
+const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
 
 // Status styling map: status => [container classes, text class, label text]
 const STATUS_STYLE = [
@@ -81,7 +104,90 @@ const DEFECT_LABELS = [
 ];
 
 // ──────────────────────────────────────────────
-// Helpers
+// Zone & Sheet Helpers
+// ──────────────────────────────────────────────
+
+/** Validate zone against ZONES whitelist; fallback to DEFAULT_ZONE ('General') */
+function normalizeZone(?string $zone): string
+{
+    $zone = trim((string)$zone);
+    return array_key_exists($zone, ZONES) ? $zone : DEFAULT_ZONE;
+}
+
+/** Return SHEETS subset belonging to $zone: [sheetKey => [label, dotClass], ...] */
+function zoneSheets(string $zone): array
+{
+    $zone = normalizeZone($zone);
+    $out  = [];
+    foreach (ZONES[$zone] ?? [] as $shKey) {
+        if (isset(SHEETS[$shKey])) {
+            $out[$shKey] = SHEETS[$shKey];
+        }
+    }
+    return $out;
+}
+
+/** Does $zone have at least one configured sheet? */
+function zoneHasSheets(string $zone): bool
+{
+    return !empty(zoneSheets($zone));
+}
+
+/** Default concrete sheet for a zone (e.g. for $modalSheet), or '' when the zone has no sheets */
+function defaultSheetForZone(string $zone): string
+{
+    $sheets = zoneSheets($zone);
+    if (empty($sheets)) {
+        return '';
+    }
+    if (isset($sheets[DEFAULT_SHEET])) {
+        return DEFAULT_SHEET;
+    }
+    return (string)array_key_first($sheets);
+}
+
+/**
+ * Validate $sheet within $zone.
+ * If $sheet is not 'ALL' and does not belong to $zone, fallback to 'ALL' (All Size Magazine of that zone).
+ */
+function resolveSheetInZone(string $zone, ?string $sheet, string $fallback = 'ALL'): string
+{
+    $zone   = normalizeZone($zone);
+    $sheet  = trim((string)$sheet);
+    $sheets = zoneSheets($zone);
+    if ($sheet === 'ALL') {
+        return 'ALL';
+    }
+    if (isset($sheets[$sheet])) {
+        return $sheet;
+    }
+    return $fallback;
+}
+
+/** Find which zone owns $sheet (defaults to DEFAULT_ZONE if unknown) */
+function sheetZone(string $sheet): string
+{
+    foreach (ZONES as $z => $sheetKeys) {
+        if (in_array($sheet, $sheetKeys, true)) {
+            return $z;
+        }
+    }
+    return DEFAULT_ZONE;
+}
+
+/** Label for KPI shelf range when viewing All Sheets in $zone, e.g. "All Sheets (CD, A, B, C)" */
+function allSheetsRangeLabel(string $zone): string
+{
+    $sheets = array_keys(zoneSheets($zone));
+    if (empty($sheets)) {
+        return 'All Sheets';
+    }
+    $prefixes = array_map('shelfPrefix', $sheets);
+    return 'All Sheets (' . implode(', ', $prefixes) . ')';
+}
+
+// ──────────────────────────────────────────────
+// General Helpers
 // ──────────────────────────────────────────────
 
 /**
@@ -113,7 +219,7 @@ function parseDefects(?string $raw): array
         if ($part === '') continue;
         if ($part === 'OTHER') {
             $hasOther = true;
-        } elseif ( str_starts_with($part, 'OTHER:')) {
+        } elseif (str_starts_with($part, 'OTHER:')) {
             $hasOther  = true;
             $otherText = trim(substr($part, 6));
         } elseif (ctype_digit($part)) {
@@ -204,6 +310,9 @@ function shelfFilterRange(string $f): ?array
  */
 function magazineCount(PDO $pdo, string $sheet): int
 {
+    if ($sheet === '' || !isset(SHEETS[$sheet])) {
+        return 0;
+    }
     $st = $pdo->prepare('SELECT magazines FROM sheet_magazines WHERE sheet = ?');
     $st->execute([$sheet]);
     $stored = (int)$st->fetchColumn();
@@ -240,6 +349,7 @@ function shelfPrefix(string $sheet): string
 /** Shelf number from a shelf slot of this sheet (CD12 => 12), or null if the slot is not valid for the sheet */
 function parseShelf(string $sheet, string $shelf): ?int
 {
+    if ($sheet === '' || !isset(SHEETS[$sheet])) return null;
     if (!preg_match('/^' . preg_quote(shelfPrefix($sheet), '/') . '(\d{1,3})$/', $shelf, $m)) return null;
     return (int)$m[1] >= 1 ? (int)$m[1] : null;
 }
@@ -251,25 +361,534 @@ function isValidNumberCode(string $code): bool
 }
 
 /**
- * Next Number Code for a sheet in the current month.
- * Running number is per sheet (CD300, A150_Gen, ...) and restarts at 001 each month.
- * Uses MAX()+1, so gaps left by deleting a middle record are not refilled.
+ * Next system-wide Number Code in the current month (Asia/Bangkok).
+ * Running number is shared across ALL zones and ALL sheets and restarts at 001 each month.
+ * Uses MAX()+1 across all rows in `boards` for that YY-MM prefix, so gaps left by deleting
+ * a middle record are not refilled.
  *
- * @throws RuntimeException when the sheet already used 999 codes this month
+ * @throws RuntimeException when the system already used 999 codes this month
  */
-function nextNumberCode(PDO $pdo, string $sheet, ?DateTimeInterface $at = null): string
+function nextNumberCode(PDO $pdo, ?DateTimeInterface $at = null): string
 {
     $at ??= new DateTimeImmutable('now', new DateTimeZone(CODE_TZ));
     $prefix = sprintf('%s-%s-%s-', CODE_PREFIX, $at->format('y'), $at->format('m'));
 
-    $st = $pdo->prepare('SELECT MAX(CAST(SUBSTRING(code, ?) AS UNSIGNED)) FROM boards WHERE sheet = ? AND code LIKE ?');
-    $st->execute([strlen($prefix) + 1, $sheet, $prefix . '___']);
+    $st = $pdo->prepare('SELECT MAX(CAST(SUBSTRING(code, ?) AS UNSIGNED)) FROM boards WHERE code LIKE ?');
+    $st->execute([strlen($prefix) + 1, $prefix . '___']);
     $next = (int)$st->fetchColumn() + 1;
 
     if ($next > CODE_MAX_RUN) {
-        throw new RuntimeException("Number Code ของชีต $sheet เต็มแล้วสำหรับเดือนนี้ (สูงสุด " . CODE_MAX_RUN . ')');
+        throw new RuntimeException(CODE_MAX_RUN_ERROR);
     }
     return $prefix . str_pad((string)$next, 3, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Shared validation, system-wide Number Code generation, and concurrency-safe INSERT/UPDATE for boards.
+ * Used by both `api/save.php` (AJAX) and `includes/actions.php` (non-AJAX POST fallback).
+ *
+ * Concurrency strategy:
+ * 1. Acquires MySQL advisory lock `GET_LOCK('aoi_board_number_code', 5)` so concurrent saves across any sheet/zone
+ *    serialize their `nextNumberCode()` read + INSERT without colliding on the shared monthly sequence.
+ * 2. Keeps a 5-attempt retry loop on MySQL error 1062 (duplicate key on `uq_code` / `uq_sheet_code`) as a second
+ *    line of defense, plus an explicit app-level duplicate check in case `uq_code` migration was deferred.
+ *
+ * @return array{
+ *   success: bool,
+ *   status_code: int,
+ *   errors: string[],
+ *   message: string,
+ *   id: int,
+ *   code: string,
+ *   shelf: string,
+ *   sheet: string,
+ *   zone: string,
+ *   edit_row: array<string, mixed>
+ * }
+ */
+function saveBoardRecord(PDO $pdo, array $input): array
+{
+    $id      = (int)($input['id'] ?? 0);
+    $zone    = normalizeZone((string)($input['zone'] ?? DEFAULT_ZONE));
+    $sheet   = trim((string)($input['sheet'] ?? ''));
+    $code    = trim((string)($input['code'] ?? ''));
+    $shelf   = strtoupper(trim((string)($input['shelf'] ?? '')));
+    $product = strtoupper(trim((string)($input['product'] ?? '')));
+    $side    = trim((string)($input['side'] ?? ''));
+    $type    = trim((string)($input['board_type'] ?? ''));
+    $status  = (string)($input['board_status'] ?? '');
+    $pcs     = trim((string)($input['pcs'] ?? ''));
+    $defects = trim((string)($input['defects'] ?? ''));
+
+    // Other = Bare / Bad Mark -> no Board Classification (locked empty in the form), so no defects either
+    $noClass = in_array($pcs, OTHER_NO_CLASS, true);
+    if ($noClass) {
+        $status  = '';
+        $defects = '';
+    }
+
+    $formErrors = [];
+    $old = ['id' => 0, 'zone' => $zone, 'sheet' => $sheet, 'code' => '', 'shelf' => '', 'shelf_no' => 0];
+
+    if ($id > 0) {
+        $cur = $pdo->prepare('SELECT id, zone, sheet, code, shelf, shelf_no FROM boards WHERE id = ?');
+        $cur->execute([$id]);
+        $fetched = $cur->fetch();
+        if (!$fetched) {
+            return [
+                'success'     => false,
+                'status_code' => 404,
+                'errors'      => ['ไม่พบรายการบอร์ดที่ต้องการแก้ไข เนื่องจากรายการอาจถูกลบไปแล้ว กรุณารีเฟรชตารางแล้วลองใหม่ / Record not found. It may have been deleted; please refresh the table.'],
+                'message'     => '',
+                'id'          => $id,
+                'code'        => $code,
+                'shelf'       => $shelf,
+                'sheet'       => $sheet,
+                'zone'        => $zone,
+                'edit_row'    => [
+                    'id' => $id, 'code' => $code, 'shelf' => $shelf, 'product' => $product, 'side' => $side,
+                    'board_type' => $type, 'status' => $status, 'pcs_status' => $pcs, 'defects' => $defects,
+                ],
+            ];
+        }
+        $old   = $fetched;
+        $sheet = (string)$old['sheet'];
+        $zone  = normalizeZone((string)($old['zone'] ?: sheetZone($sheet)));
+
+        $oldCode = (string)$old['code'];
+        if ($code === '') {
+            $code = $oldCode;
+        }
+        if ($code !== $oldCode && !isValidNumberCode($code)) {
+            $formErrors[] = 'รูปแบบ Number Code ไม่ถูกต้อง เนื่องจากระบบกำหนดรูปแบบเป็น ' . CODE_PREFIX . '-YY-MM-000 (เลขรัน 001-' . CODE_MAX_RUN . ') กรุณาแก้ไขให้ตรงรูปแบบ เช่น ' . CODE_PREFIX . '-25-12-023 / Invalid Number Code format. Expected ' . CODE_PREFIX . '-YY-MM-000 (001-' . CODE_MAX_RUN . ').';
+        }
+    } else {
+        // New record: validate zone has sheets and a concrete sheet in that zone was selected
+        if (!zoneHasSheets($zone)) {
+            $formErrors[] = EMPTY_ZONE_INSERT_ERROR;
+        } elseif ($sheet === '' || $sheet === 'ALL' || !isset(zoneSheets($zone)[$sheet])) {
+            $formErrors[] = ALL_SIZE_INSERT_ERROR;
+        } else {
+            $zone = sheetZone($sheet);
+        }
+    }
+
+    // Validate Shelf when a valid sheet is known
+    $shelfNo = null;
+    if (isset(SHEETS[$sheet])) {
+        $sp      = shelfPrefix($sheet);
+        $shelfNo = parseShelf($sheet, $shelf);
+        if ($shelfNo === null) {
+            $formErrors[] = "เลือกชั้นวาง (Shelf) ไม่ถูกต้อง เนื่องจากชีต $sheet ใช้รหัสชั้นวางขึ้นต้นด้วย {$sp} กรุณาเลือกชั้นวางจากรายการ ({$sp}1, {$sp}2, ...) / Invalid Shelf for sheet $sheet. Please select {$sp}1, {$sp}2, etc.";
+        } else {
+            $shelf = $sp . $shelfNo; // normalize e.g. CD05 -> CD5
+            $limit = magazineCount($pdo, $sheet) * MAGAZINE_SIZE;
+            if ($shelfNo > $limit) {
+                $formErrors[] = "เลือกชั้นวาง $shelf ไม่ได้ เนื่องจากเกินความจุชั้นวางปัจจุบันของชีต $sheet (สูงสุด {$sp}{$limit}) กรุณากดเพิ่ม Magazine ที่ Rack Map ก่อน / Shelf $shelf exceeds current capacity ({$sp}{$limit}) for $sheet. Add a Magazine first.";
+            } else {
+                $taken = $pdo->prepare('SELECT id FROM boards WHERE sheet = ? AND shelf_no = ? AND id <> ?');
+                $taken->execute([$sheet, $shelfNo, $id]);
+                if ($taken->fetch()) {
+                    $formErrors[] = "บันทึกข้อมูลลงชั้นวาง $shelf ไม่ได้ เนื่องจากมีบอร์ดวางอยู่ในชั้นนี้แล้วในชีต $sheet กรุณาเลือกชั้นวางอื่นที่ว่างอยู่ / Shelf $shelf is already occupied in $sheet. Please select an empty shelf.";
+                }
+            }
+        }
+    }
+
+    // Validate fields
+    if ($product === '' || strlen($product) > 40) {
+        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้กรอก Product Model (สูงสุดไม่เกิน 40 ตัวอักษร) กรุณาระบุรหัสรุ่นบอร์ด / Product Model is required (max 40 characters).';
+    }
+    if ($side === '' || !in_array($side, BOARD_SIDES, true)) {
+        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกด้านของบอร์ด (Side) กรุณาเลือก F-Side หรือ B-Side / Please select a Board Side (F-Side or B-Side).';
+    }
+    if ($type === '' || !in_array($type, BOARD_TYPES, true)) {
+        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกประเภทบอร์ด (Board Type) กรุณาเลือกประเภทบอร์ดจากรายการ / Please select a valid Board Type.';
+    }
+    if (!$noClass && !in_array($status, ['G', 'D', 'GD'], true)) {
+        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกสถานะบอร์ด (Board Classification) กรุณาเลือก Master [G], Master [D] หรือ [G+D] Mixed / Please select a Board Classification.';
+    }
+    if ($pcs !== '' && !in_array($pcs, OTHER_OPTIONS, true)) {
+        $formErrors[] = 'ตัวเลือก Other ไม่ถูกต้อง กรุณาเลือก Bare, Bad Mark หรือเว้นว่างไว้ / Invalid Other value.';
+    }
+    if (in_array($status, ['D', 'GD'], true) && $defects === '') {
+        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากบอร์ดสถานะ Defect ต้องระบุอาการเสีย กรุณาเลือกข้อบกพร่องอย่างน้อย 1 รายการในแผง Select Defects / Please select at least 1 defect for Defect classification.';
+    }
+
+    // System-wide duplicate check on edit (no longer scoped to a single sheet)
+    if (!$formErrors && $id > 0) {
+        $dup = $pdo->prepare('SELECT id, zone, sheet FROM boards WHERE code = ? AND id <> ? LIMIT 1');
+        $dup->execute([$code, $id]);
+        if ($dupRow = $dup->fetch()) {
+            $dupSheet = (string)$dupRow['sheet'];
+            $dupZone  = (string)($dupRow['zone'] ?: sheetZone($dupSheet));
+            $formErrors[] = "บันทึกการแก้ไขไม่ได้ เนื่องจาก Number Code \"$code\" ซ้ำกับรายการที่มีอยู่แล้วในระบบ (โซน $dupZone · ชีต $dupSheet) กรุณาระบุรหัสอื่นที่ไม่ซ้ำ / Number Code \"$code\" already exists in the system (Zone $dupZone · Sheet $dupSheet). Please enter a unique code.";
+        }
+    }
+
+    // Pre-check monthly Number Code capacity for new records before attempting DB write
+    if (!$formErrors && $id === 0) {
+        try {
+            $code = nextNumberCode($pdo);
+        } catch (RuntimeException $e) {
+            $formErrors[] = $e->getMessage();
+        }
+    }
+
+    if ($formErrors) {
+        return [
+            'success'     => false,
+            'status_code' => 422,
+            'errors'      => $formErrors,
+            'message'     => '',
+            'id'          => $id,
+            'code'        => $code,
+            'shelf'       => $shelf,
+            'sheet'       => $sheet,
+            'zone'        => $zone,
+            'edit_row'    => [
+                'id' => $id, 'code' => $code, 'shelf' => $shelf, 'product' => $product, 'side' => $side,
+                'board_type' => $type, 'status' => $status, 'pcs_status' => $pcs, 'defects' => $defects,
+            ],
+        ];
+    }
+
+    $driver  = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $hasLock = false;
+
+    try {
+        if ($id > 0) {
+            $st = $pdo->prepare(
+                'UPDATE boards
+                 SET zone=?, code=?, shelf=?, shelf_no=?, mag_slot=?, product=?, side=?, board_type=?, status=?, pcs_status=?, defects=?
+                 WHERE id=? AND sheet=?'
+            );
+            $st->execute([
+                $zone,
+                $code,
+                $shelf,
+                $shelfNo,
+                magazineSlotText($sheet, (int)$shelfNo),
+                $product,
+                $side,
+                $type,
+                $status,
+                $pcs,
+                $defects,
+                $id,
+                $sheet,
+            ]);
+            $savedId = $id;
+            $message = "อัปเดตข้อมูลบอร์ด $code (โซน $zone · ชีต $sheet, Shelf: $shelf) เรียบร้อยแล้ว / Record $code updated.";
+        } else {
+            // Serialize Number Code generation + INSERT across concurrent requests
+            if ($driver === 'mysql') {
+                $lockSt  = $pdo->query("SELECT GET_LOCK('aoi_board_number_code', 5)");
+                $hasLock = ((int)$lockSt->fetchColumn() === 1);
+            }
+
+            $ins = $pdo->prepare(
+                'INSERT INTO boards (zone, sheet, code, shelf, shelf_no, mag_slot, product, side, board_type, status, pcs_status, defects, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            );
+            $chkCode = $pdo->prepare('SELECT id FROM boards WHERE code = ? LIMIT 1');
+
+            for ($try = 1; ; $try++) {
+                try {
+                    $code = nextNumberCode($pdo);
+                    $chkCode->execute([$code]);
+                    if ($chkCode->fetch()) {
+                        if ($try >= 5) {
+                            throw new RuntimeException('ไม่สามารถออก Number Code ได้เนื่องจากมีการบันทึกพร้อมกันจำนวนมาก กรุณากดบันทึกอีกครั้ง / Could not allocate a unique Number Code due to concurrent saves. Please retry.');
+                        }
+                        continue;
+                    }
+                    $ins->execute([
+                        $zone,
+                        $sheet,
+                        $code,
+                        $shelf,
+                        $shelfNo,
+                        magazineSlotText($sheet, (int)$shelfNo),
+                        $product,
+                        $side,
+                        $type,
+                        $status,
+                        $pcs,
+                        $defects,
+                        date('Y-m-d H:i:s'),
+                    ]);
+                    $savedId = (int)$pdo->lastInsertId();
+                    break;
+                } catch (PDOException $e) {
+                    $msg = $e->getMessage();
+                    $shelfClash = str_contains($msg, 'uq_sheet_shelf') || str_contains($msg, 'boards.sheet, boards.shelf_no');
+                    $isDupKey   = (($e->errorInfo[1] ?? 0) === 1062) || str_contains($msg, 'UNIQUE constraint failed');
+                    if (!$isDupKey || $shelfClash || $try >= 5) {
+                        throw $e;
+                    }
+                }
+            }
+            $message = "บันทึกข้อมูลลงโซน $zone · ชีต $sheet เรียบร้อยแล้ว (Number Code: $code, Shelf: $shelf) / Record saved to Zone $zone · Sheet $sheet.";
+        }
+
+        return [
+            'success'     => true,
+            'status_code' => 200,
+            'errors'      => [],
+            'message'     => $message,
+            'id'          => $savedId,
+            'code'        => $code,
+            'shelf'       => $shelf,
+            'sheet'       => $sheet,
+            'zone'        => $zone,
+            'edit_row'    => [],
+        ];
+    } catch (RuntimeException $e) {
+        return [
+            'success'     => false,
+            'status_code' => 422,
+            'errors'      => [$e->getMessage()],
+            'message'     => '',
+            'id'          => $id,
+            'code'        => $code,
+            'shelf'       => $shelf,
+            'sheet'       => $sheet,
+            'zone'        => $zone,
+            'edit_row'    => [
+                'id' => $id, 'code' => $code, 'shelf' => $shelf, 'product' => $product, 'side' => $side,
+                'board_type' => $type, 'status' => $status, 'pcs_status' => $pcs, 'defects' => $defects,
+            ],
+        ];
+    } catch (PDOException $e) {
+        $msg = $e->getMessage();
+        $shelfClash = str_contains($msg, 'uq_sheet_shelf') || str_contains($msg, 'boards.sheet, boards.shelf_no');
+        $codeClash  = str_contains($msg, 'uq_code') || str_contains($msg, 'uq_sheet_code') || str_contains($msg, 'boards.code');
+        $isDupKey   = (($e->errorInfo[1] ?? 0) === 1062) || str_contains($msg, 'UNIQUE constraint failed');
+
+        if ($isDupKey && $shelfClash) {
+            $err = "บันทึกข้อมูลลงชั้นวาง $shelf ไม่ได้ เนื่องจากมีผู้ใช้งานอื่นเพิ่งบันทึกชั้นวางนี้ไป กรุณาเลือกชั้นวางอื่นที่ว่างอยู่ / Shelf $shelf was just taken by another user. Please select another empty shelf.";
+            $statusCode = 422;
+        } elseif ($isDupKey && $codeClash) {
+            $err = "บันทึกไม่ได้ เนื่องจาก Number Code \"$code\" ซ้ำกับรายการที่มีอยู่แล้วในระบบ กรุณาลองบันทึกใหม่อีกครั้ง / Number Code \"$code\" already exists in the system. Please retry.";
+            $statusCode = 422;
+        } else {
+            $err = 'เกิดข้อผิดพลาดของฐานข้อมูล ไม่สามารถบันทึกได้ กรุณาลองใหม่อีกครั้ง (' . $e->getMessage() . ') / Database error occurred while saving.';
+            $statusCode = 500;
+        }
+
+        return [
+            'success'     => false,
+            'status_code' => $statusCode,
+            'errors'      => [$err],
+            'message'     => '',
+            'id'          => $id,
+            'code'        => $code,
+            'shelf'       => $shelf,
+            'sheet'       => $sheet,
+            'zone'        => $zone,
+            'edit_row'    => [
+                'id' => $id, 'code' => $code, 'shelf' => $shelf, 'product' => $product, 'side' => $side,
+                'board_type' => $type, 'status' => $status, 'pcs_status' => $pcs, 'defects' => $defects,
+            ],
+        ];
+    } finally {
+        if ($hasLock) {
+            try {
+                $pdo->query("DO RELEASE_LOCK('aoi_board_number_code')");
+            } catch (Throwable $_) {
+                // ignore release errors on disconnect
+            }
+        }
+    }
+}
+
+/**
+ * Run idempotent schema migrations on an active PDO handle (MySQL / SQLite).
+ * Separated into a callable function so automated tests and CLI tools can invoke it directly.
+ */
+function runMigrations(PDO $pdo): void
+{
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+    if ($driver === 'sqlite') {
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS boards (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                zone        VARCHAR(30)  NOT NULL DEFAULT "General",
+                sheet      VARCHAR(30)  NOT NULL,
+                code       VARCHAR(40)  NOT NULL,
+                shelf      VARCHAR(10)  NOT NULL,
+                shelf_no   INTEGER      NOT NULL,
+                product    VARCHAR(40)  NOT NULL,
+                board_type VARCHAR(30)  NOT NULL DEFAULT "Standard PCB",
+                status     VARCHAR(2)   NOT NULL,
+                pcs_status VARCHAR(100) NOT NULL DEFAULT "",
+                side       VARCHAR(10)  NOT NULL DEFAULT "Top",
+                defects    TEXT         NULL,
+                mag_slot   VARCHAR(60)  NULL,
+                created_at DATETIME     NOT NULL
+            )
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS sheet_magazines (
+                sheet     VARCHAR(30) NOT NULL PRIMARY KEY,
+                magazines INTEGER     NOT NULL DEFAULT 1
+            )
+        ');
+    } else {
+        // Ensure tables exist (MySQL)
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS boards (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                zone       VARCHAR(30)  NOT NULL DEFAULT "General",
+                sheet      VARCHAR(30)  NOT NULL,
+                code       VARCHAR(40)  NOT NULL,
+                shelf      VARCHAR(10)  NOT NULL,
+                shelf_no   INT          NOT NULL,
+                product    VARCHAR(40)  NOT NULL,
+                board_type VARCHAR(30)  NOT NULL DEFAULT "Standard PCB",
+                status     VARCHAR(2)   NOT NULL,
+                pcs_status VARCHAR(100) NOT NULL DEFAULT "",
+                created_at DATETIME     NOT NULL,
+                UNIQUE KEY uq_code (code),
+                UNIQUE KEY uq_sheet_shelf (sheet, shelf_no),
+                KEY idx_zone_sheet (zone, sheet)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS sheet_magazines (
+                sheet     VARCHAR(30) NOT NULL PRIMARY KEY,
+                magazines INT         NOT NULL DEFAULT 1
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+    }
+
+    // Migration 1: add 'zone' column (existing rows default to 'General', idempotent)
+    if ($driver === 'sqlite') {
+        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
+        $hasZone = in_array('zone', $cols, true);
+        if (!$hasZone) {
+            $pdo->exec("ALTER TABLE boards ADD COLUMN zone VARCHAR(30) NOT NULL DEFAULT 'General'");
+        }
+        $pdo->exec("UPDATE boards SET zone = 'General' WHERE zone = '' OR zone IS NULL");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_zone_sheet ON boards (zone, sheet)");
+    } else {
+        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'zone'");
+        $hasZone = (int)$res->fetchColumn() > 0;
+        if (!$hasZone) {
+            $pdo->exec("ALTER TABLE boards ADD COLUMN zone VARCHAR(30) NOT NULL DEFAULT 'General' AFTER id");
+        }
+        $pdo->exec("UPDATE boards SET zone = 'General' WHERE zone = '' OR zone IS NULL");
+
+        $zoneIdx = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'idx_zone_sheet'"
+        )->fetchColumn();
+        if ($zoneIdx === 0) {
+            $pdo->exec('ALTER TABLE boards ADD INDEX idx_zone_sheet (zone, sheet)');
+        }
+    }
+
+    // Migration 2: System-wide unique Number Code -> unique on `code` alone (`uq_code`).
+    // Only added when existing data has no duplicate `code` across sheets; never renumbers existing records.
+    if ($driver === 'sqlite') {
+        $dupCodes = (int)$pdo->query(
+            'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY code HAVING COUNT(*) > 1) d'
+        )->fetchColumn();
+        if ($dupCodes === 0) {
+            $pdo->exec('DROP INDEX IF EXISTS uq_sheet_code');
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_code ON boards (code)');
+        } else {
+            error_log("AOI: $dupCodes Number Code(s) are duplicated across sheets; uq_code not added until duplicates are resolved.");
+        }
+        $dupShelves = (int)$pdo->query(
+            'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1) d'
+        )->fetchColumn();
+        if ($dupShelves === 0) {
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_sheet_shelf ON boards (sheet, shelf_no)');
+        }
+    } else {
+        $codeIdx = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_code'"
+        )->fetchColumn();
+        if ($codeIdx === 0) {
+            $dupCodes = (int)$pdo->query(
+                'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY code HAVING COUNT(*) > 1) d'
+            )->fetchColumn();
+            if ($dupCodes === 0) {
+                $oldSheetCodeIdx = (int)$pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.STATISTICS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_code'"
+                )->fetchColumn();
+                if ($oldSheetCodeIdx > 0) {
+                    $pdo->exec('ALTER TABLE boards DROP INDEX uq_sheet_code, ADD UNIQUE KEY uq_code (code)');
+                } else {
+                    $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_code (code)');
+                }
+            } else {
+                error_log("AOI: $dupCodes Number Code(s) are duplicated across sheets; uq_code not added until duplicates are resolved (run scripts/check-duplicate-codes.php).");
+            }
+        }
+
+        // Migration 3: one shelf holds one record per sheet -> unique on (sheet, shelf_no).
+        $shelfIdx = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_shelf'"
+        )->fetchColumn();
+        if ($shelfIdx === 0) {
+            $dupShelves = (int)$pdo->query(
+                'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1) d'
+            )->fetchColumn();
+            if ($dupShelves === 0) {
+                $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_sheet_shelf (sheet, shelf_no)');
+            } else {
+                error_log("AOI: $dupShelves shelf(s) hold more than one record; uq_sheet_shelf not added until duplicates are fixed.");
+            }
+        }
+    }
+
+    // Migration 4: add 'side' column (MySQL/SQLite compatible check)
+    if ($driver === 'sqlite') {
+        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
+        $hasSide = in_array('side', $cols, true);
+    } else {
+        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'side'");
+        $hasSide = (int)$res->fetchColumn() > 0;
+    }
+    if (!$hasSide) {
+        $pdo->exec("ALTER TABLE boards ADD COLUMN side VARCHAR(10) NOT NULL DEFAULT 'Top'");
+    }
+
+    // Migration 5: add 'defects' column (MySQL/SQLite compatible check)
+    if ($driver === 'sqlite') {
+        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
+        $hasDefects = in_array('defects', $cols, true);
+    } else {
+        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'defects'");
+        $hasDefects = (int)$res->fetchColumn() > 0;
+    }
+    if (!$hasDefects) {
+        $pdo->exec("ALTER TABLE boards ADD COLUMN defects TEXT NULL");
+    }
+
+    // Migration 6: add 'mag_slot' column
+    if ($driver === 'sqlite') {
+        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
+        $hasMagSlot = in_array('mag_slot', $cols, true);
+    } else {
+        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'mag_slot'");
+        $hasMagSlot = (int)$res->fetchColumn() > 0;
+    }
+    if (!$hasMagSlot) {
+        $pdo->exec("ALTER TABLE boards ADD COLUMN mag_slot VARCHAR(60) NULL");
+    }
 }
 
 // ──────────────────────────────────────────────
@@ -338,100 +957,7 @@ function db(): PDO
         exit('Database "' . h($name) . '" is not available: ' . h($e->getMessage()));
     }
 
-    // Ensure table exists
-    $pdo->exec('
-        CREATE TABLE IF NOT EXISTS boards (
-            id         INT AUTO_INCREMENT PRIMARY KEY,
-            sheet      VARCHAR(30)  NOT NULL,
-            code       VARCHAR(40)  NOT NULL,
-            shelf      VARCHAR(10)  NOT NULL,
-            shelf_no   INT          NOT NULL,
-            product    VARCHAR(40)  NOT NULL,
-            board_type VARCHAR(30)  NOT NULL DEFAULT "Standard PCB",
-            status     VARCHAR(2)   NOT NULL,
-            pcs_status VARCHAR(100) NOT NULL DEFAULT "",
-            created_at DATETIME     NOT NULL,
-            UNIQUE KEY uq_sheet_code (sheet, code),
-            UNIQUE KEY uq_sheet_shelf (sheet, shelf_no)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ');
-
-    // Magazines per sheet (absent row = 1 Magazine)
-    $pdo->exec('
-        CREATE TABLE IF NOT EXISTS sheet_magazines (
-            sheet     VARCHAR(30) NOT NULL PRIMARY KEY,
-            magazines INT         NOT NULL DEFAULT 1
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ');
-
-    // Migration: code was UNIQUE on its own; running numbers are now per sheet,
-    // so the same code may exist in different sheets -> unique on (sheet, code).
-    $oldIdx = $pdo->query(
-        "SELECT COUNT(*) FROM information_schema.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_code'"
-    )->fetchColumn();
-    if ((int)$oldIdx > 0) {
-        $pdo->exec('ALTER TABLE boards DROP INDEX uq_code, ADD UNIQUE KEY uq_sheet_code (sheet, code)');
-    }
-
-    // Migration: one shelf holds one record per sheet -> unique on (sheet, shelf_no).
-    // Only added when existing data has no duplicates, otherwise the app-level check still applies.
-    $shelfIdx = $pdo->query(
-        "SELECT COUNT(*) FROM information_schema.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND INDEX_NAME = 'uq_sheet_shelf'"
-    )->fetchColumn();
-    if ((int)$shelfIdx === 0) {
-        $dupShelves = (int)$pdo->query(
-            'SELECT COUNT(*) FROM (SELECT 1 FROM boards GROUP BY sheet, shelf_no HAVING COUNT(*) > 1) d'
-        )->fetchColumn();
-        if ($dupShelves === 0) {
-            $pdo->exec('ALTER TABLE boards ADD UNIQUE KEY uq_sheet_shelf (sheet, shelf_no)');
-        } else {
-            error_log("AOI: $dupShelves shelf(s) hold more than one record; uq_sheet_shelf not added until duplicates are fixed.");
-        }
-    }
-
-    // Migration: add 'side' column (MySQL/SQLite compatible check)
-    $hasSide = false;
-    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-    if ($driver === 'sqlite') {
-        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
-        $hasSide = in_array('side', $cols, true);
-    } else {
-        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
-                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'side'");
-        $hasSide = (int)$res->fetchColumn() > 0;
-    }
-    if (!$hasSide) {
-        $pdo->exec("ALTER TABLE boards ADD COLUMN side VARCHAR(10) NOT NULL DEFAULT 'Top'");
-    }
-
-    // Migration: add 'defects' column (MySQL/SQLite compatible check)
-    $hasDefects = false;
-    if ($driver === 'sqlite') {
-        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
-        $hasDefects = in_array('defects', $cols, true);
-    } else {
-        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
-                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'defects'");
-        $hasDefects = (int)$res->fetchColumn() > 0;
-    }
-    if (!$hasDefects) {
-        $pdo->exec("ALTER TABLE boards ADD COLUMN defects TEXT NULL");
-    }
-
-    // Migration: add 'mag_slot' column. Old rows stay NULL (shown in the legacy format); new/edited rows store e.g. "B200_Gen Magazine 5th · Slot 10".
-    if ($driver === 'sqlite') {
-        $cols = $pdo->query("PRAGMA table_info(boards)")->fetchAll(PDO::FETCH_COLUMN, 1);
-        $hasMagSlot = in_array('mag_slot', $cols, true);
-    } else {
-        $res = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
-                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'boards' AND COLUMN_NAME = 'mag_slot'");
-        $hasMagSlot = (int)$res->fetchColumn() > 0;
-    }
-    if (!$hasMagSlot) {
-        $pdo->exec("ALTER TABLE boards ADD COLUMN mag_slot VARCHAR(60) NULL");
-    }
+    runMigrations($pdo);
 
     return $pdo;
 }
