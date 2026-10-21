@@ -62,6 +62,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error  = $result['error'];
             $status = !adminConfigured() ? 503 : ($result['locked'] > 0 ? 429 : 401);
         }
+    } elseif ($action === 'ip_login') {
+        if (!$csrfOk) {
+            $error  = ADMIN_FORM_EXPIRED_ERROR;
+            $status = 403;
+        } elseif (isClientIpAllowed() && adminConfig()['mode'] === 'ip_or_password') {
+            unset($_SESSION['aoi_admin_ip_signed_out']);
+            $_SESSION['aoi_admin'] = ['since' => time(), 'seen' => time(), 'fp' => adminHashFingerprint()];
+            header('Location: ' . $manageUrl, true, 303);
+            exit;
+        } else {
+            $error  = ADMIN_IP_NOT_ALLOWED_ERROR;
+            $status = 403;
+        }
     } else {
         $error  = 'ทำรายการไม่ได้ เนื่องจากคำสั่งไม่ถูกต้อง กรุณาเปิดหน้านี้ใหม่จากปุ่มในหน้าหลัก / Unknown action. Please open this page again from the main page.';
         $status = 400;
@@ -78,6 +91,12 @@ if ($lockLeft > 0 && $error === '') {
     $error = adminLockedMessage($lockLeft);
 }
 http_response_code($status);
+
+// Auto-redirect if already signed in (including auto-login via allowed IP)
+if ($signedIn && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    header('Location: ' . $manageUrl, true, 303);
+    exit;
+}
 
 $pageTitle = 'เข้าสู่ระบบผู้ดูแล / Administrator Sign-in | AOI';
 ?>
@@ -106,7 +125,8 @@ $pageTitle = 'เข้าสู่ระบบผู้ดูแล / Administr
           <div class="gm-error" role="alert"><?= h(ADMIN_NOT_CONFIGURED_ERROR) ?></div>
           <p class="tm-lead">ขั้นตอนตั้งค่า (สำหรับผู้ดูแลเซิร์ฟเวอร์) / Setup for the server administrator:</p>
           <ol class="tm-steps">
-            <li>สร้างแฮชของรหัสผ่าน ระบบจะถามรหัสผ่านโดยไม่แสดงบนจอและไม่ค้างใน history / Create the password hash (the password is asked for, never echoed):
+            <li>ตั้งค่ารหัสผ่านหรือ IP ในไฟล์ <code class="tm-code">config/admin.php</code> ได้โดยตรง / Set password or allowed IPs directly in <code>config/admin.php</code></li>
+            <li>หรือสร้างแฮชของรหัสผ่าน ระบบจะถามรหัสผ่านโดยไม่แสดงบนจอและไม่ค้างใน history / Or create the password hash (the password is asked for, never echoed):
               <code class="tm-code">docker exec -it php_app_web php /var/www/html/aoi-web-php/scripts/admin-password-hash.php</code></li>
             <li>ใส่บรรทัดที่สคริปต์พิมพ์ออกมาใน <code>docker-compose.yml</code> ใต้ <code>services → web → environment</code> (ใน compose ต้องเขียน <code>$</code> เป็น <code>$$</code>) / Add the printed line under <code>services → web → environment</code> (compose needs <code>$$</code> for every <code>$</code>):
               <code class="tm-code">AOI_ADMIN_PASSWORD_HASH: "$$2y$$10$$…"</code></li>

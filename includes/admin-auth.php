@@ -3,14 +3,16 @@
  * Administrator gate for the Zone & Sheet manager (admin.php, api/topology.php, header buttons).
  * Regular users never sign in: viewing and saving board records stay open exactly as before.
  *
- * - One shared administrator password, stored only as a password_hash() in the environment variable
- *   AOI_ADMIN_PASSWORD_HASH (create it with: php scripts/admin-password-hash.php). While it is unset or not a
- *   valid hash every admin page and endpoint stays closed (fail closed) and explains how to set it.
- * - Sign-in regenerates the session id. The admin session ends after ADMIN_IDLE_SECONDS without a request,
- *   ADMIN_MAX_SECONDS after sign-in, on sign-out, or as soon as the configured hash changes.
- * - Wrong passwords: each one waits ADMIN_FAIL_DELAY_US; ADMIN_MAX_FAILURES within ADMIN_FAILURE_WINDOW lock
- *   sign-in for ADMIN_LOCK_SECONDS, counted per session and per client IP (REMOTE_ADDR; X-Forwarded-For is not
- *   trusted). The IP counter is a small JSON file per IP in the PHP temp dir, see adminThrottleFile().
+ * Configuration sources:
+ * - config/admin.php: custom admin password (plain text or password_hash), allowed IPs (single IP, wildcard, CIDR),
+ *   and auth mode ('ip_or_password', 'ip_and_password', 'password_only').
+ * - AOI_ADMIN_PASSWORD_HASH: environment variable fallback containing a password_hash().
+ *
+ * Sign-in regenerates the session id. The admin session ends after ADMIN_IDLE_SECONDS without a request,
+ * ADMIN_MAX_SECONDS after sign-in, on sign-out, or as soon as the configured password/hash changes.
+ *
+ * Wrong passwords: each one waits ADMIN_FAIL_DELAY_US; ADMIN_MAX_FAILURES within ADMIN_FAILURE_WINDOW lock
+ * sign-in for ADMIN_LOCK_SECONDS, counted per session and per client IP (REMOTE_ADDR).
  */
 
 declare(strict_types=1);
@@ -24,30 +26,159 @@ const ADMIN_FAIL_DELAY_US  = 500000;  // 0.5 s pause after every wrong password
 const ADMIN_PASSWORD_MAX   = 1024;    // longer input is refused before hashing
 
 // UX Copy (What happened + Why + How to fix, Thai / English)
-const ADMIN_NOT_CONFIGURED_ERROR = 'หน้าจัดการโซนและชีตยังปิดอยู่ เนื่องจากเซิร์ฟเวอร์ยังไม่ได้ตั้งค่ารหัสผ่านผู้ดูแล (ตัวแปร AOI_ADMIN_PASSWORD_HASH) กรุณาให้ผู้ดูแลเซิร์ฟเวอร์ตั้งค่าตามขั้นตอนใน README หัวข้อ "ผู้ดูแลระบบ" / Zone & sheet management is disabled because the administrator password (AOI_ADMIN_PASSWORD_HASH) is not configured on the server. Ask the server administrator to set it up as described in the README ("Administrator").';
+const ADMIN_NOT_CONFIGURED_ERROR = 'หน้าจัดการโซนและชีตยังปิดอยู่ เนื่องจากเซิร์ฟเวอร์ยังไม่ได้ตั้งค่ารหัสผ่านผู้ดูแล (ตัวแปร AOI_ADMIN_PASSWORD_HASH หรือไฟล์ config/admin.php) กรุณาให้ผู้ดูแลเซิร์ฟเวอร์ตั้งค่าตามขั้นตอนใน README หัวข้อ "ผู้ดูแลระบบ" / Zone & sheet management is disabled because the administrator password (AOI_ADMIN_PASSWORD_HASH) is not configured on the server. Ask the server administrator to set it up as described in the README ("Administrator").';
 const ADMIN_SIGN_IN_REQUIRED_ERROR = 'ทำรายการนี้ไม่ได้ เนื่องจากยังไม่ได้เข้าสู่ระบบผู้ดูแล กรุณาเข้าสู่ระบบผู้ดูแลแล้วลองใหม่ / This action needs an administrator. Please sign in as administrator and try again.';
 const ADMIN_SESSION_EXPIRED_ERROR = 'ทำรายการนี้ไม่ได้ เนื่องจากเซสชันผู้ดูแลหมดอายุ (ไม่มีการใช้งานเกิน 30 นาที หรือเข้าสู่ระบบนานเกิน 8 ชั่วโมง) กรุณาเข้าสู่ระบบอีกครั้ง / Your administrator session expired (30 minutes without activity or 8 hours since sign-in). Please sign in again.';
 const ADMIN_EMPTY_PASSWORD_ERROR = 'เข้าสู่ระบบไม่ได้ เนื่องจากยังไม่ได้กรอกรหัสผ่าน กรุณากรอกรหัสผ่านผู้ดูแลแล้วกดเข้าสู่ระบบ / Please enter the administrator password, then select Sign in.';
 const ADMIN_FORM_EXPIRED_ERROR = 'เข้าสู่ระบบไม่สำเร็จ เนื่องจากหน้านี้เปิดค้างไว้จนโทเค็นความปลอดภัยหมดอายุ กรุณากรอกรหัสผ่านแล้วลองอีกครั้ง / Sign-in failed because this page was open too long and its security token expired. Please enter the password and try again.';
+const ADMIN_IP_NOT_ALLOWED_ERROR = 'ทำรายการไม่ได้ เนื่องจาก IP ของคุณไม่อยู่ในรายการที่อนุญาตให้เข้าถึงระบบผู้ดูแล / Access denied: your IP is not in the allowed administrator list.';
 
-/** The configured hash ('' when unset) */
-function adminPasswordHash(): string
+/** Load administrator config from config/admin.php if present */
+function adminConfig(bool $refresh = false): array
+{
+    static $config = null;
+    if ($config !== null && !$refresh) {
+        return $config;
+    }
+    $file = __DIR__ . '/../config/admin.php';
+    if (is_file($file)) {
+        $data = include $file;
+        if (is_array($data)) {
+            $config = [
+                'admin_password' => is_string($data['admin_password'] ?? null) ? trim($data['admin_password']) : '',
+                'allowed_ips'    => is_array($data['allowed_ips'] ?? null) ? array_values(array_filter($data['allowed_ips'], 'is_string')) : [],
+                'mode'           => in_array($data['mode'] ?? '', ['ip_or_password', 'ip_and_password', 'password_only'], true) ? $data['mode'] : 'ip_or_password',
+            ];
+            return $config;
+        }
+    }
+    $config = [
+        'admin_password' => '',
+        'allowed_ips'    => [],
+        'mode'           => 'ip_or_password',
+    ];
+    return $config;
+}
+
+/** Check if an IP matches a pattern (exact IP, wildcard, or CIDR) */
+function ipMatchesPattern(string $ip, string $pattern): bool
+{
+    $pattern = trim($pattern);
+    $ip      = trim($ip);
+    if ($pattern === '' || $ip === '') {
+        return false;
+    }
+
+    // Exact match (IPv4 or IPv6)
+    if ($ip === $pattern) {
+        return true;
+    }
+
+    // Wildcard match (e.g. 192.168.1.*)
+    if (str_contains($pattern, '*') && fnmatch($pattern, $ip)) {
+        return true;
+    }
+
+    // Subnet CIDR match (e.g. 192.168.1.0/24 or 10.0.0.0/8)
+    if (str_contains($pattern, '/')) {
+        [$subnet, $bits] = explode('/', $pattern, 2);
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $mask = (int)$bits;
+            if ($mask >= 0 && $mask <= 32) {
+                $ipLong     = ip2long($ip);
+                $subnetLong = ip2long($subnet);
+                $maskLong   = $mask === 0 ? 0 : (~0 << (32 - $mask));
+                return ($ipLong & $maskLong) === ($subnetLong & $maskLong);
+            }
+        }
+    }
+
+    return false;
+}
+
+/** Candidate client IP addresses from connection and proxy headers */
+function clientIpCandidates(): array
+{
+    $ips = [];
+    if (!empty($_SERVER['REMOTE_ADDR'])) {
+        $ips[] = trim((string)$_SERVER['REMOTE_ADDR']);
+    }
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        foreach (explode(',', (string)$_SERVER['HTTP_X_FORWARDED_FOR']) as $p) {
+            $p = trim($p);
+            if ($p !== '' && filter_var($p, FILTER_VALIDATE_IP)) {
+                $ips[] = $p;
+            }
+        }
+    }
+    if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        $rip = trim((string)$_SERVER['HTTP_X_REAL_IP']);
+        if ($rip !== '' && filter_var($rip, FILTER_VALIDATE_IP)) {
+            $ips[] = $rip;
+        }
+    }
+    return array_values(array_unique($ips));
+}
+
+/** Check if client IP is in the allowed list */
+function isClientIpAllowed(?string $ip = null): bool
+{
+    $cfg     = adminConfig();
+    $allowed = $cfg['allowed_ips'] ?? [];
+    if (empty($allowed)) {
+        return false;
+    }
+    $candidates = $ip !== null ? [$ip] : clientIpCandidates();
+    foreach ($candidates as $cand) {
+        if ($cand === '') {
+            continue;
+        }
+        foreach ($allowed as $pattern) {
+            if (is_string($pattern) && ipMatchesPattern($cand, $pattern)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** The configured hash from environment variable ('' when unset) */
+function adminPasswordHashFromEnv(): string
 {
     $hash = getenv('AOI_ADMIN_PASSWORD_HASH');
     return is_string($hash) ? trim($hash) : '';
 }
 
-/** Is a usable password hash configured? Anything else keeps the admin features closed. */
+/** The configured hash or password string ('' when unset) */
+function adminPasswordHash(): string
+{
+    $cfg = adminConfig();
+    if ($cfg['admin_password'] !== '') {
+        return $cfg['admin_password'];
+    }
+    return adminPasswordHashFromEnv();
+}
+
+/** Is a usable password hash or config configured? Anything else keeps the admin features closed. */
 function adminConfigured(): bool
 {
-    $hash = adminPasswordHash();
+    $cfg = adminConfig();
+    if ($cfg['admin_password'] !== '') {
+        return true;
+    }
+    if ($cfg['mode'] === 'ip_or_password' && isClientIpAllowed()) {
+        return true;
+    }
+    $hash = adminPasswordHashFromEnv();
     return $hash !== '' && password_get_info($hash)['algo'] !== null;
 }
 
-/** Ties a session to the hash it signed in with: changing AOI_ADMIN_PASSWORD_HASH signs everybody out */
+/** Ties a session to the hash it signed in with: changing AOI_ADMIN_PASSWORD_HASH or config password signs everybody out */
 function adminHashFingerprint(): string
 {
-    return hash('sha256', adminPasswordHash());
+    $cfg = adminConfig();
+    $key = $cfg['admin_password'] !== '' ? $cfg['admin_password'] : adminPasswordHashFromEnv();
+    return hash('sha256', $key);
 }
 
 /**
@@ -59,6 +190,21 @@ function adminStatus(): string
     if (!adminConfigured()) {
         return 'unconfigured';
     }
+
+    $cfg       = adminConfig();
+    $mode      = $cfg['mode'];
+    $ipAllowed = isClientIpAllowed();
+
+    // Mode: ip_and_password -> IP must be allowed
+    if ($mode === 'ip_and_password' && !$ipAllowed) {
+        return 'none';
+    }
+
+    // Mode: ip_or_password -> IP auto-login if client IP is in allowed_ips
+    if ($mode === 'ip_or_password' && $ipAllowed) {
+        return 'ok';
+    }
+
     $s = $_SESSION['aoi_admin'] ?? null;
     if (!is_array($s)) {
         return 'none';
@@ -79,7 +225,7 @@ function isAdmin(): bool
     return adminStatus() === 'ok';
 }
 
-/** Client address used for the sign-in throttle */
+/** Client address used for IP matching and sign-in throttle */
 function clientIp(): string
 {
     return (string)($_SERVER['REMOTE_ADDR'] ?? '');
@@ -110,6 +256,30 @@ function requireAdminJson(): void
 // ──────────────────────────────────────────────
 
 /**
+ * Verify $password against config/admin.php or AOI_ADMIN_PASSWORD_HASH.
+ */
+function adminVerifyPassword(string $password): bool
+{
+    $cfg     = adminConfig();
+    $cfgPass = $cfg['admin_password'];
+    if ($cfgPass !== '') {
+        // If config password is a password hash ($2y$, $argon2id, etc.)
+        if (password_get_info($cfgPass)['algo'] !== null) {
+            return password_verify($password, $cfgPass);
+        }
+        // Plain text comparison (timing-safe)
+        return hash_equals($cfgPass, $password);
+    }
+
+    $envHash = adminPasswordHashFromEnv();
+    if ($envHash !== '' && password_get_info($envHash)['algo'] !== null) {
+        return password_verify($password, $envHash);
+    }
+
+    return false;
+}
+
+/**
  * Check $password and sign in.
  * @return array{ok: bool, error: string, locked: int} locked = seconds until sign-in may be tried again (0 = not locked)
  */
@@ -118,8 +288,14 @@ function adminSignIn(string $password): array
     if (!adminConfigured()) {
         return ['ok' => false, 'error' => ADMIN_NOT_CONFIGURED_ERROR, 'locked' => 0];
     }
+    $cfg = adminConfig();
+    $ip  = clientIp();
+
+    if ($cfg['mode'] === 'ip_and_password' && !isClientIpAllowed($ip)) {
+        return ['ok' => false, 'error' => ADMIN_IP_NOT_ALLOWED_ERROR, 'locked' => 0];
+    }
+
     $now      = time();
-    $ip       = clientIp();
     $lockLeft = adminLockLeft();
     if ($lockLeft > 0) {
         return ['ok' => false, 'error' => adminLockedMessage($lockLeft), 'locked' => $lockLeft];
@@ -128,9 +304,11 @@ function adminSignIn(string $password): array
         return ['ok' => false, 'error' => ADMIN_EMPTY_PASSWORD_ERROR, 'locked' => 0];
     }
 
-    if (strlen($password) <= ADMIN_PASSWORD_MAX && password_verify($password, adminPasswordHash())) {
-        session_regenerate_id(true);   // new id for the privileged session (no fixation)
-        unset($_SESSION['aoi_admin_fails']);
+    if (strlen($password) <= ADMIN_PASSWORD_MAX && adminVerifyPassword($password)) {
+        if (!headers_sent()) {
+            session_regenerate_id(true);   // new id for the privileged session (no fixation)
+        }
+        unset($_SESSION['aoi_admin_fails'], $_SESSION['aoi_admin_ip_signed_out']);
         adminIpThrottle($ip, $now, null);
         $_SESSION['aoi_admin'] = ['since' => $now, 'seen' => $now, 'fp' => adminHashFingerprint()];
         return ['ok' => true, 'error' => '', 'locked' => 0];
@@ -167,7 +345,10 @@ function adminLockedMessage(int $seconds): string
 function adminSignOut(): void
 {
     unset($_SESSION['aoi_admin']);
-    session_regenerate_id(true);
+    $_SESSION['aoi_admin_ip_signed_out'] = true;
+    if (!headers_sent()) {
+        session_regenerate_id(true);
+    }
 }
 
 // ──────────────────────────────────────────────

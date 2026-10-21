@@ -488,7 +488,7 @@ try {
     check('(ข) จุดสีแท็บเดิม / tab colours as before',
         str_contains($page['body'], 'inline-block bg-lime-500') && str_contains($page['body'], 'inline-block bg-emerald-500') && str_contains($page['body'], 'inline-block bg-amber-400') && str_contains($page['body'], 'inline-block bg-yellow-400'));
     check('(ข) ตัวเลือกโซนเดิม / zone selector as before',
-        str_contains($page['body'], '>ทั่วไป / General (4 ชีต)</option>') && str_contains($page['body'], '>AIXZ / โซน AIXZ (ยังไม่มีชีต / No sheets)</option>') && str_contains($page['body'], '>ยานยนต์ / Automotive (ยังไม่มีชีต / No sheets)</option>'));
+        str_contains($page['body'], '>ทั่วไป / General (4 ชีต)</option>') && str_contains($page['body'], '>AIXZ / โซน AIXZ (ยังไม่มีชีต / No sheets)</option>') && str_contains($page['body'], '>Automotive (ยังไม่มีชีต / No sheets)</option>'));
     check('JS ได้ topology จากฐานข้อมูล (window.TOPOLOGY) และไม่มี window.ZONES / SHEETS เดิม',
         str_contains($page['body'], 'window.TOPOLOGY = {"defaultZone":"General"') && !str_contains($page['body'], 'window.ZONES') && !str_contains($page['body'], 'window.SHEETS'));
     check('(ช) ผู้ใช้ทั่วไป: ไม่มีปุ่ม/หน้าจัดการ แต่มีลิงก์เข้าสู่ระบบผู้ดูแล / regular user: no manager, only the sign-in link',

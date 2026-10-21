@@ -54,7 +54,7 @@ const ZONES = [
 const ZONE_META = [
     'General'    => ['label' => 'ทั่วไป / General',    'short' => 'General'],
     'AIXZ'       => ['label' => 'AIXZ / โซน AIXZ',     'short' => 'AIXZ'],
-    'Automotive' => ['label' => 'ยานยนต์ / Automotive', 'short' => 'Automotive'],
+    'Automotive' => ['label' => 'Automotive', 'short' => 'Automotive'],
 ];
 
 // Sheet tabs: key => [label, dot color class]
