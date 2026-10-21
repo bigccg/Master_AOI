@@ -114,7 +114,7 @@ $pageTitle = 'เข้าสู่ระบบผู้ดูแล / Administr
         <span class="gm-badge"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
         <div class="gm-headtext">
           <h1 id="admin-title" class="gm-title">เข้าสู่ระบบผู้ดูแล / Administrator Sign-in</h1>
-          <p class="tm-subtitle">จัดการโซนและชีต / Manage Zones &amp; Sheets</p>
+          <p class="tm-subtitle">จัดการโซนและ Shelf / Manage Zones &amp; Shelves</p>
         </div>
         <a href="<?= h($backUrl) ?>" class="gm-close" aria-label="กลับหน้าหลัก / Back to the main page"><i class="fa-solid fa-xmark" aria-hidden="true"></i></a>
       </header>
@@ -142,7 +142,7 @@ $pageTitle = 'เข้าสู่ระบบผู้ดูแล / Administr
       <div class="gm-form">
         <div class="gm-body">
           <?php if ($error !== ''): ?><div class="gm-error" role="alert"><?= h($error) ?></div><?php endif; ?>
-          <p class="tm-lead">คุณเข้าสู่ระบบผู้ดูแลอยู่แล้ว เปิดหน้าจัดการโซนและชีตได้จากปุ่มด้านล่างหรือปุ่ม "จัดการโซนและชีต" ที่หัวหน้าหลัก / You are already signed in as administrator. Open the manager below or with "Manage Zones &amp; Sheets" in the page header.</p>
+          <p class="tm-lead">คุณเข้าสู่ระบบผู้ดูแลอยู่แล้ว เปิดหน้าจัดการโซนและ Shelf ได้จากปุ่มด้านล่างหรือปุ่ม "จัดการโซนและ Shelf" ที่หัวหน้าหลัก / You are already signed in as administrator. Open the manager below or with "Manage Zones &amp; Shelves" in the page header.</p>
         </div>
         <div class="gm-actions">
           <form method="post" action="admin.php" style="margin-right:auto">
@@ -161,7 +161,7 @@ $pageTitle = 'เข้าสู่ระบบผู้ดูแล / Administr
         <?php foreach ($back as $k => $v): ?><input type="hidden" name="<?= h($k) ?>" value="<?= h($v) ?>"/><?php endforeach; ?>
         <input type="text" name="username" value="admin" autocomplete="username" hidden aria-hidden="true" tabindex="-1"/>
         <div class="gm-body">
-          <p class="tm-lead">ใช้เฉพาะการจัดการโซนและชีต ผู้ใช้ทั่วไปดูและบันทึกข้อมูลบอร์ดได้โดยไม่ต้องเข้าสู่ระบบ / Only needed to manage zones and sheets. Viewing and recording boards needs no sign-in.</p>
+          <p class="tm-lead">ใช้เฉพาะการจัดการโซนและ Shelf ผู้ใช้ทั่วไปดูและบันทึกข้อมูลบอร์ดได้โดยไม่ต้องเข้าสู่ระบบ / Only needed to manage zones and shelves. Viewing and recording boards needs no sign-in.</p>
           <?php if ($error !== ''): ?><div class="gm-error" role="alert" id="admin-error"><?= h($error) ?></div><?php endif; ?>
           <div class="gm-field">
             <label class="gm-label" for="admin-password"><span class="k">01</span><span>รหัสผ่านผู้ดูแล <span class="th">(Administrator password)</span><i class="gm-req">*</i></span></label>

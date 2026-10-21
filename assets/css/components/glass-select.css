@@ -2,7 +2,7 @@
 
 /* ==========================================================================
    Glass dropdowns  (minimal · frosted · Hyprland-style)
-   Targets every <select>: Zone selector (#zone-select), toolbar filters, page-size, Add/Edit modal, Zone & Sheet manager.
+   Targets every <select>: Zone selector (#zone-select), Shelf selector (#sheet-select), toolbar filters, page-size, Add/Edit modal, Zone & Sheet manager.
    - closed state: frosted pill, hairline border, soft emerald focus ring
    - open list  : frosted floating panel (Chrome/Edge 135+ via appearance: base-select;
                    other browsers keep the native list, only the closed state is styled)
@@ -11,7 +11,7 @@
 #filters select,
 :is(#add-entry-modal, #topology-manager) select,
 #page-size-select,
-#zone-select {
+:is(#zone-select, #sheet-select) {
     --g-bg: rgba(255, 255, 255, .62);
     --g-bg-hover: rgba(255, 255, 255, .88);
     --g-line: rgba(148, 163, 184, .38);
@@ -40,14 +40,14 @@
 #filters select:hover:not(:disabled),
 :is(#add-entry-modal, #topology-manager) select:hover:not(:disabled),
 #page-size-select:hover:not(:disabled),
-#zone-select:hover:not(:disabled) {
+:is(#zone-select, #sheet-select):hover:not(:disabled) {
     background-color: var(--g-bg-hover);
     border-color: rgba(16, 185, 129, .55);
 }
 #filters select:focus,
 :is(#add-entry-modal, #topology-manager) select:focus,
 #page-size-select:focus,
-#zone-select:focus {
+:is(#zone-select, #sheet-select):focus {
     outline: none;
     border-color: var(--g-accent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 0 0 3px rgba(16, 185, 129, .16);
@@ -55,7 +55,7 @@
 #filters select:disabled,
 :is(#add-entry-modal, #topology-manager) select:disabled,
 #page-size-select:disabled,
-#zone-select:disabled {
+:is(#zone-select, #sheet-select):disabled {
     opacity: .5;
     cursor: not-allowed;
     background-color: rgba(241, 245, 249, .7);
@@ -64,23 +64,23 @@
 #filters select option,
 :is(#add-entry-modal, #topology-manager) select option,
 #page-size-select option,
-#zone-select option { background: #fff; color: #334155; }
+:is(#zone-select, #sheet-select) option { background: #fff; color: #334155; }
 
 /* Frosted open list + custom indicator where the browser supports styling the picker */
 @supports (appearance: base-select) {
     #filters select,
     :is(#add-entry-modal, #topology-manager) select,
     #page-size-select,
-    #zone-select,
+    :is(#zone-select, #sheet-select),
     #filters select::picker(select),
     :is(#add-entry-modal, #topology-manager) select::picker(select),
     #page-size-select::picker(select),
-    #zone-select::picker(select) { appearance: base-select; }
+    :is(#zone-select, #sheet-select)::picker(select) { appearance: base-select; }
 
     #filters select,
     :is(#add-entry-modal, #topology-manager) select,
     #page-size-select,
-    #zone-select {
+    :is(#zone-select, #sheet-select) {
         background-image: none;
         display: inline-flex;
         align-items: center;
@@ -91,12 +91,12 @@
     #filters select > button,
     :is(#add-entry-modal, #topology-manager) select > button,
     #page-size-select > button,
-    #zone-select > button { all: unset; display: contents; }
+    :is(#zone-select, #sheet-select) > button { all: unset; display: contents; }
 
     #filters select::picker-icon,
     :is(#add-entry-modal, #topology-manager) select::picker-icon,
     #page-size-select::picker-icon,
-    #zone-select::picker-icon {
+    :is(#zone-select, #sheet-select)::picker-icon {
         content: '';
         width: .9rem;
         height: .9rem;
@@ -107,13 +107,13 @@
     #filters select:open::picker-icon,
     :is(#add-entry-modal, #topology-manager) select:open::picker-icon,
     #page-size-select:open::picker-icon,
-    #zone-select:open::picker-icon { transform: rotate(180deg); }
+    :is(#zone-select, #sheet-select):open::picker-icon { transform: rotate(180deg); }
 
     /* the floating panel */
     #filters select::picker(select),
     :is(#add-entry-modal, #topology-manager) select::picker(select),
     #page-size-select::picker(select),
-    #zone-select::picker(select) {
+    :is(#zone-select, #sheet-select)::picker(select) {
         box-sizing: border-box;
         margin-block: 6px;
         padding: 5px;
@@ -137,19 +137,19 @@
     #filters select::picker(select):popover-open,
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open,
     #page-size-select::picker(select):popover-open,
-    #zone-select::picker(select):popover-open { opacity: 1; transform: none; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open { opacity: 1; transform: none; }
     @starting-style {
         #filters select::picker(select):popover-open,
         :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open,
         #page-size-select::picker(select):popover-open,
-        #zone-select::picker(select):popover-open { opacity: 0; transform: translateY(-6px) scale(.98); }
+        :is(#zone-select, #sheet-select)::picker(select):popover-open { opacity: 0; transform: translateY(-6px) scale(.98); }
     }
 
     /* rows */
     #filters select option,
     :is(#add-entry-modal, #topology-manager) select option,
     #page-size-select option,
-    #zone-select option {
+    :is(#zone-select, #sheet-select) option {
         display: flex;
         align-items: center;
         gap: .5rem;
@@ -164,15 +164,15 @@
     #filters select option::checkmark,
     :is(#add-entry-modal, #topology-manager) select option::checkmark,
     #page-size-select option::checkmark,
-    #zone-select option::checkmark { display: none; }
+    :is(#zone-select, #sheet-select) option::checkmark { display: none; }
     #filters select option:hover,
     #filters select option:focus-visible,
     :is(#add-entry-modal, #topology-manager) select option:hover,
     :is(#add-entry-modal, #topology-manager) select option:focus-visible,
     #page-size-select option:hover,
     #page-size-select option:focus-visible,
-    #zone-select option:hover,
-    #zone-select option:focus-visible {
+    :is(#zone-select, #sheet-select) option:hover,
+    :is(#zone-select, #sheet-select) option:focus-visible {
         background: rgba(16, 185, 129, .12);
         color: #065f46;
         outline: none;
@@ -180,7 +180,7 @@
     #filters select option:checked,
     :is(#add-entry-modal, #topology-manager) select option:checked,
     #page-size-select option:checked,
-    #zone-select option:checked {
+    :is(#zone-select, #sheet-select) option:checked {
         background: rgba(16, 185, 129, .16);
         color: #047857;
         font-weight: 600;
@@ -189,22 +189,22 @@
     #filters select option:disabled,
     :is(#add-entry-modal, #topology-manager) select option:disabled,
     #page-size-select option:disabled,
-    #zone-select option:disabled { opacity: .45; cursor: not-allowed; }
+    :is(#zone-select, #sheet-select) option:disabled { opacity: .45; cursor: not-allowed; }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-    #filters select, :is(#add-entry-modal, #topology-manager) select, #page-size-select, #zone-select { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: #fff; }
+    #filters select, :is(#add-entry-modal, #topology-manager) select, #page-size-select, :is(#zone-select, #sheet-select) { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: #fff; }
 }
 
 /* ---- Glass dropdowns v2: richer (gradient edge, dark frosted panel, staggered rows) ---- */
 #filters select:focus,
 :is(#add-entry-modal, #topology-manager) select:focus,
 #page-size-select:focus,
-#zone-select:focus,
+:is(#zone-select, #sheet-select):focus,
 #filters select:hover:not(:disabled),
 :is(#add-entry-modal, #topology-manager) select:hover:not(:disabled),
 #page-size-select:hover:not(:disabled),
-#zone-select:hover:not(:disabled) {
+:is(#zone-select, #sheet-select):hover:not(:disabled) {
     border-color: transparent;
     background-image:
         linear-gradient(rgba(255, 255, 255, .9), rgba(255, 255, 255, .9)),
@@ -218,7 +218,7 @@
 #filters select:focus,
 :is(#add-entry-modal, #topology-manager) select:focus,
 #page-size-select:focus,
-#zone-select:focus {
+:is(#zone-select, #sheet-select):focus {
     box-shadow: 0 0 0 3px rgba(52, 211, 153, .18), 0 8px 22px -10px rgba(34, 211, 238, .55);
 }
 
@@ -226,7 +226,7 @@
     #filters select::picker(select),
     :is(#add-entry-modal, #topology-manager) select::picker(select),
     #page-size-select::picker(select),
-    #zone-select::picker(select) {
+    :is(#zone-select, #sheet-select)::picker(select) {
         padding: 6px;
         border: 1px solid transparent;
         border-radius: 16px;
@@ -241,7 +241,7 @@
     #filters select option,
     :is(#add-entry-modal, #topology-manager) select option,
     #page-size-select option,
-    #zone-select option {
+    :is(#zone-select, #sheet-select) option {
         position: relative;
         padding: .5rem .75rem .5rem 1.6rem;
         color: #cbd5e1;
@@ -251,7 +251,7 @@
     #filters select option::before,
     :is(#add-entry-modal, #topology-manager) select option::before,
     #page-size-select option::before,
-    #zone-select option::before {
+    :is(#zone-select, #sheet-select) option::before {
         content: '';
         position: absolute;
         left: .7rem;
@@ -266,7 +266,7 @@
     #filters select option::checkmark,
     :is(#add-entry-modal, #topology-manager) select option::checkmark,
     #page-size-select option::checkmark,
-    #zone-select option::checkmark {
+    :is(#zone-select, #sheet-select) option::checkmark {
         display: block;
         content: '✓';
         order: 2;
@@ -280,19 +280,19 @@
     :is(#add-entry-modal, #topology-manager) select option:focus-visible,
     #page-size-select option:hover,
     #page-size-select option:focus-visible,
-    #zone-select option:hover,
-    #zone-select option:focus-visible {
+    :is(#zone-select, #sheet-select) option:hover,
+    :is(#zone-select, #sheet-select) option:focus-visible {
         background: rgba(255, 255, 255, .09);
         color: #fff;
     }
     #filters select option:hover::before,
     :is(#add-entry-modal, #topology-manager) select option:hover::before,
     #page-size-select option:hover::before,
-    #zone-select option:hover::before { background: #22d3ee; transform: translateY(-50%) scale(1.3); }
+    :is(#zone-select, #sheet-select) option:hover::before { background: #22d3ee; transform: translateY(-50%) scale(1.3); }
     #filters select option:checked,
     :is(#add-entry-modal, #topology-manager) select option:checked,
     #page-size-select option:checked,
-    #zone-select option:checked {
+    :is(#zone-select, #sheet-select) option:checked {
         background: linear-gradient(90deg, rgba(52, 211, 153, .22), rgba(52, 211, 153, .06));
         color: #a7f3d0;
         font-weight: 600;
@@ -301,29 +301,29 @@
     #filters select option:checked::before,
     :is(#add-entry-modal, #topology-manager) select option:checked::before,
     #page-size-select option:checked::before,
-    #zone-select option:checked::before { background: #34d399; box-shadow: 0 0 8px 1px rgba(52, 211, 153, .8); }
+    :is(#zone-select, #sheet-select) option:checked::before { background: #34d399; box-shadow: 0 0 8px 1px rgba(52, 211, 153, .8); }
 
     /* rows slide in one after another */
     #filters select::picker(select):popover-open option,
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open option,
     #page-size-select::picker(select):popover-open option,
-    #zone-select::picker(select):popover-open option { animation: g-opt .28s var(--ease-out, ease) both; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option { animation: g-opt .28s var(--ease-out, ease) both; }
     #filters select::picker(select):popover-open option:nth-child(2),
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open option:nth-child(2),
     #page-size-select::picker(select):popover-open option:nth-child(2),
-    #zone-select::picker(select):popover-open option:nth-child(2) { animation-delay: .025s; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option:nth-child(2) { animation-delay: .025s; }
     #filters select::picker(select):popover-open option:nth-child(3),
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open option:nth-child(3),
     #page-size-select::picker(select):popover-open option:nth-child(3),
-    #zone-select::picker(select):popover-open option:nth-child(3) { animation-delay: .05s; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option:nth-child(3) { animation-delay: .05s; }
     #filters select::picker(select):popover-open option:nth-child(4),
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open option:nth-child(4),
     #page-size-select::picker(select):popover-open option:nth-child(4),
-    #zone-select::picker(select):popover-open option:nth-child(4) { animation-delay: .075s; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option:nth-child(4) { animation-delay: .075s; }
     #filters select::picker(select):popover-open option:nth-child(n+5),
     :is(#add-entry-modal, #topology-manager) select::picker(select):popover-open option:nth-child(n+5),
     #page-size-select::picker(select):popover-open option:nth-child(n+5),
-    #zone-select::picker(select):popover-open option:nth-child(n+5) { animation-delay: .1s; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option:nth-child(n+5) { animation-delay: .1s; }
 }
 @keyframes g-opt { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
@@ -341,19 +341,19 @@
 /* closed select: lift on hover, press on click, breathing glow while focused/open */
 :is(#filters, #add-entry-modal, #topology-manager) select:hover:not(:disabled),
 #page-size-select:hover:not(:disabled),
-#zone-select:hover:not(:disabled) { transform: translateY(-1px); }
+:is(#zone-select, #sheet-select):hover:not(:disabled) { transform: translateY(-1px); }
 :is(#filters, #add-entry-modal, #topology-manager) select:active:not(:disabled),
 #page-size-select:active:not(:disabled),
-#zone-select:active:not(:disabled) { transform: translateY(0) scale(.975); transition-duration: .08s; }
+:is(#zone-select, #sheet-select):active:not(:disabled) { transform: translateY(0) scale(.975); transition-duration: .08s; }
 :is(#filters, #add-entry-modal, #topology-manager) select:focus,
 #page-size-select:focus,
-#zone-select:focus { animation: g-glow 2.4s ease-in-out infinite; }
+:is(#zone-select, #sheet-select):focus { animation: g-glow 2.4s ease-in-out infinite; }
 
 @supports (appearance: base-select) {
     /* spinning gradient edge on the open list (same idea as the Hyprland active-window border) */
     :is(#filters, #add-entry-modal, #topology-manager) select::picker(select),
     #page-size-select::picker(select),
-    #zone-select::picker(select) {
+    :is(#zone-select, #sheet-select)::picker(select) {
         border: 1.5px solid transparent;
         border-radius: 16px;
         background:
@@ -367,49 +367,49 @@
     }
     :is(#filters, #add-entry-modal, #topology-manager) select::picker(select):popover-open,
     #page-size-select::picker(select):popover-open,
-    #zone-select::picker(select):popover-open { animation: g-spin 5s linear infinite, g-panel .32s var(--ease-spring, ease) both; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open { animation: g-spin 5s linear infinite, g-panel .32s var(--ease-spring, ease) both; }
 
     /* rows: dark-on-light text */
     :is(#filters, #add-entry-modal, #topology-manager) select option,
     #page-size-select option,
-    #zone-select option { color: #475569; overflow: hidden; }
+    :is(#zone-select, #sheet-select) option { color: #475569; overflow: hidden; }
     :is(#filters, #add-entry-modal, #topology-manager) select option::before,
     #page-size-select option::before,
-    #zone-select option::before { background: rgba(100, 116, 139, .4); }
+    :is(#zone-select, #sheet-select) option::before { background: rgba(100, 116, 139, .4); }
     :is(#filters, #add-entry-modal, #topology-manager) select option:hover,
     :is(#filters, #add-entry-modal, #topology-manager) select option:focus-visible,
     #page-size-select option:hover,
     #page-size-select option:focus-visible,
-    #zone-select option:hover,
-    #zone-select option:focus-visible {
+    :is(#zone-select, #sheet-select) option:hover,
+    :is(#zone-select, #sheet-select) option:focus-visible {
         background: linear-gradient(90deg, rgba(16, 185, 129, .14), rgba(34, 211, 238, .08));
         color: #047857;
         transform: translateX(3px);
     }
     :is(#filters, #add-entry-modal, #topology-manager) select option:hover::before,
     #page-size-select option:hover::before,
-    #zone-select option:hover::before { background: #10b981; transform: translateY(-50%) scale(1.4); }
+    :is(#zone-select, #sheet-select) option:hover::before { background: #10b981; transform: translateY(-50%) scale(1.4); }
     :is(#filters, #add-entry-modal, #topology-manager) select option:checked,
     #page-size-select option:checked,
-    #zone-select option:checked {
+    :is(#zone-select, #sheet-select) option:checked {
         background: linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(16, 185, 129, .05));
         color: #047857;
         font-weight: 600;
     }
     :is(#filters, #add-entry-modal, #topology-manager) select option:checked::before,
     #page-size-select option:checked::before,
-    #zone-select option:checked::before { background: #10b981; box-shadow: none; animation: g-pulse 1.6s ease-out infinite; }
+    :is(#zone-select, #sheet-select) option:checked::before { background: #10b981; box-shadow: none; animation: g-pulse 1.6s ease-out infinite; }
     :is(#filters, #add-entry-modal, #topology-manager) select option::checkmark,
     #page-size-select option::checkmark,
-    #zone-select option::checkmark { color: #059669; font-weight: 700; }
+    :is(#zone-select, #sheet-select) option::checkmark { color: #059669; font-weight: 700; }
     :is(#filters, #add-entry-modal, #topology-manager) select::picker(select):popover-open option:checked::checkmark,
     #page-size-select::picker(select):popover-open option:checked::checkmark,
-    #zone-select::picker(select):popover-open option:checked::checkmark { animation: g-pop .4s var(--ease-spring, ease) .12s both; }
+    :is(#zone-select, #sheet-select)::picker(select):popover-open option:checked::checkmark { animation: g-pop .4s var(--ease-spring, ease) .12s both; }
 
     /* light sweep across a row on hover */
     :is(#filters, #add-entry-modal, #topology-manager) select option::after,
     #page-size-select option::after,
-    #zone-select option::after {
+    :is(#zone-select, #sheet-select) option::after {
         content: '';
         position: absolute;
         inset: 0 auto 0 0;
@@ -420,14 +420,14 @@
     }
     :is(#filters, #add-entry-modal, #topology-manager) select option:hover::after,
     #page-size-select option:hover::after,
-    #zone-select option:hover::after { animation: g-sheen .65s ease; }
+    :is(#zone-select, #sheet-select) option:hover::after { animation: g-sheen .65s ease; }
 
     /* chevron nudges down on hover, flips when open */
     :is(#filters, #add-entry-modal, #topology-manager) select:hover:not(:open)::picker-icon,
     #page-size-select:hover:not(:open)::picker-icon,
-    #zone-select:hover:not(:open)::picker-icon { transform: translateY(2px); }
+    :is(#zone-select, #sheet-select):hover:not(:open)::picker-icon { transform: translateY(2px); }
 }
 @media (prefers-reduced-motion: reduce) {
-    :is(#filters, #add-entry-modal, #topology-manager) select, #page-size-select, #zone-select,
-    :is(#filters, #add-entry-modal, #topology-manager) select::picker(select), #page-size-select::picker(select), #zone-select::picker(select) { animation: none !important; }
+    :is(#filters, #add-entry-modal, #topology-manager) select, #page-size-select, :is(#zone-select, #sheet-select),
+    :is(#filters, #add-entry-modal, #topology-manager) select::picker(select), #page-size-select::picker(select), :is(#zone-select, #sheet-select)::picker(select) { animation: none !important; }
 }

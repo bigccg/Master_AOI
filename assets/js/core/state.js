@@ -86,7 +86,7 @@ function zoneOptionLabelJs(z) {
     const enabled = getZoneSheetKeysJs(z).length;
     let suffix;
     if (!zone.active) suffix = ' (ปิดใช้งาน / Disabled)';
-    else if (enabled > 0) suffix = ` (${enabled} ชีต)`;
-    else suffix = getZoneSheetKeysJs(z, true).length > 0 ? ' (ไม่มีชีตที่เปิดใช้งาน / No active sheets)' : ' (ยังไม่มีชีต / No sheets)';
+    else if (enabled > 0) suffix = ` (${enabled} Shelf)`;
+    else suffix = getZoneSheetKeysJs(z, true).length > 0 ? ' (ไม่มี Shelf ที่เปิดใช้งาน / No active shelves)' : ' (ยังไม่มี Shelf / No shelves)';
     return zone.label + suffix;
 }

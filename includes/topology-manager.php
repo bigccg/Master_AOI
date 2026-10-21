@@ -36,52 +36,53 @@ function topologyCopy(): array
     return [
         // ── fields ──
         'zone_key_required'   => 'กรุณากรอกรหัสโซน เนื่องจากลิงก์และข้อมูลบอร์ดใช้รหัสนี้อ้างอิงโซน (ตัวอักษรอังกฤษ ตัวเลข หรือ _ ไม่เกิน 30 ตัว) เช่น Plant2_SMT / Please enter a zone key: links and board records refer to the zone by it (letters, digits or _, up to 30), e.g. Plant2_SMT.',
-        'sheet_key_required'  => 'กรุณากรอกรหัสชีต เนื่องจากลิงก์และข้อมูลบอร์ดใช้รหัสนี้อ้างอิงชีต (ตัวอักษรอังกฤษ ตัวเลข หรือ _ ไม่เกิน 30 ตัว) เช่น D400_Gen / Please enter a sheet key: links and board records refer to the sheet by it (letters, digits or _, up to 30), e.g. D400_Gen.',
+        'sheet_key_required'  => 'กรุณากรอกรหัส Shelf เนื่องจากลิงก์และข้อมูลบอร์ดใช้รหัสนี้อ้างอิง Shelf (ตัวอักษรอังกฤษ ตัวเลข หรือ _ ไม่เกิน 30 ตัว) เช่น D400_Gen / Please enter a shelf key: links and board records refer to the shelf by it (letters, digits or _, up to 30), e.g. D400_Gen.',
         'key_format'          => 'รหัส "{key}" ใช้ไม่ได้ เนื่องจากใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข และขีดล่าง (_) 1–30 ตัว และต้องมีตัวอักษรอย่างน้อย 1 ตัว (ไม่มีช่องว่างหรือขีด -) กรุณาแก้ เช่น Plant2_SMT / Key "{key}" is not valid: use 1–30 English letters, digits or underscores with at least one letter (no spaces or dashes), e.g. Plant2_SMT.',
         'zone_key_taken'      => 'ใช้รหัสโซน "{key}" ไม่ได้ เนื่องจากมีโซน "{existing}" อยู่แล้ว (ระบบไม่แยกตัวพิมพ์เล็ก/ใหญ่) กรุณาใช้รหัสอื่น / Zone key "{key}" is taken by zone "{existing}" (keys ignore upper/lower case). Please choose another key.',
-        'sheet_key_taken'     => 'ใช้รหัสชีต "{key}" ไม่ได้ เนื่องจากมีชีต "{existing}" ในโซน {zone} อยู่แล้ว (รหัสชีตต้องไม่ซ้ำทั้งระบบ และไม่แยกตัวพิมพ์เล็ก/ใหญ่) กรุณาใช้รหัสอื่น / Sheet key "{key}" is taken by sheet "{existing}" in zone {zone} (sheet keys are unique system-wide and ignore case). Please choose another key.',
-        'sheet_key_reserved'  => 'ใช้รหัสชีต "{key}" ไม่ได้ เนื่องจากระบบสงวนคำนี้ไว้สำหรับแท็บ ทุกขนาด (All Size Magazine) กรุณาใช้รหัสอื่น / Sheet key "{key}" is reserved for the All Size Magazine tab. Please choose another key.',
-        'prefix_required'     => 'กรุณากรอก Shelf prefix เนื่องจากใช้ขึ้นต้นรหัสชั้นวางทุกช่องของชีตนี้ (ตัวอักษรอังกฤษพิมพ์ใหญ่ 1–3 ตัว) เช่น AX → AX1, AX2 / Please enter a shelf prefix: every shelf of this sheet starts with it (1–3 capital letters), e.g. AX → AX1, AX2.',
+        'sheet_key_taken'     => 'ใช้รหัส Shelf "{key}" ไม่ได้ เนื่องจากมี Shelf "{existing}" ในโซน {zone} อยู่แล้ว (รหัส Shelf ต้องไม่ซ้ำทั้งระบบ และไม่แยกตัวพิมพ์เล็ก/ใหญ่) กรุณาใช้รหัสอื่น / Shelf key "{key}" is taken by shelf "{existing}" in zone {zone} (shelf keys are unique system-wide and ignore case). Please choose another key.',
+        'sheet_key_reserved'  => 'ใช้รหัส Shelf "{key}" ไม่ได้ เนื่องจากระบบสงวนคำนี้ไว้สำหรับแท็บ ทุกขนาด (All Size Magazine) กรุณาใช้รหัสอื่น / Shelf key "{key}" is reserved for the All Size Magazine tab. Please choose another key.',
+        'prefix_required'     => 'กรุณากรอก Shelf prefix เนื่องจากใช้ขึ้นต้นรหัสชั้นวางทุกช่องของ Shelf นี้ (ตัวอักษรอังกฤษพิมพ์ใหญ่ 1–3 ตัว) เช่น AX → AX1, AX2 / Please enter a shelf prefix: every shelf of this sheet starts with it (1–3 capital letters), e.g. AX → AX1, AX2.',
         'prefix_format'       => 'Shelf prefix "{prefix}" ใช้ไม่ได้ เนื่องจากต้องเป็นตัวอักษรอังกฤษ 1–3 ตัวเท่านั้น (ตัวเลขต่อท้ายระบบเติมให้เอง) กรุณาแก้ เช่น AX → AX1, AX2 / Shelf prefix "{prefix}" is not valid: use 1–3 English letters only (the system adds the number), e.g. AX → AX1, AX2.',
-        'prefix_taken'        => 'ใช้ Shelf prefix "{prefix}" ไม่ได้ เนื่องจากชีต "{sheet}" ใช้อยู่แล้ว และรหัสชั้นวางต้องไม่ซ้ำทั้งระบบ กรุณาใช้ prefix อื่น / Shelf prefix "{prefix}" is already used by sheet "{sheet}"; shelf codes must be unique system-wide. Please choose another prefix.',
-        'label_required'      => 'กรุณากรอกชื่อที่แสดง เนื่องจากใช้แสดงในตัวเลือกโซน แท็บชีต และข้อความต่าง ๆ (ไม่เกิน {max} ตัวอักษร) / Please enter a display name; it appears in the zone selector, sheet tabs and messages (up to {max} characters).',
+        'prefix_taken'        => 'ใช้ Shelf prefix "{prefix}" ไม่ได้ เนื่องจาก Shelf "{sheet}" ใช้อยู่แล้ว และรหัสชั้นวางต้องไม่ซ้ำทั้งระบบ กรุณาใช้ prefix อื่น / Shelf prefix "{prefix}" is already used by shelf "{sheet}"; shelf codes must be unique system-wide. Please choose another prefix.',
+        'label_required'      => 'กรุณากรอกชื่อที่แสดง เนื่องจากใช้แสดงในตัวเลือกโซน แท็บ Shelf และข้อความต่าง ๆ (ไม่เกิน {max} ตัวอักษร) / Please enter a display name; it appears in the zone selector, shelf tabs and messages (up to {max} characters).',
         'label_too_long'      => 'ชื่อที่แสดงยาวเกินไป ({length}/{max} ตัวอักษร) กรุณาย่อให้ไม่เกิน {max} ตัวอักษร / The display name is too long ({length}/{max} characters). Please shorten it to {max}.',
         'short_too_long'      => 'ชื่อย่อยาวเกินไป ({length}/{max} ตัวอักษร) กรุณาย่อให้ไม่เกิน {max} ตัวอักษร หรือเว้นว่างไว้ / The short name is too long ({length}/{max} characters). Please shorten it to {max} or leave it empty.',
         'order_invalid'       => 'ลำดับไม่ถูกต้อง เนื่องจากต้องเป็นจำนวนเต็ม 0–{max} (เลขน้อยแสดงก่อน) กรุณาแก้ เช่น 10 หรือเว้นว่างให้ต่อท้าย / Invalid order: use a whole number 0–{max} (lower shows first), e.g. 10, or leave it empty to add at the end.',
-        'dot_invalid'         => 'กรุณาเลือกสีของชีตจากชุดสีที่กำหนด เนื่องจากระบบรับเฉพาะสีในชุดนี้ / Please pick a tab colour from the palette; other values are not accepted.',
-        'zone_required'       => 'กรุณาเลือกโซนของชีต เนื่องจากทุกชีตต้องอยู่ในโซนเดียว / Please choose the zone for this sheet; every sheet belongs to exactly one zone.',
+        'dot_invalid'         => 'กรุณาเลือกสีของ Shelf จากชุดสีที่กำหนด เนื่องจากระบบรับเฉพาะสีในชุดนี้ / Please pick a tab colour from the palette; other values are not accepted.',
+        'zone_required'       => 'กรุณาเลือกโซนของ Shelf เนื่องจากทุก Shelf ต้องอยู่ในโซนเดียว / Please choose the zone for this shelf; every shelf belongs to exactly one zone.',
         'target_zone_missing' => 'ใช้โซน "{zone}" ไม่ได้ เนื่องจากไม่พบโซนนี้ (อาจถูกลบไปแล้ว) กรุณาโหลดรายการใหม่แล้วเลือกโซนอีกครั้ง / Zone "{zone}" was not found (it may have been deleted). Reload the list and choose the zone again.',
         'target_zone_off'     => 'ใช้โซน "{zone}" ไม่ได้ เนื่องจากโซนนี้ปิดใช้งานอยู่ กรุณาเปิดใช้งานโซนก่อน หรือเลือกโซนอื่น / Zone "{zone}" is disabled. Enable the zone first, or choose another one.',
         'key_immutable'       => 'แก้รหัสไม่ได้ เนื่องจากข้อมูลบอร์ดและลิงก์ที่บันทึกไว้อ้างอิงรหัสนี้ หากต้องการรหัสใหม่ ให้สร้างรายการใหม่ / Keys cannot be changed because board records and saved links refer to them. Create a new one if you need a different key.',
-        'prefix_immutable'    => 'แก้ Shelf prefix ไม่ได้ เนื่องจากทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข (เช่น {prefix}12) หากต้องการ prefix ใหม่ ให้สร้างชีตใหม่ / The shelf prefix cannot be changed because every record stores its shelf as prefix + number (e.g. {prefix}12). Create a new sheet for a different prefix.',
+        'prefix_immutable'    => 'แก้ Shelf prefix ไม่ได้ เนื่องจากทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข (เช่น {prefix}12) หากต้องการ prefix ใหม่ ให้สร้าง Shelf ใหม่ / The shelf prefix cannot be changed because every record stores its shelf as prefix + number (e.g. {prefix}12). Create a new shelf for a different prefix.',
         // ── state rules (also shown as reasons on disabled buttons) ──
         'default_zone_off'    => 'ปิดใช้งานไม่ได้ เพราะ {zone} เป็นโซนเริ่มต้นของระบบ (ลิงก์ที่ไม่ระบุโซนจะเปิดโซนนี้) / Cannot disable: {zone} is the default zone (links without a zone open it).',
         'default_zone_delete' => 'ลบไม่ได้ เพราะ {zone} เป็นโซนเริ่มต้นของระบบ / Cannot delete: {zone} is the default zone.',
-        'zone_has_active'     => 'ปิดใช้งานไม่ได้ เพราะยังมีชีตที่เปิดใช้งาน {count} ชีต ({sheets}) ปิดใช้งานหรือย้ายชีตเหล่านั้นก่อน / Cannot disable: {count} sheet(s) are still active ({sheets}). Disable or move them first.',
-        'zone_has_sheets'     => 'ลบไม่ได้ เพราะยังมี {count} ชีตในโซนนี้ ลบหรือย้ายชีตออกก่อน หรือใช้ปิดใช้งานแทน / Cannot delete: the zone still has {count} sheet(s). Delete or move them first, or disable the zone instead.',
+        'zone_has_active'     => 'ปิดใช้งานไม่ได้ เพราะยังมี Shelf ที่เปิดใช้งาน {count} Shelf ({sheets}) ปิดใช้งานหรือย้าย Shelf เหล่านั้นก่อน / Cannot disable: {count} shelf/shelves are still active ({sheets}). Disable or move them first.',
+        'zone_has_sheets'     => 'ลบไม่ได้ เพราะยังมี {count} Shelf ในโซนนี้ ลบหรือย้าย Shelf ออกก่อน หรือใช้ปิดใช้งานแทน / Cannot delete: the zone still has {count} shelf/shelves. Delete or move them first, or disable the zone instead.',
         'zone_has_records'    => 'ลบไม่ได้ เพราะมี {count} รายการที่บันทึกด้วยโซนนี้ ใช้ปิดใช้งานแทน / Cannot delete: {count} board record(s) are stored with this zone. Disable it instead.',
-        'sheet_has_records'   => 'ลบไม่ได้ เพราะมี {count} รายการ ใช้ปิดใช้งานแทน / Cannot delete: {count} record(s) use this sheet. Disable it instead.',
-        'sheet_move_records'  => 'ย้ายโซนไม่ได้ เพราะมี {count} รายการในชีตนี้ และแต่ละรายการบันทึกโซนไว้ด้วย ใช้ปิดใช้งานชีตนี้ แล้วสร้างชีตใหม่ในโซนปลายทางแทน / Cannot move: {count} record(s) in this sheet store their zone. Disable this sheet and create a new one in the target zone instead.',
+        'sheet_has_records'   => 'ลบไม่ได้ เพราะมี {count} รายการ ใช้ปิดใช้งานแทน / Cannot delete: {count} record(s) use this shelf. Disable it instead.',
+        'sheet_move_records'  => 'ย้ายโซนไม่ได้ เพราะมี {count} รายการใน Shelf นี้ และแต่ละรายการบันทึกโซนไว้ด้วย ใช้ปิดใช้งาน Shelf นี้ แล้วสร้าง Shelf ใหม่ในโซนปลายทางแทน / Cannot move: {count} record(s) in this shelf store their zone. Disable this shelf and create a new one in the target zone instead.',
         'sheet_zone_off'      => 'เปิดใช้งานไม่ได้ เพราะโซน {zone} ปิดใช้งานอยู่ เปิดใช้งานโซนก่อน / Cannot enable: zone {zone} is disabled. Enable the zone first.',
         'zone_not_found'      => 'ไม่พบโซน "{key}" เนื่องจากอาจถูกลบไปแล้ว กรุณาโหลดรายการใหม่ / Zone "{key}" was not found; it may have been deleted. Please reload the list.',
-        'sheet_not_found'     => 'ไม่พบชีต "{key}" เนื่องจากอาจถูกลบไปแล้ว กรุณาโหลดรายการใหม่ / Sheet "{key}" was not found; it may have been deleted. Please reload the list.',
+        'sheet_not_found'     => 'ไม่พบ Shelf "{key}" เนื่องจากอาจถูกลบไปแล้ว กรุณาโหลดรายการใหม่ / Shelf "{key}" was not found; it may have been deleted. Please reload the list.',
         'taken_race'          => 'บันทึกไม่ได้ เนื่องจากผู้ดูแลอีกคนเพิ่งบันทึกรหัสหรือ prefix เดียวกันไปเมื่อสักครู่ กรุณาโหลดรายการใหม่แล้วใช้ค่าอื่น / Not saved: another administrator just saved the same key or prefix. Reload the list and choose another value.',
         'unknown_action'      => 'ทำรายการไม่ได้ เนื่องจากคำสั่งไม่ถูกต้อง กรุณาโหลดหน้าเว็บใหม่แล้วลองอีกครั้ง / Unknown action. Please reload the page and try again.',
         'db_error'            => 'บันทึกไม่สำเร็จ เนื่องจากฐานข้อมูลตอบกลับด้วยข้อผิดพลาด ยังไม่มีการเปลี่ยนแปลงใด ๆ กรุณาลองใหม่อีกครั้ง ({detail}) / Nothing was saved because the database returned an error. Please try again.',
         // ── results ──
         'nothing_changed'     => 'ไม่มีการเปลี่ยนแปลง เนื่องจากข้อมูลเหมือนเดิมทุกช่อง / Nothing changed: every field already had this value.',
-        'zone_created'        => 'เพิ่มโซน {label} ({key}) เรียบร้อยแล้ว โซนนี้ยังไม่มีชีต เพิ่มชีตแรกได้จากปุ่ม "เพิ่มชีต" / Zone {label} ({key}) added. It has no sheets yet: add the first one with "Add sheet".',
+        'zone_created'        => 'เพิ่มโซน {label} ({key}) เรียบร้อยแล้ว โซนนี้ยังไม่มี Shelf เพิ่ม Shelf แรกได้จากปุ่ม "เพิ่ม Shelf" / Zone {label} ({key}) added. It has no shelves yet: add the first one with "Add shelf".',
         'zone_updated'        => 'บันทึกโซน {label} ({key}) เรียบร้อยแล้ว / Zone {label} ({key}) saved.',
         'zone_disabled'       => 'ปิดใช้งานโซน {label} ({key}) แล้ว โซนนี้ไม่แสดงในตัวเลือกโซน ข้อมูลเดิมยังอยู่ครบ / Zone {label} ({key}) disabled. It is hidden from the zone selector; its records stay intact.',
         'zone_enabled'        => 'เปิดใช้งานโซน {label} ({key}) แล้ว / Zone {label} ({key}) enabled.',
         'zone_deleted'        => 'ลบโซน {label} ({key}) เรียบร้อยแล้ว / Zone {label} ({key}) deleted.',
-        'sheet_created'       => 'เพิ่มชีต {label} ({key}) ในโซน {zone} เรียบร้อยแล้ว เริ่มต้นมี 1 Magazine (Shelf {prefix}1–{prefix}{size}) / Sheet {label} ({key}) added to zone {zone} with 1 Magazine (Shelf {prefix}1–{prefix}{size}).',
-        'sheet_adopted'       => ' · พบข้อมูลบอร์ดเดิม {count} รายการที่ใช้รหัสชีตนี้อยู่แล้ว / {count} existing board record(s) already use this sheet key.',
-        'sheet_updated'       => 'บันทึกชีต {label} ({key}) เรียบร้อยแล้ว / Sheet {label} ({key}) saved.',
-        'sheet_moved'         => 'ย้ายชีต {label} ({key}) ไปโซน {zone} เรียบร้อยแล้ว / Sheet {label} ({key}) moved to zone {zone}.',
-        'sheet_disabled'      => 'ปิดใช้งานชีต {label} ({key}) แล้ว ชีตนี้ไม่แสดงในแท็บและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังอยู่ครบ / Sheet {label} ({key}) disabled. It is hidden from the tabs and takes no new records; existing records stay intact.',
-        'sheet_enabled'       => 'เปิดใช้งานชีต {label} ({key}) แล้ว / Sheet {label} ({key}) enabled.',
-        'sheet_deleted'       => 'ลบชีต {label} ({key}) เรียบร้อยแล้ว / Sheet {label} ({key}) deleted.',
+        'sheet_created'       => 'เพิ่ม Shelf {label} ({key}) ในโซน {zone} เรียบร้อยแล้ว เริ่มต้นมี 1 Magazine (Shelf {prefix}1–{prefix}{size}) / Shelf {label} ({key}) added to zone {zone} with 1 Magazine (Shelf {prefix}1–{prefix}{size}).',
+        'sheet_adopted'       => ' · พบข้อมูลบอร์ดเดิม {count} รายการที่ใช้รหัส Shelf นี้อยู่แล้ว / {count} existing board record(s) already use this shelf key.',
+        'sheet_updated'       => 'บันทึก Shelf {label} ({key}) เรียบร้อยแล้ว / Shelf {label} ({key}) saved.',
+        'sheet_moved'         => 'ย้าย Shelf {label} ({key}) ไปโซน {zone} เรียบร้อยแล้ว / Shelf {label} ({key}) moved to zone {zone}.',
+        'sheet_disabled'      => 'ปิดใช้งาน Shelf {label} ({key}) แล้ว Shelf นี้ไม่แสดงในแท็บและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังอยู่ครบ / Shelf {label} ({key}) disabled. It is hidden from the tabs and takes no new records; existing records stay intact.',
+        'sheet_enabled'       => 'เปิดใช้งาน Shelf {label} ({key}) แล้ว / Shelf {label} ({key}) enabled.',
+        'sheet_deleted'       => 'ลบ Shelf {label} ({key}) เรียบร้อยแล้ว / Shelf {label} ({key}) deleted.',
+        'sheet_reordered'     => 'จัดลำดับ Shelf เรียบร้อยแล้ว / Shelf tabs reordered successfully.',
     ];
 }
 
@@ -375,6 +376,21 @@ function createZone(PDO $pdo, array $in, string $ip): array
     $short = topologyLabel(topologyField($in, 'short_label')) ?? '';
     [$order, $orderError] = topologyOrder($in);
 
+    // Auto-generate zone_key from label if omitted
+    if ($key === '' && $label !== null && $label !== '') {
+        $baseKey = preg_replace('/[^A-Za-z0-9_]+/', '_', $label);
+        $baseKey = trim($baseKey, '_');
+        if (!preg_match('/[A-Za-z]/', $baseKey)) {
+            $baseKey = 'Zone';
+        }
+        $baseKey = substr($baseKey, 0, 24);
+        $key = $baseKey;
+        $suffix = 1;
+        while (topologyTakenKey($pdo, 'zones', $key)) {
+            $key = substr($baseKey, 0, 20) . '_' . $suffix++;
+        }
+    }
+
     $fe = array_filter([
         'zone_key'    => topologyKeyError('zone', $key),
         'label'       => topologyLabelError($label, true, TOPOLOGY_LABEL_MAX, 'label_too_long'),
@@ -499,6 +515,35 @@ function createSheet(PDO $pdo, array $in, string $ip): array
     $dot    = topologyField($in, 'dot_color') ?? '';
     [$order, $orderError] = topologyOrder($in);
 
+    // Auto-generate sheet_key from label if omitted
+    if ($key === '' && $label !== null && $label !== '') {
+        $baseKey = preg_replace('/[^A-Za-z0-9_]+/', '_', $label);
+        $baseKey = trim($baseKey, '_');
+        if (!preg_match('/[A-Za-z]/', $baseKey)) {
+            $baseKey = 'Sheet';
+        }
+        $baseKey = substr($baseKey, 0, 24);
+        $key = $baseKey;
+        $suffix = 1;
+        while (topologyTakenKey($pdo, 'sheets', $key) || in_array(strtoupper($key), TOPOLOGY_RESERVED_SHEET_KEYS, true)) {
+            $key = substr($baseKey, 0, 20) . '_' . $suffix++;
+        }
+    }
+
+    // Auto-generate shelf_prefix from label if omitted
+    if ($prefix === '' && $label !== null && $label !== '') {
+        if (preg_match('/^[A-Za-z]{1,3}/', $label, $m)) {
+            $prefix = strtoupper($m[0]);
+        } else {
+            $clean = preg_replace('/[^A-Za-z]/', '', $label);
+            $prefix = strtoupper(substr($clean, 0, 2)) ?: 'A';
+        }
+    }
+
+    if ($dot === '') {
+        $dot = 'bg-lime-500';
+    }
+
     $fe = array_filter([
         'sheet_key'    => topologyKeyError('sheet', $key),
         'zone_key'     => $zone === '' ? topologyMessage('zone_required') : null,
@@ -521,11 +566,7 @@ function createSheet(PDO $pdo, array $in, string $ip): array
         if ($taken = topologyTakenKey($pdo, 'sheets', $key)) {
             $fe['sheet_key'] = topologyMessage('sheet_key_taken', ['key' => $key, 'existing' => $taken['sheet_key'], 'zone' => $taken['zone_key']]);
         }
-        $st = $pdo->prepare('SELECT sheet_key FROM sheets WHERE UPPER(shelf_prefix) = ?');
-        $st->execute([$prefix]);
-        if ($owner = $st->fetchColumn()) {
-            $fe['shelf_prefix'] = topologyMessage('prefix_taken', ['prefix' => $prefix, 'sheet' => $owner]);
-        }
+        // Shelf prefix is allowed to be shared across multiple sheets (e.g. CD200_Gen, CD250_Gen, CD300)
         if ($fe) {
             return topologyFail(422, $fe);
         }
@@ -642,17 +683,77 @@ function deleteSheet(PDO $pdo, array $in, string $ip): array
     });
 }
 
+function reorderSheets(PDO $pdo, array $in, string $ip): array
+{
+    $zone = topologyField($in, 'zone_key') ?? '';
+    $order = $in['order'] ?? [];
+    if (!is_array($order)) {
+        return topologyFail(400, [], ['รูปแบบข้อมูลการจัดลำดับไม่ถูกต้อง / Invalid order data.']);
+    }
+
+    return topologyTransaction($pdo, static function () use ($pdo, $zone, $order, $ip): array {
+        $zoneRow = topologyRow($pdo, 'zones', $zone);
+        if ($zoneRow === null) {
+            return topologyFail(404, [], [topologyMessage('zone_not_found', ['key' => $zone])]);
+        }
+        $zoneKey = (string)$zoneRow['zone_key'];
+
+        $stmt = $pdo->prepare('SELECT sheet_key, sort_order FROM sheets WHERE LOWER(zone_key) = LOWER(?) ORDER BY sort_order ASC, sheet_key ASC' . topologyLock($pdo));
+        $stmt->execute([$zoneKey]);
+        $existing = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($existing)) {
+            return topologyResult(true, 200, topologyMessage('nothing_changed'));
+        }
+
+        $existingMap = [];
+        foreach ($existing as $r) {
+            $existingMap[strtolower((string)$r['sheet_key'])] = (string)$r['sheet_key'];
+        }
+
+        $sortedKeys = [];
+        foreach ($order as $k) {
+            if (!is_string($k)) {
+                continue;
+            }
+            $lk = strtolower(trim($k));
+            if ($lk === 'all') {
+                continue;
+            }
+            if (isset($existingMap[$lk]) && !in_array($existingMap[$lk], $sortedKeys, true)) {
+                $sortedKeys[] = $existingMap[$lk];
+            }
+        }
+        // Append any existing sheets that weren't in order list
+        foreach ($existingMap as $canonicalKey) {
+            if (!in_array($canonicalKey, $sortedKeys, true)) {
+                $sortedKeys[] = $canonicalKey;
+            }
+        }
+
+        $updateStmt = $pdo->prepare('UPDATE sheets SET sort_order = ? WHERE sheet_key = ?');
+        $step = 10;
+        foreach ($sortedKeys as $sKey) {
+            $updateStmt->execute([$step, $sKey]);
+            $step += 10;
+        }
+
+        topologyAudit($pdo, 'reorder', 'sheet', $zoneKey, null, ['order' => $sortedKeys], $ip);
+        return topologyResult(true, 200, topologyMessage('sheet_reordered', ['zone' => $zoneKey]));
+    });
+}
+
 /** Dispatch one manager action (api/topology.php); the caller has already checked the admin session and CSRF */
 function topologyApply(PDO $pdo, string $action, array $in, string $ip): array
 {
     topology($pdo);
     return match ($action) {
-        'zone_create'  => createZone($pdo, $in, $ip),
-        'zone_update'  => updateZone($pdo, $in, $ip),
-        'zone_delete'  => deleteZone($pdo, $in, $ip),
-        'sheet_create' => createSheet($pdo, $in, $ip),
-        'sheet_update' => updateSheet($pdo, $in, $ip),
-        'sheet_delete' => deleteSheet($pdo, $in, $ip),
-        default        => topologyFail(400, [], [topologyMessage('unknown_action')]),
+        'zone_create'   => createZone($pdo, $in, $ip),
+        'zone_update'   => updateZone($pdo, $in, $ip),
+        'zone_delete'   => deleteZone($pdo, $in, $ip),
+        'sheet_create'  => createSheet($pdo, $in, $ip),
+        'sheet_update'  => updateSheet($pdo, $in, $ip),
+        'sheet_delete'  => deleteSheet($pdo, $in, $ip),
+        'sheet_reorder' => reorderSheets($pdo, $in, $ip),
+        default         => topologyFail(400, [], [topologyMessage('unknown_action')]),
     };
 }

@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ((int)($_POST['magazines'] ?? 0) !== $cnt) {
             $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากจำนวน Magazine ในระบบเปลี่ยนไปแล้ว กรุณารีเฟรชหน้าจอแล้วลองใหม่ / Magazine count changed, please refresh and retry.'];
         } elseif ($used < $cap) {
-            $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากยังมีชั้นวาง (Shelf) ว่างอยู่ในชีตนี้ กรุณาใช้ชั้นวางที่ว่างก่อน / Free shelves remain in this sheet.'];
+            $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากยังมีชั้นวาง (Shelf) ว่างอยู่ใน Shelf นี้ กรุณาใช้ชั้นวางที่ว่างก่อน / Free shelves remain in this shelf.'];
         } elseif ($cnt >= MAGAZINE_LIMIT) {
             $_SESSION['flash'] = ['err', 'เพิ่ม Magazine ไม่ได้ เนื่องจากครบจำนวน Magazine สูงสุด (' . MAGAZINE_LIMIT . ') แล้ว / Maximum Magazine limit (' . MAGAZINE_LIMIT . ') reached.'];
         } else {
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             [$from, $to] = magazineRange($new);
-            $_SESSION['flash'] = ['ok', 'เพิ่ม Magazine ' . ordinal($new) . " (Shelf $from-$to) ให้ชีต $postSheet (โซน $postZone) เรียบร้อยแล้ว / Magazine added to $postSheet."];
+            $_SESSION['flash'] = ['ok', 'เพิ่ม Magazine ' . ordinal($new) . " (Shelf $from-$to) ให้ Shelf $postSheet (โซน $postZone) เรียบร้อยแล้ว / Magazine added to $postSheet."];
         }
         header('Location: ' . url(['edit' => null]));
         exit;

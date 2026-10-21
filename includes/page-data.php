@@ -42,7 +42,7 @@ if (!$hasZoneSheets) {
     $usedShelves    = 0;
     $util           = 0;
     $maxShelf       = 0;
-    $shelfRangeText = 'ยังไม่มีชีตในโซนนี้ / No sheets in this zone';
+    $shelfRangeText = 'ยังไม่มี Shelf ในโซนนี้ / No shelves in this zone';
 } elseif ($isAllSheets) {
     $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE zone = ? GROUP BY status');
     $st->execute([$zone]);

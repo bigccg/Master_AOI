@@ -101,12 +101,12 @@ const CODE_MAX_RUN  = 999;
 const MIGRATION_RECHECK_SECONDS = 3600;
 
 // UX Copy (What happened + Why + How to fix, Thai / English)
-const ALL_SIZE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในแท็บรวมทุกขนาดได้ เนื่องจากต้องระบุชีตและชั้นวางปลายทาง กรุณาเลือกแท็บชีตด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Size Magazine because a target sheet is required. Please select a sheet tab first.';
-const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ยังไม่มีชีตในระบบ กรุณาสลับไปโซนที่มีชีต (เช่น General) และเลือกชีตก่อน / Cannot add a record because this zone has no sheets configured yet. Please switch to an active zone first.';
+const ALL_SIZE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในแท็บรวมทุกขนาดได้ เนื่องจากต้องระบุ Shelf และชั้นวางปลายทาง กรุณาเลือกแท็บ Shelf ด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Size Magazine because a target shelf is required. Please select a shelf tab first.';
+const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ยังไม่มี Shelf ในระบบ กรุณาสลับไปโซนที่มี Shelf (เช่น General) และเลือก Shelf ก่อน / Cannot add a record because this zone has no shelves configured yet. Please switch to an active zone first.';
 const INACTIVE_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดูและส่งออกได้ตามปกติ กรุณาสลับไปโซนอื่นที่เปิดใช้งาน / Cannot add a record because an administrator disabled this zone. Existing records can still be viewed and exported. Please switch to an active zone.';
-const NO_ACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากชีตทั้งหมดในโซนนี้ถูกปิดใช้งาน กรุณาสลับไปโซนที่มีชีตเปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งานชีต / Cannot add a record because every sheet in this zone is disabled. Switch to a zone with an active sheet, or ask an administrator to enable one.';
-const INACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในชีตนี้ได้ เนื่องจากชีตถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ตามปกติ กรุณาเลือกชีตอื่นที่เปิดใช้งานจากแท็บด้านบน / Cannot add a record to this sheet because an administrator disabled it. Existing records can still be viewed, edited and exported. Please pick an active sheet tab above.';
-const INACTIVE_SHEET_MAGAZINE_ERROR = 'เพิ่ม Magazine ไม่ได้ เนื่องจากชีตนี้ถูกปิดใช้งานโดยผู้ดูแลระบบ กรุณาเลือกชีตที่เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งานชีตก่อน / Cannot add a Magazine because an administrator disabled this sheet. Pick an active sheet, or ask an administrator to enable it first.';
+const NO_ACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจาก Shelf ทั้งหมดในโซนนี้ถูกปิดใช้งาน กรุณาสลับไปโซนที่มี Shelf เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งาน Shelf / Cannot add a record because every shelf in this zone is disabled. Switch to a zone with an active shelf, or ask an administrator to enable one.';
+const INACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลใน Shelf นี้ได้ เนื่องจาก Shelf ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ตามปกติ กรุณาเลือก Shelf อื่นที่เปิดใช้งานจากแท็บด้านบน / Cannot add a record to this shelf because an administrator disabled it. Existing records can still be viewed, edited and exported. Please pick an active shelf tab above.';
+const INACTIVE_SHEET_MAGAZINE_ERROR = 'เพิ่ม Magazine ไม่ได้ เนื่องจาก Shelf นี้ถูกปิดใช้งานโดยผู้ดูแลระบบ กรุณาเลือก Shelf ที่เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งาน Shelf ก่อน / Cannot add a Magazine because an administrator disabled this shelf. Pick an active shelf, or ask an administrator to enable it first.';
 const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
 const CODE_LOCK_BUSY_ERROR = 'ยังไม่ได้บันทึกรายการนี้ เนื่องจากระบบกำลังออก Number Code ให้ผู้ใช้งานอื่นอยู่ กรุณากดบันทึกอีกครั้ง / This record was not saved because the system is issuing a Number Code to another user. Please click Save again.';
 
@@ -308,7 +308,7 @@ function selectableZones(string $current): array
     return $keys;
 }
 
-/** Zone selector text: label + number of enabled sheets, e.g. "ทั่วไป / General (4 ชีต)" (JS: zoneOptionLabelJs) */
+/** Zone selector text: label + number of enabled shelves, e.g. "ทั่วไป / General (4 Shelf)" (JS: zoneOptionLabelJs) */
 function zoneOptionLabel(string $zone): string
 {
     $z = topology()['zones'][$zone] ?? null;
@@ -319,9 +319,9 @@ function zoneOptionLabel(string $zone): string
     if (!$z['is_active']) {
         $suffix = ' (ปิดใช้งาน / Disabled)';
     } elseif ($enabled > 0) {
-        $suffix = " ({$enabled} ชีต)";
+        $suffix = " ({$enabled} Shelf)";
     } else {
-        $suffix = zoneHasSheets($zone, true) ? ' (ไม่มีชีตที่เปิดใช้งาน / No active sheets)' : ' (ยังไม่มีชีต / No sheets)';
+        $suffix = zoneHasSheets($zone, true) ? ' (ไม่มี Shelf ที่เปิดใช้งาน / No active shelves)' : ' (ยังไม่มี Shelf / No shelves)';
     }
     return $z['label'] . $suffix;
 }
@@ -358,7 +358,7 @@ function allSheetsRangeLabel(string $zone): string
     if (empty($sheets)) {
         return 'All Sheets';
     }
-    $prefixes = array_map(static fn($sh): string => shelfPrefix((string)$sh), $sheets);
+    $prefixes = array_values(array_unique(array_map(static fn($sh): string => shelfPrefix((string)$sh), $sheets)));
     return 'All Sheets (' . implode(', ', $prefixes) . ')';
 }
 
@@ -1157,7 +1157,7 @@ function runMigrations(PDO $pdo): void
                 sheet_key    VARCHAR(30) NOT NULL PRIMARY KEY COLLATE NOCASE,
                 zone_key     VARCHAR(30) NOT NULL COLLATE NOCASE REFERENCES zones (zone_key),
                 label        VARCHAR(60) NOT NULL,
-                shelf_prefix VARCHAR(3)  NOT NULL UNIQUE COLLATE NOCASE,
+                shelf_prefix VARCHAR(3)  NOT NULL COLLATE NOCASE,
                 dot_color    VARCHAR(30) NOT NULL,
                 sort_order   INTEGER     NOT NULL DEFAULT 0,
                 is_active    INTEGER     NOT NULL DEFAULT 1,
@@ -1197,11 +1197,20 @@ function runMigrations(PDO $pdo): void
                 sort_order   INT         NOT NULL DEFAULT 0,
                 is_active    TINYINT(1)  NOT NULL DEFAULT 1,
                 created_at   DATETIME    NOT NULL,
-                UNIQUE KEY uq_shelf_prefix (shelf_prefix),
+                KEY idx_shelf_prefix (shelf_prefix),
                 KEY idx_zone_order (zone_key, sort_order),
                 CONSTRAINT fk_sheets_zone FOREIGN KEY (zone_key) REFERENCES zones (zone_key)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ');
+
+        // Drop uq_shelf_prefix if it exists so multiple sheets (e.g. CD200_Gen, CD250_Gen, CD300) can share the same shelf prefix
+        $hasUqPrefix = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sheets' AND INDEX_NAME = 'uq_shelf_prefix'"
+        )->fetchColumn() > 0;
+        if ($hasUqPrefix) {
+            $pdo->exec('ALTER TABLE sheets DROP INDEX uq_shelf_prefix');
+        }
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS topology_audit (
                 id          INT AUTO_INCREMENT PRIMARY KEY,

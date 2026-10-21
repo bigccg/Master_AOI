@@ -15,8 +15,8 @@
       <header class="gm-head">
         <span class="gm-badge"><i class="fa-solid fa-sitemap" aria-hidden="true"></i></span>
         <div class="gm-headtext">
-          <h3 id="tm-title" class="gm-title">จัดการโซนและชีต / Manage Zones &amp; Sheets</h3>
-          <p id="tm-subtitle" class="tm-subtitle">เพิ่ม แก้ไข หรือปิดใช้งานโซนและชีต · ข้อมูลบอร์ดเดิมไม่ถูกแก้ไข / Add, edit or disable zones and sheets · board records are never changed</p>
+          <h3 id="tm-title" class="gm-title">จัดการโซนและ Shelf / Manage Zones &amp; Shelves</h3>
+          <p id="tm-subtitle" class="tm-subtitle">เพิ่ม แก้ไข หรือปิดใช้งานโซนและ Shelf · ข้อมูลบอร์ดเดิมไม่ถูกแก้ไข / Add, edit or disable zones and shelves · board records are never changed</p>
         </div>
         <button type="button" class="gm-close" data-tm-action="close" aria-label="ปิดหน้าต่าง / Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </header>
@@ -29,7 +29,7 @@
       <footer class="gm-status">
         <span class="gm-mode"><i class="fa-solid fa-user-shield" style="font-size:9px" aria-hidden="true"></i><span id="tm-mode-text">ADMIN</span></span>
         <span class="gm-seg-info hide-sm"><b id="tm-st-info">zones · sheets</b></span>
-        <span class="gm-keys"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> edit</span><span><kbd>Esc</kbd> back</span></span>
+        <span class="gm-keys"><span><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd><kbd>←</kbd> move</span><span><kbd>Enter</kbd> edit</span><span><kbd>Esc</kbd> back</span></span>
       </footer>
       <p id="tm-live" class="sr-only" role="status" aria-live="polite"></p>
     </div>

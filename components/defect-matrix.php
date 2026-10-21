@@ -9,7 +9,7 @@
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3 border-b-2 pb-2 border-slate-200">
       <div class="flex items-center gap-2">
         <i class="fa-solid fa-table-cells text-blue-600 text-sm"></i>
-        <h2 id="defect-matrix-title" class="text-xs font-bold uppercase tracking-wider text-slate-700">Defect Matrix: All Size Magazines — โซน <?= h($zone) ?> (ตารางข้อบกพร่องทุกชีตในโซน)</h2>
+        <h2 id="defect-matrix-title" class="text-xs font-bold uppercase tracking-wider text-slate-700">Defect Matrix: All Size Magazines — โซน <?= h($zone) ?> (ตารางข้อบกพร่องทุก Shelf ในโซน)</h2>
         <span id="defect-matrix-counter" class="text-[11px] font-mono text-slate-500 bg-white border border-slate-200 rounded px-1.5 py-0.5"><?= $cnt['D'] + $cnt['GD'] ?> rows</span>
       </div>
       <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">

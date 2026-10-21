@@ -5,11 +5,11 @@
  */
 $addBlocked     = insertBlockedReason($zone, $sheet);   // same rules saveBoardRecord() applies
 $addBtnDisabled = $addBlocked !== '';
-$addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมูลบอร์ดลงในชีต ' . $sheet . ' / Add board record to ' . $sheet;
+$addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมูลบอร์ดลงใน Shelf ' . $sheet . ' / Add board record to ' . $sheet;
 ?>
 <!-- ===== Header ===== -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-  <div class="px-4 lg:px-6 py-2.5">
+  <div class="px-4 lg:px-f6 py-2.5">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <!-- Left: Logo & System Info -->
       <div class="flex items-center space-x-3 min-w-0">
@@ -45,7 +45,7 @@ $addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อม�
 
         <!-- Buttons Toolbar (Export, Add Board, Manage, Logout) -->
         <div class="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 border-l border-slate-200 shrink-0 flex-nowrap">
-          <a href="<?= h(url(['zone' => $zone, 'sheet' => $sheet, 'export' => 1])) ?>" id="export-btn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="ส่งออกไฟล์ CSV ของโซนและชีตที่เลือก / Export CSV for current zone & sheet">
+          <a href="<?= h(url(['zone' => $zone, 'sheet' => $sheet, 'export' => 1])) ?>" id="export-btn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="ส่งออกไฟล์ CSV ของโซนและ Shelf ที่เลือก / Export CSV for current zone & shelf">
             <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>ส่งออก CSV / Export</span>
           </a>
           <button type="button" id="new-entry-btn" onclick="openAddModal()" <?= $addBtnDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"' ?> title="<?= h($addBtnTitle) ?>" class="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 whitespace-nowrap shrink-0">
@@ -55,8 +55,8 @@ $addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อม�
           <?php $adminBack = http_build_query(['zone' => $zone, 'sheet' => $sheet]); ?>
           <?php if ($isAdmin): ?>
           <!-- Administrator only -->
-          <button type="button" id="tm-open-btn" onclick="openTopologyManager()" aria-haspopup="dialog" aria-controls="topology-manager" title="เพิ่ม แก้ไข หรือปิดใช้งานโซนและชีต / Add, edit or disable zones and sheets" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
-            <i class="fa-solid fa-sitemap text-emerald-600" aria-hidden="true"></i><span>จัดการโซนและชีต / Manage</span>
+          <button type="button" id="tm-open-btn" onclick="openTopologyManager()" aria-haspopup="dialog" aria-controls="topology-manager" title="เพิ่ม แก้ไข หรือปิดใช้งานโซนและ Shelf / Add, edit or disable zones and shelves" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
+            <i class="fa-solid fa-sitemap text-emerald-600" aria-hidden="true"></i><span>จัดการโซนและ Shelf / Manage</span>
           </button>
           <?php if (!isClientIpAllowed()): ?>
           <form method="post" action="admin.php" class="inline-flex shrink-0">
@@ -70,7 +70,7 @@ $addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อม�
           </form>
           <?php endif; ?>
           <?php elseif ($adminConfigured): ?>
-          <a href="admin.php?<?= h($adminBack) ?>" title="เข้าสู่ระบบผู้ดูแล (สำหรับจัดการโซนและชีต) / Administrator sign-in (zone &amp; sheet management)" class="inline-flex items-center px-2 py-1.5 text-xs rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0">
+          <a href="admin.php?<?= h($adminBack) ?>" title="เข้าสู่ระบบผู้ดูแล (สำหรับจัดการโซนและ Shelf) / Administrator sign-in (zone &amp; shelf management)" class="inline-flex items-center px-2 py-1.5 text-xs rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0">
             <i class="fa-solid fa-user-shield" aria-hidden="true"></i><span class="sr-only">เข้าสู่ระบบผู้ดูแล / Administrator sign-in</span>
           </a>
           <?php endif; ?>

@@ -35,7 +35,9 @@
     } }
   }
 </script>
-<?php foreach (CSS_FILES as $css): ?>
-<link rel="stylesheet" href="assets/css/<?= h($css) ?>">
+<?php foreach (CSS_FILES as $css): 
+    $mtime = @filemtime(__DIR__ . '/../../assets/css/' . $css) ?: 1;
+?>
+<link rel="stylesheet" href="assets/css/<?= h($css) ?>?v=<?= $mtime ?>">
 <?php endforeach; ?>
 </head>

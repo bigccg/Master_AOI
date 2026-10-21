@@ -432,8 +432,6 @@ try {
         'sheet key ซ้ำต่างแค่ตัวพิมพ์ (cd300)'     => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'cd300', 'label' => 'x', 'shelf_prefix' => 'QA', 'dot_color' => 'bg-sky-500']), 'sheet_key'],
         'sheet key สงวน (ALL / all)'             => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'all', 'label' => 'x', 'shelf_prefix' => 'QA', 'dot_color' => 'bg-sky-500']), 'sheet_key'],
         'sheet key รูปแบบผิด (A.1)'              => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'A.1', 'label' => 'x', 'shelf_prefix' => 'QA', 'dot_color' => 'bg-sky-500']), 'sheet_key'],
-        'prefix ซ้ำ (CD)'                        => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'Q1', 'label' => 'x', 'shelf_prefix' => 'CD', 'dot_color' => 'bg-sky-500']), 'shelf_prefix'],
-        'prefix ซ้ำต่างแค่ตัวพิมพ์ (cd)'           => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'Q1', 'label' => 'x', 'shelf_prefix' => 'cd', 'dot_color' => 'bg-sky-500']), 'shelf_prefix'],
         'prefix มีตัวเลข (A1)'                   => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'Q1', 'label' => 'x', 'shelf_prefix' => 'A1', 'dot_color' => 'bg-sky-500']), 'shelf_prefix'],
         'prefix 4 ตัว (ABCD)'                    => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'Q1', 'label' => 'x', 'shelf_prefix' => 'ABCD', 'dot_color' => 'bg-sky-500']), 'shelf_prefix'],
         'สีนอก palette (class อิสระ)'             => [apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'Q1', 'label' => 'x', 'shelf_prefix' => 'QA', 'dot_color' => 'bg-red-500" onclick="x']), 'dot_color'],
@@ -443,6 +441,8 @@ try {
     foreach ($cases as $label => [$r, $field]) {
         check("(ง) ปฏิเสธ: $label → 422 + field $field", rejected($r, 422, $field), json_encode($r, JSON_UNESCAPED_UNICODE));
     }
+    $rSamePrefix = apply($pdo, 'sheet_create', ['zone_key' => 'AIXZ', 'sheet_key' => 'CD200_Gen', 'label' => 'CD200 Gen', 'shelf_prefix' => 'CD', 'dot_color' => 'bg-sky-500']);
+    check('(ง) อนุญาตให้ใช้ prefix เดียวกันข้ามชีตได้ (เช่น CD สำหรับ CD200_Gen และ CD300)', $rSamePrefix['success'] === true);
     check('(ง) action ไม่รู้จัก → 400 / unknown action', rejected(apply($pdo, 'zone_rename', ['zone_key' => 'AIXZ']), 400));
     check('(ง) ไม่พบโซน / ชีต → 404 / missing zone or sheet',
         rejected(apply($pdo, 'zone_update', ['zone_key' => 'Nope', 'label' => 'x']), 404) && rejected(apply($pdo, 'sheet_delete', ['sheet_key' => 'Nope']), 404));

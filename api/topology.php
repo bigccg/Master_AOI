@@ -4,7 +4,7 @@
  *   GET  /api/topology.php                            -> { success, data: manager data, topology }
  *   POST /api/topology.php  { csrf, action, ...fields } -> { success, message, data, topology }
  *                                                       | { success: false, errors: [...], field_errors: {field: message} }
- *   action: zone_create | zone_update | zone_delete | sheet_create | sheet_update | sheet_delete
+ *   action: zone_create | zone_update | zone_delete | sheet_create | sheet_update | sheet_delete | sheet_reorder
  * Order of checks: method (405) -> administrator session (503 not configured / 401 not signed in or expired)
  * -> CSRF for writes (403) -> every rule again on the server (400 / 404 / 409 / 422). Accepts Form POST or JSON.
  * `topology` is the same shape as window.TOPOLOGY, so the page can update without a reload (applyTopology()).

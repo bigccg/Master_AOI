@@ -11,8 +11,8 @@ const tm = { data: null, view: 'list', form: null, busy: false, opener: null, no
 
 // UI copy (Thai / English); rule / error messages come from the server (data.copy)
 const TM_COPY = {
-    loading:       'กำลังโหลดโซนและชีต... / Loading zones and sheets...',
-    loadError:     'โหลดรายการโซนและชีตไม่สำเร็จ / Could not load zones and sheets',
+    loading:       'กำลังโหลดโซนและ Shelf... / Loading zones and shelves...',
+    loadError:     'โหลดรายการโซนและ Shelf ไม่สำเร็จ / Could not load zones and shelves',
     loadErrorHint: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบเครือข่ายแล้วลองใหม่ / The server could not be reached. Check the network and retry.',
     authError:     'ต้องเข้าสู่ระบบผู้ดูแลก่อน / Administrator sign-in needed',
     retry:         'ลองโหลดใหม่ / Retry',
@@ -23,17 +23,17 @@ const TM_COPY = {
     saving:        'กำลังบันทึก / Saving...',
     back:          'กลับไปรายการ / Back to list',
     addZone:       'เพิ่มโซน / Add zone',
-    addSheet:      'เพิ่มชีตในโซนนี้ / Add sheet',
-    addSheetOff:   'เพิ่มชีตไม่ได้ เพราะโซนนี้ปิดใช้งานอยู่ เปิดใช้งานโซนก่อน / Cannot add a sheet: the zone is disabled. Enable it first.',
-    noSheets:      'ยังไม่มีชีตในโซนนี้ / No sheets yet',
-    noSheetsHint:  'ผู้ใช้จะเห็นข้อความ "ยังไม่มีชีตในระบบ" จนกว่าจะเพิ่มชีตแรก / Users see "No sheets configured" until the first sheet is added.',
+    addSheet:      'เพิ่ม Shelf ในโซนนี้ / Add shelf',
+    addSheetOff:   'เพิ่ม Shelf ไม่ได้ เพราะโซนนี้ปิดใช้งานอยู่ เปิดใช้งานโซนก่อน / Cannot add a shelf: the zone is disabled. Enable it first.',
+    noSheets:      'ยังไม่มี Shelf ในโซนนี้ / No shelves yet',
+    noSheetsHint:  'ผู้ใช้จะเห็นข้อความ "ยังไม่มี Shelf ในระบบ" จนกว่าจะเพิ่ม Shelf แรก / Users see "No shelves configured" until the first shelf is added.',
     active:        'เปิดใช้งาน / Active',
     disabled:      'ปิดใช้งาน / Disabled',
     isDefault:     'โซนเริ่มต้น / Default',
     newZone:       'เพิ่มโซนใหม่ / Add zone',
-    newSheet:      'เพิ่มชีตใหม่ / Add sheet',
+    newSheet:      'เพิ่ม Shelf ใหม่ / Add shelf',
     editZone:      (k) => `แก้ไขโซน ${k} / Edit zone ${k}`,
-    editSheet:     (k) => `แก้ไขชีต ${k} / Edit sheet ${k}`,
+    editSheet:     (k) => `แก้ไข Shelf ${k} / Edit shelf ${k}`,
     keyLocked:     'แก้ไม่ได้หลังสร้าง เพราะข้อมูลบอร์ดและลิงก์ที่บันทึกไว้อ้างอิงรหัสนี้ / Cannot change after creation: board records and saved links refer to it.',
     prefixLocked:  'แก้ไม่ได้หลังสร้าง เพราะทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข / Cannot change after creation: every record stores its shelf as prefix + number.',
     zoneKeyHint:   'ตัวอักษรอังกฤษ ตัวเลข หรือ _ ยาว 1–30 ตัว เช่น Plant2_SMT / Letters, digits or _, 1–30 characters, e.g. Plant2_SMT',
@@ -44,24 +44,24 @@ const TM_COPY = {
     orderHint:     'เลขน้อยแสดงก่อน เว้นว่าง = ต่อท้าย / Lower shows first; empty = add at the end',
     zoneHint:      'เลือกได้เฉพาะโซนที่เปิดใช้งาน / Only active zones can be chosen',
     createZoneWarn:  'ตรวจสอบก่อนบันทึก: รหัสโซนแก้ภายหลังไม่ได้ เพราะลิงก์และข้อมูลบอร์ดอ้างอิงรหัสนี้ / Check before saving: the zone key cannot be changed later, because links and board records refer to it.',
-    createSheetWarn: 'ตรวจสอบก่อนบันทึก: รหัสชีตและ Shelf prefix แก้ภายหลังไม่ได้ เพราะทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข ชีตใหม่เริ่มต้นมี 1 Magazine / Check before saving: the sheet key and shelf prefix cannot be changed later, because every record stores its shelf as prefix + number. A new sheet starts with 1 Magazine.',
+    createSheetWarn: 'ตรวจสอบก่อนบันทึก: รหัส Shelf และ Shelf prefix แก้ภายหลังไม่ได้ เพราะทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข Shelf ใหม่เริ่มต้นมี 1 Magazine / Check before saving: the shelf key and shelf prefix cannot be changed later, because every record stores its shelf as prefix + number. A new shelf starts with 1 Magazine.',
     shelfPreview:  'ตัวอย่าง Shelf / Shelf preview:',
     tabPreview:    'ตัวอย่างแท็บ / Tab preview:',
     confirm: {
-        sheetDisable: (k, n) => ({ title: 'ปิดใช้งานชีต / Disable Sheet', icon: 'fa-power-off', mode: 'DISABLE', seg: 'sheet → disable', ok: 'ปิดใช้งาน / Disable',
-            before: 'ปิดใช้งานชีต ', key: k,
-            after: ` หรือไม่? ชีตจะหายจากแท็บ และเพิ่มข้อมูลหรือ Magazine ใหม่ไม่ได้ ข้อมูลเดิม ${n} รายการยังอยู่ครบ ดู แก้ไข และส่งออกได้ เปิดใช้งานกลับได้ทุกเมื่อ`,
-            en: `Disable sheet ${k}? It leaves the tabs and takes no new records or Magazines. Its ${n} record(s) stay intact and can still be viewed, edited and exported. You can enable it again at any time.` }),
-        sheetDelete: (k) => ({ title: 'ลบชีตถาวร / Delete Sheet', icon: 'fa-trash-can', mode: 'DELETE', seg: 'sheet → delete', ok: 'ลบถาวร / Delete',
-            before: 'ลบชีต ', key: k, after: ' ถาวรหรือไม่? ชีตนี้ยังไม่มีข้อมูลบอร์ด การลบไม่สามารถย้อนกลับได้ (สร้างใหม่ด้วยรหัสเดิมได้)',
-            en: `Delete sheet ${k} permanently? It has no board records. This cannot be undone (you can create it again with the same key).` }),
+        sheetDisable: (k, n) => ({ title: 'ปิดใช้งาน Shelf / Disable Shelf', icon: 'fa-power-off', mode: 'DISABLE', seg: 'shelf → disable', ok: 'ปิดใช้งาน / Disable',
+            before: 'ปิดใช้งาน Shelf ', key: k,
+            after: ` หรือไม่? Shelf จะหายจากแท็บ และเพิ่มข้อมูลหรือ Magazine ใหม่ไม่ได้ ข้อมูลเดิม ${n} รายการยังอยู่ครบ ดู แก้ไข และส่งออกได้ เปิดใช้งานกลับได้ทุกเมื่อ`,
+            en: `Disable shelf ${k}? It leaves the tabs and takes no new records or Magazines. Its ${n} record(s) stay intact and can still be viewed, edited and exported. You can enable it again at any time.` }),
+        sheetDelete: (k) => ({ title: 'ลบ Shelf ถาวร / Delete Shelf', icon: 'fa-trash-can', mode: 'DELETE', seg: 'shelf → delete', ok: 'ลบถาวร / Delete',
+            before: 'ลบ Shelf ', key: k, after: ' ถาวรหรือไม่? Shelf นี้ยังไม่มีข้อมูลบอร์ด การลบไม่สามารถย้อนกลับได้ (สร้างใหม่ด้วยรหัสเดิมได้)',
+            en: `Delete shelf ${k} permanently? It has no board records. This cannot be undone (you can create it again with the same key).` }),
         zoneDisable: (k, n) => ({ title: 'ปิดใช้งานโซน / Disable Zone', icon: 'fa-power-off', mode: 'DISABLE', seg: 'zone → disable', ok: 'ปิดใช้งาน / Disable',
             before: 'ปิดใช้งานโซน ', key: k,
             after: ` หรือไม่? โซนจะหายจากตัวเลือกโซนและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิม ${n} รายการยังอยู่ครบ และเปิดดูจากลิงก์เดิมได้ เปิดใช้งานกลับได้ทุกเมื่อ`,
             en: `Disable zone ${k}? It leaves the zone selector and takes no new records. Its ${n} record(s) stay intact and still open from existing links. You can enable it again at any time.` }),
         zoneDelete: (k) => ({ title: 'ลบโซนถาวร / Delete Zone', icon: 'fa-trash-can', mode: 'DELETE', seg: 'zone → delete', ok: 'ลบถาวร / Delete',
-            before: 'ลบโซน ', key: k, after: ' ถาวรหรือไม่? โซนนี้ไม่มีชีตและไม่มีข้อมูลบอร์ด การลบไม่สามารถย้อนกลับได้',
-            en: `Delete zone ${k} permanently? It has no sheets and no board records. This cannot be undone.` }),
+            before: 'ลบโซน ', key: k, after: ' ถาวรหรือไม่? โซนนี้ไม่มี Shelf และไม่มีข้อมูลบอร์ด การลบไม่สามารถย้อนกลับได้',
+            en: `Delete zone ${k} permanently? It has no shelves and no board records. This cannot be undone.` }),
     },
 };
 
@@ -174,21 +174,21 @@ function tmChip(kind, text) {
 
 function tmSheetHtml(s, z) {
     const toggle = s.is_active
-        ? tmBtn('sheet-disable', s.key, 'fa-power-off', `ปิดใช้งานชีต ${s.key} / Disable sheet ${s.key}`, s.guards.deactivate)
-        : tmBtn('sheet-enable', s.key, 'fa-toggle-on', `เปิดใช้งานชีต ${s.key} / Enable sheet ${s.key}`, s.guards.activate);
+        ? tmBtn('sheet-disable', s.key, 'fa-power-off', `ปิดใช้งาน Shelf ${s.key} / Disable shelf ${s.key}`, s.guards.deactivate)
+        : tmBtn('sheet-enable', s.key, 'fa-toggle-on', `เปิดใช้งาน Shelf ${s.key} / Enable shelf ${s.key}`, s.guards.activate);
     return `
-        <li>
+        <li class="tm-sheet-item">
           <div class="tm-row tm-sheet-row${s.is_active ? '' : ' is-off'}" data-tm-row data-kind="sheet" data-key="${h(s.key)}" tabindex="-1"
-               aria-label="${h(`ชีต ${s.label} (${s.key}) · ${s.records} รายการ · ${s.is_active ? TM_COPY.active : TM_COPY.disabled}`)}">
-            <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block ${h(s.dot)}" aria-hidden="true"></span>
+               aria-label="${h(`Shelf ${s.label} (${s.key}) · ${s.records} รายการ · ${s.is_active ? TM_COPY.active : TM_COPY.disabled}`)}">
+            <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block shrink-0 ${h(s.dot)}" aria-hidden="true"></span>
             <div class="tm-main">
               <p class="tm-name"><span class="tm-label">${h(s.label)}</span>${s.is_active ? '' : tmChip('off', TM_COPY.disabled)}</p>
-              <p class="tm-meta"><code>${h(s.key)}</code> · Shelf <b>${h(s.prefix)}</b>1… · ${h(tmCount(s.records, 'รายการ', 'records'))} · ${h(`${s.magazines} Magazine`)}</p>
+              <p class="tm-meta"><code>${h(s.key)}</code> · Shelf <b>${h(s.prefix)}</b>1… · ${h(tmCount(s.records, 'รายการ', 'records'))} · ${h(`${s.magazines} Mag`)}</p>
             </div>
             <div class="tm-actions">
-              ${tmBtn('sheet-edit', s.key, 'fa-pen', `แก้ไขชีต ${s.key} / Edit sheet ${s.key}`)}
+              ${tmBtn('sheet-edit', s.key, 'fa-pen', `แก้ไข Shelf ${s.key} / Edit shelf ${s.key}`)}
               ${toggle}
-              ${tmBtn('sheet-delete', s.key, 'fa-trash-can', `ลบชีต ${s.key} / Delete sheet ${s.key}`, s.guards.delete, true)}
+              ${tmBtn('sheet-delete', s.key, 'fa-trash-can', `ลบ Shelf ${s.key} / Delete shelf ${s.key}`, s.guards.delete, true)}
             </div>
           </div>
         </li>`;
@@ -200,29 +200,29 @@ function tmZoneHtml(z) {
         : tmBtn('zone-enable', z.key, 'fa-toggle-on', `เปิดใช้งานโซน ${z.key} / Enable zone ${z.key}`, z.guards.activate);
     const sheets = z.sheets.length
         ? z.sheets.map(s => tmSheetHtml(s, z)).join('')
-        : `<li class="tm-empty"><b>${h(TM_COPY.noSheets)}</b>${h(TM_COPY.noSheetsHint)}</li>`;
+        : `<li class="tm-empty-item"><div class="tm-empty"><b>${h(TM_COPY.noSheets)}</b>${h(TM_COPY.noSheetsHint)}</div></li>`;
     const addId = `tm-why-${++tm.seq}`;
     const add = z.is_active
-        ? `<button type="button" class="tm-add-sheet" data-tm-action="sheet-add" data-key="${h(z.key)}"><i class="fa-solid fa-plus" aria-hidden="true"></i>${h(TM_COPY.addSheet)}</button>`
-        : `<button type="button" class="tm-add-sheet" data-tm-action="sheet-add" data-key="${h(z.key)}" aria-disabled="true" aria-describedby="${addId}" data-reason="${h(TM_COPY.addSheetOff)}" title="${h(TM_COPY.addSheetOff)}"><i class="fa-solid fa-plus" aria-hidden="true"></i>${h(TM_COPY.addSheet)}</button><span id="${addId}" class="sr-only">${h(TM_COPY.addSheetOff)}</span>`;
+        ? `<button type="button" class="tm-add-sheet-btn" data-tm-action="sheet-add" data-key="${h(z.key)}" title="${h(TM_COPY.addSheet)}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>${h(TM_COPY.addSheet)}</span></button>`
+        : `<button type="button" class="tm-add-sheet-btn" data-tm-action="sheet-add" data-key="${h(z.key)}" aria-disabled="true" aria-describedby="${addId}" data-reason="${h(TM_COPY.addSheetOff)}" title="${h(TM_COPY.addSheetOff)}"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>${h(TM_COPY.addSheet)}</span></button><span id="${addId}" class="sr-only">${h(TM_COPY.addSheetOff)}</span>`;
     return `
       <li class="tm-zone${z.is_active ? '' : ' is-off'}">
         <div class="tm-row tm-zone-row${z.is_active ? '' : ' is-off'}" data-tm-row data-kind="zone" data-key="${h(z.key)}" tabindex="-1"
-             aria-label="${h(`โซน ${z.label} (${z.key}) · ${z.sheets.length} ชีต · ${z.records} รายการ · ${z.is_active ? TM_COPY.active : TM_COPY.disabled}`)}">
+             aria-label="${h(`โซน ${z.label} (${z.key}) · ${z.sheets.length} Shelf · ${z.records} รายการ · ${z.is_active ? TM_COPY.active : TM_COPY.disabled}`)}">
           <span class="tm-zone-ico" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
           <div class="tm-main">
             <p class="tm-name"><span class="tm-label">${h(z.label)}</span>${z.is_default ? tmChip('default', TM_COPY.isDefault) : ''}${tmChip(z.is_active ? 'on' : 'off', z.is_active ? TM_COPY.active : TM_COPY.disabled)}</p>
-            <p class="tm-meta"><code>${h(z.key)}</code> · ${h(tmCount(z.sheets.length, 'ชีต', 'sheets'))} · ${h(tmCount(z.records, 'รายการ', 'records'))} · ${h(`ลำดับ / order ${z.sort_order}`)}</p>
+            <p class="tm-meta"><code>${h(z.key)}</code> · ${h(tmCount(z.sheets.length, 'Shelf', 'shelves'))} · ${h(tmCount(z.records, 'รายการ', 'records'))} · ${h(`ลำดับ / order ${z.sort_order}`)}</p>
           </div>
           <div class="tm-actions">
+            ${add}
             ${tmBtn('zone-edit', z.key, 'fa-pen', `แก้ไขโซน ${z.key} / Edit zone ${z.key}`)}
             ${toggle}
             ${tmBtn('zone-delete', z.key, 'fa-trash-can', `ลบโซน ${z.key} / Delete zone ${z.key}`, z.guards.delete, true)}
           </div>
         </div>
-        <ul class="tm-sheets" aria-label="${h(`ชีตในโซน ${z.key} / Sheets in ${z.key}`)}">
+        <ul class="tm-sheets" aria-label="${h(`Shelf ในโซน ${z.key} / Shelves in ${z.key}`)}">
           ${sheets}
-          <li class="tm-add-row">${add}</li>
         </ul>
       </li>`;
 }
@@ -232,11 +232,11 @@ function tmRenderList(focusKey = null) {
     tm.seq = 0;
     tmBody().innerHTML = `
         <div class="tm-toolbar">
-          <p class="tm-summary">${h(`${d.totals.zones} โซน · ${d.totals.sheets} ชีต · ${d.totals.records} รายการ / ${d.totals.zones} zones · ${d.totals.sheets} sheets · ${d.totals.records} records`)}</p>
+          <p class="tm-summary">${h(`${d.totals.zones} โซน · ${d.totals.sheets} Shelf · ${d.totals.records} รายการ / ${d.totals.zones} zones · ${d.totals.sheets} shelves · ${d.totals.records} records`)}</p>
           <button type="button" class="gm-btn ghost tm-btn-sm" data-tm-action="zone-add"><i class="fa-solid fa-plus" aria-hidden="true"></i>${h(TM_COPY.addZone)}</button>
         </div>
         <div id="tm-notice" class="tm-notice" role="status"${tm.notice ? '' : ' hidden'}><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>${h(tm.notice)}</span></div>
-        <ul class="tm-zones" aria-label="โซนและชีต / Zones and sheets">${d.zones.map(tmZoneHtml).join('')}</ul>`;
+        <ul class="tm-zones" aria-label="โซนและ Shelf / Zones and shelves">${d.zones.map(tmZoneHtml).join('')}</ul>`;
     tmActions().innerHTML = `<button type="button" class="gm-btn ghost" data-tm-action="close">${h(TM_COPY.close)}</button>`;
     tmSetStatus('ADMIN', `${d.totals.zones} zones · ${d.totals.sheets} sheets`);
 
@@ -262,14 +262,83 @@ function tmShowNotice(text) {
     tmAnnounce(text);
 }
 
+// ── auto-generation & suggestions ──────────────────────────────────────
+
+let tmAutoSync = { zone_key: true, sheet_key: true, shelf_prefix: true };
+
+function tmSuggestZoneKey(label) {
+    const existing = new Set(tmZones().map(z => z.key.toLowerCase()));
+    const raw = String(label || '').trim();
+    let clean = raw.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+    if (/[A-Za-z]/.test(clean)) {
+        clean = clean.slice(0, 26);
+        if (!existing.has(clean.toLowerCase())) return clean;
+        for (let i = 1; i <= 99; i++) {
+            const cand = `${clean}_${i}`.slice(0, 30);
+            if (!existing.has(cand.toLowerCase())) return cand;
+        }
+    }
+    for (let i = 1; i <= 999; i++) {
+        const cand = `Zone_${i}`;
+        if (!existing.has(cand.toLowerCase())) return cand;
+    }
+    return `Zone_${Date.now().toString(36).slice(-4)}`;
+}
+
+function tmSuggestSheetKey(label) {
+    const existing = new Set();
+    for (const z of tmZones()) {
+        for (const s of (z.sheets || [])) {
+            existing.add(s.key.toLowerCase());
+        }
+    }
+    const reserved = new Set((tm.data?.rules?.reserved_sheet_keys || ['ALL']).map(k => k.toLowerCase()));
+    const raw = String(label || '').trim();
+    let clean = raw.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+    if (/[A-Za-z]/.test(clean)) {
+        clean = clean.slice(0, 26);
+        if (!existing.has(clean.toLowerCase()) && !reserved.has(clean.toLowerCase())) return clean;
+        for (let i = 1; i <= 99; i++) {
+            const cand = `${clean}_${i}`.slice(0, 30);
+            if (!existing.has(cand.toLowerCase()) && !reserved.has(cand.toLowerCase())) return cand;
+        }
+    }
+    for (let i = 1; i <= 999; i++) {
+        const cand = `Sheet_${i}`;
+        if (!existing.has(cand.toLowerCase()) && !reserved.has(cand.toLowerCase())) return cand;
+    }
+    return `Sheet_${Date.now().toString(36).slice(-4)}`;
+}
+
+function tmSuggestShelfPrefix(label) {
+    const raw = String(label || '').trim();
+    const lead = raw.match(/^[A-Za-z]{1,3}/);
+    if (lead) {
+        return lead[0].toUpperCase();
+    }
+    const words = raw.toUpperCase().split(/[^A-Z0-9]+/).filter(w => /^[A-Z]/.test(w));
+    if (words.length >= 2) {
+        const acronym = words.map(w => w[0]).join('').slice(0, 3);
+        if (acronym.length >= 1) return acronym;
+    }
+    const letters = raw.toUpperCase().replace(/[^A-Z]/g, '');
+    if (letters.length > 0) {
+        return letters.slice(0, 2);
+    }
+    return 'A';
+}
+
 // ── forms ─────────────────────────────────────────────────────────────
 
 function tmInput(f) {
     const hintId = `${f.id}-hint`;
     const errId  = `${f.id}-err`;
+    const badgeHtml = f.badge
+        ? `<span class="tm-auto-badge text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-normal ml-1.5 shrink-0"><i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i>${h(f.badge)}</span>`
+        : '';
     return `
         <div class="gm-field" data-field="${f.name}">
-          <label class="gm-label" for="${f.id}"><span class="k">${f.k}</span><span>${h(f.label)} <span class="th">(${h(f.en)})</span>${f.required ? '<i class="gm-req">*</i>' : ''}</span></label>
+          <label class="gm-label" for="${f.id}"><span class="k">${f.k}</span><span>${h(f.label)} <span class="th">(${h(f.en)})</span>${f.required ? '<i class="gm-req">*</i>' : ''}</span>${badgeHtml}</label>
           <div class="gm-input-wrap">
             <input id="${f.id}" name="${f.name}" type="text" value="${h(f.value ?? '')}" class="gm-input has-ico${f.cls ? ' ' + f.cls : ''}"
                    ${f.max ? `maxlength="${f.max}"` : ''} ${f.readonly ? 'readonly aria-readonly="true"' : ''} ${f.required && !f.readonly ? 'aria-required="true"' : ''}
@@ -284,6 +353,7 @@ function tmInput(f) {
 
 function tmZoneFormHtml(z) {
     const isNew = !z;
+    const defaultKey = isNew ? tmSuggestZoneKey(z?.label || '') : (z?.key || '');
     return `
         <form id="tm-form" class="tm-form" novalidate aria-labelledby="tm-form-title">
           <div class="tm-form-head">
@@ -291,17 +361,11 @@ function tmZoneFormHtml(z) {
             <h4 id="tm-form-title" class="tm-form-title">${h(isNew ? TM_COPY.newZone : TM_COPY.editZone(z.key))}</h4>
           </div>
           <div id="tm-form-error" class="gm-error" role="alert" hidden></div>
-          ${tmInput({ k: '01', id: 'tm-f-zone_key', name: 'zone_key', label: 'รหัสโซน', en: 'Zone key', required: true, max: 30, cls: 'mono tm-keep-case',
-                      icon: 'fa-key', value: z?.key, readonly: !isNew, hint: isNew ? TM_COPY.zoneKeyHint : TM_COPY.keyLocked })}
-          ${tmInput({ k: '02', id: 'tm-f-label', name: 'label', label: 'ชื่อที่แสดง', en: 'Display name', required: true, max: tm.data.rules.label_max,
-                      icon: 'fa-tag', value: z?.label, hint: TM_COPY.labelHint })}
-          <div class="gm-row">
-            ${tmInput({ k: '03', id: 'tm-f-short_label', name: 'short_label', label: 'ชื่อย่อ', en: 'Short name', max: tm.data.rules.short_max,
-                        icon: 'fa-font', value: z?.short_label, hint: TM_COPY.shortHint })}
-            ${tmInput({ k: '04', id: 'tm-f-sort_order', name: 'sort_order', label: 'ลำดับ', en: 'Order', max: 4, inputmode: 'numeric', cls: 'mono',
-                        icon: 'fa-arrow-down-1-9', value: z ? String(z.sort_order) : '', hint: TM_COPY.orderHint })}
-          </div>
-          ${isNew ? `<p class="tm-warning" role="note"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>${h(TM_COPY.createZoneWarn)}</span></p>` : ''}
+          <input type="hidden" id="tm-f-zone_key" name="zone_key" value="${h(defaultKey)}" />
+          ${tmInput({ k: '01', id: 'tm-f-label', name: 'label', label: 'ชื่อโซนที่แสดง', en: 'Zone name', required: true, max: tm.data.rules.label_max,
+                      icon: 'fa-tag', value: z?.label, hint: 'พิมพ์ชื่อโซน เช่น Line 1 หรือ โรงงาน 2' })}
+          ${tmInput({ k: '02', id: 'tm-f-short_label', name: 'short_label', label: 'ชื่อย่อ', en: 'Short name (optional)', max: tm.data.rules.short_max,
+                      icon: 'fa-font', value: z?.short_label, hint: TM_COPY.shortHint })}
         </form>`;
 }
 
@@ -321,6 +385,9 @@ function tmSheetFormHtml(s, zone) {
           <span class="tm-swatch-dot ${h(p.value)}" aria-hidden="true"></span><span class="sr-only">${h(p.label)}</span>
         </label>`).join('');
 
+    const defaultKey = isNew ? tmSuggestSheetKey(s?.label || '') : (s?.key || '');
+    const defaultPrefix = isNew ? tmSuggestShelfPrefix(s?.label || '') : (s?.prefix || '');
+
     return `
         <form id="tm-form" class="tm-form" novalidate aria-labelledby="tm-form-title">
           <div class="tm-form-head">
@@ -328,30 +395,22 @@ function tmSheetFormHtml(s, zone) {
             <h4 id="tm-form-title" class="tm-form-title">${h(isNew ? TM_COPY.newSheet : TM_COPY.editSheet(s.key))}</h4>
           </div>
           <div id="tm-form-error" class="gm-error" role="alert" hidden></div>
+          <input type="hidden" id="tm-f-sheet_key" name="sheet_key" value="${h(defaultKey)}" />
+          <input type="hidden" id="tm-f-shelf_prefix" name="shelf_prefix" value="${h(defaultPrefix)}" />
           <div class="gm-field" data-field="zone_key">
-            <label class="gm-label" for="tm-f-zone_key"><span class="k">01</span><span>โซน <span class="th">(Zone)</span><i class="gm-req">*</i></span></label>
+            <label class="gm-label" for="tm-f-zone_key"><span class="k">01</span><span>โซนที่สังกัด <span class="th">(Zone)</span><i class="gm-req">*</i></span></label>
             <select id="tm-f-zone_key" name="zone_key" class="gm-input"${moveWhy ? ' disabled aria-disabled="true"' : ''} aria-describedby="tm-f-zone_key-hint tm-f-zone_key-err">${zoneOpts}</select>
-            <p class="gm-hint" id="tm-f-zone_key-hint">${h(moveWhy || TM_COPY.zoneHint)}</p>
+            <p class="gm-hint" id="tm-f-zone_key-hint">${h(moveWhy || 'โซนที่ Shelf นี้สังกัดอยู่')}</p>
             <p class="gm-hint tm-field-error" id="tm-f-zone_key-err" hidden></p>
           </div>
-          <div class="gm-row">
-            ${tmInput({ k: '02', id: 'tm-f-sheet_key', name: 'sheet_key', label: 'รหัสชีต', en: 'Sheet key', required: true, max: 30, cls: 'mono tm-keep-case',
-                        icon: 'fa-key', value: s?.key, readonly: !isNew, hint: isNew ? TM_COPY.sheetKeyHint : TM_COPY.keyLocked })}
-            ${tmInput({ k: '03', id: 'tm-f-shelf_prefix', name: 'shelf_prefix', label: 'Shelf prefix', en: 'A–Z ×1–3', required: true, max: 3, cls: 'mono',
-                        icon: 'fa-table-cells', value: s?.prefix, readonly: !isNew, hint: isNew ? TM_COPY.prefixHint : TM_COPY.prefixLocked,
-                        after: `<div class="tm-preview" aria-live="polite"><span>${h(TM_COPY.shelfPreview)}</span><span id="tm-shelf-preview"></span></div>` })}
-          </div>
-          ${tmInput({ k: '04', id: 'tm-f-label', name: 'label', label: 'ชื่อที่แสดง', en: 'Display name', required: true, max: rules.label_max,
-                      icon: 'fa-tag', value: s?.label, hint: TM_COPY.labelHint })}
+          ${tmInput({ k: '02', id: 'tm-f-label', name: 'label', label: 'ชื่อ Shelf ที่แสดง', en: 'Shelf name', required: true, max: rules.label_max,
+                      icon: 'fa-tag', value: s?.label, hint: 'พิมพ์ชื่อ Shelf เช่น CD200_Gen, CD250_Gen หรือ A150' })}
           <fieldset class="gm-field tm-swatch-field" data-field="dot_color" aria-describedby="tm-f-dot_color-err">
-            <legend class="gm-label"><span class="k">05</span><span>สีของแท็บ <span class="th">(Tab colour)</span><i class="gm-req">*</i></span></legend>
+            <legend class="gm-label"><span class="k">03</span><span>สีของแท็บ <span class="th">(Tab colour)</span><i class="gm-req">*</i></span></legend>
             <div class="tm-swatches">${swatches}</div>
             <p class="gm-hint tm-field-error" id="tm-f-dot_color-err" hidden></p>
             <div class="tm-preview"><span>${h(TM_COPY.tabPreview)}</span><span class="tm-tab-preview"><span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block" id="tm-tab-dot" aria-hidden="true"></span><span id="tm-tab-label"></span></span></div>
           </fieldset>
-          ${tmInput({ k: '06', id: 'tm-f-sort_order', name: 'sort_order', label: 'ลำดับในโซน', en: 'Order', max: 4, inputmode: 'numeric', cls: 'mono',
-                      icon: 'fa-arrow-down-1-9', value: s ? String(s.sort_order) : '', hint: TM_COPY.orderHint })}
-          ${isNew ? `<p class="tm-warning" role="note"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>${h(TM_COPY.createSheetWarn)}</span></p>` : ''}
         </form>`;
 }
 
@@ -371,24 +430,42 @@ function tmRenderForm() {
     document.getElementById('tm-window')?.classList.toggle('is-edit', !!f.key);
 
     const form = document.getElementById('tm-form');
+    const isNew = !f.key;
     form.addEventListener('submit', tmSubmit);
     form.addEventListener('input', (e) => {
-        if (e.target.name === 'shelf_prefix') {
-            const pos = e.target.selectionStart;
-            e.target.value = e.target.value.toUpperCase();
-            e.target.setSelectionRange?.(pos, pos);
+        const name = e.target.name;
+        if (name === 'label' && isNew) {
+            const val = e.target.value;
+            if (f.kind === 'zone') {
+                if (form.elements.zone_key) {
+                    form.elements.zone_key.value = tmSuggestZoneKey(val);
+                }
+            } else if (f.kind === 'sheet') {
+                if (form.elements.sheet_key) {
+                    form.elements.sheet_key.value = tmSuggestSheetKey(val);
+                }
+                if (form.elements.shelf_prefix) {
+                    form.elements.shelf_prefix.value = tmSuggestShelfPrefix(val);
+                }
+            }
         }
         if (f.kind === 'sheet') tmSyncSheetPreview();
-        if (e.target.name) tmShowFieldError(e.target.name, tmCheckField(e.target.name));
+        if (name) tmShowFieldError(name, tmCheckField(name));
     });
     form.addEventListener('change', (e) => { if (e.target.name === 'dot_color') tmSyncSheetPreview(); });
-    setTimeout(() => form.querySelector('input:not([readonly]):not([type="radio"]), select:not([disabled])')?.focus({ preventScroll: true }), 60);
+    setTimeout(() => {
+        const target = (isNew && form.elements.label)
+            ? form.elements.label
+            : form.querySelector('input:not([readonly]):not([type="radio"]), select:not([disabled])');
+        target?.focus({ preventScroll: true });
+    }, 60);
 }
 
 function tmOpenForm(kind, key = null, zone = null) {
     tm.view = 'form';
     tm.form = { kind, key, zone };
     tm.notice = '';
+    tmAutoSync = { zone_key: true, sheet_key: true, shelf_prefix: true };
     tmRenderForm();
 }
 
@@ -431,7 +508,11 @@ function tmCheckField(name) {
     const kind  = tm.form.kind;
 
     if (name === 'zone_key' && kind === 'zone' && isNew) {
-        const v = value.trim();
+        let v = value.trim();
+        if (v === '' && form.elements.label?.value.trim()) {
+            v = tmSuggestZoneKey(form.elements.label.value);
+            form.elements.zone_key.value = v;
+        }
         if (v === '') return tmMsg('zone_key_required');
         if (!new RegExp(r.key_pattern).test(v)) return tmMsg('key_format', { key: v });
         const taken = tmZones().find(z => z.key.toLowerCase() === v.toLowerCase());
@@ -439,7 +520,11 @@ function tmCheckField(name) {
     }
     if (name === 'zone_key' && kind === 'sheet' && value === '') return tmMsg('zone_required');
     if (name === 'sheet_key' && isNew) {
-        const v = value.trim();
+        let v = value.trim();
+        if (v === '' && form.elements.label?.value.trim()) {
+            v = tmSuggestSheetKey(form.elements.label.value);
+            form.elements.sheet_key.value = v;
+        }
         if (v === '') return tmMsg('sheet_key_required');
         if (!new RegExp(r.key_pattern).test(v)) return tmMsg('key_format', { key: v });
         if (r.reserved_sheet_keys.includes(v.toUpperCase())) return tmMsg('sheet_key_reserved', { key: v });
@@ -449,13 +534,14 @@ function tmCheckField(name) {
         }
     }
     if (name === 'shelf_prefix' && isNew) {
-        const v = value.trim().toUpperCase();
+        let v = value.trim().toUpperCase();
+        if (v === '' && form.elements.label?.value.trim()) {
+            v = tmSuggestShelfPrefix(form.elements.label.value);
+            form.elements.shelf_prefix.value = v;
+        }
         if (v === '') return tmMsg('prefix_required');
         if (!new RegExp(r.prefix_pattern).test(v)) return tmMsg('prefix_format', { prefix: v });
-        for (const z of tmZones()) {
-            const s = z.sheets.find(x => x.prefix.toUpperCase() === v);
-            if (s) return tmMsg('prefix_taken', { prefix: v, sheet: s.key });
-        }
+        // Shelf prefix is allowed to be shared across multiple sheets (e.g. CD200_Gen, CD250_Gen, CD300)
     }
     if (name === 'label') {
         const v = tmClean(value);
@@ -530,9 +616,27 @@ async function tmSubmit(e) {
     const form  = e.target;
     const f     = tm.form;
     const isNew = !f.key;
+
+    // Auto-generate keys right before validation if left empty
+    if (isNew) {
+        if (f.kind === 'zone') {
+            if (!form.elements.zone_key?.value.trim() && form.elements.label?.value.trim()) {
+                form.elements.zone_key.value = tmSuggestZoneKey(form.elements.label.value);
+            }
+        } else {
+            if (!form.elements.sheet_key?.value.trim() && form.elements.label?.value.trim()) {
+                form.elements.sheet_key.value = tmSuggestSheetKey(form.elements.label.value);
+            }
+            if (!form.elements.shelf_prefix?.value.trim()) {
+                form.elements.shelf_prefix.value = tmSuggestShelfPrefix(form.elements.label?.value);
+                tmSyncSheetPreview();
+            }
+        }
+    }
+
     const names = f.kind === 'zone'
-        ? (isNew ? ['zone_key', 'label', 'short_label', 'sort_order'] : ['label', 'short_label', 'sort_order'])
-        : (isNew ? ['zone_key', 'sheet_key', 'shelf_prefix', 'label', 'dot_color', 'sort_order'] : ['zone_key', 'label', 'dot_color', 'sort_order']);
+        ? (isNew ? ['label', 'zone_key', 'short_label'] : ['label', 'short_label'])
+        : (isNew ? ['zone_key', 'label', 'sheet_key', 'shelf_prefix', 'dot_color'] : ['zone_key', 'label', 'dot_color']);
 
     let firstBad = null;
     names.forEach(n => {
@@ -542,7 +646,9 @@ async function tmSubmit(e) {
     });
     tmFormErrors([]);
     if (firstBad) {
-        (document.getElementById(`tm-f-${firstBad}`) || form.querySelector(`[name="${firstBad}"]`))?.focus();
+        const badEl = document.getElementById(`tm-f-${firstBad}`) || form.querySelector(`[name="${firstBad}"]`);
+        if (badEl && badEl.type !== 'hidden') badEl.focus();
+        else form.elements.label?.focus();
         return;
     }
 
@@ -654,8 +760,8 @@ function tmHandleListKeys(e) {
     const rows = [...tmBody().querySelectorAll('[data-tm-row]')];
     const idx  = rows.indexOf(row);
     let next = -1;
-    if (e.key === 'ArrowDown') next = Math.min(rows.length - 1, idx + 1);
-    else if (e.key === 'ArrowUp') next = Math.max(0, idx - 1);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = Math.min(rows.length - 1, idx + 1);
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = Math.max(0, idx - 1);
     else if (e.key === 'Home') next = 0;
     else if (e.key === 'End') next = rows.length - 1;
     else if ((e.key === 'Enter' || e.key === ' ') && e.target === row) {

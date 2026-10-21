@@ -17,7 +17,7 @@ function syncShelfViewMode() {
     // Update Defect Matrix header title with current zone
     const matrixTitle = document.getElementById('defect-matrix-title');
     if (matrixTitle) {
-        matrixTitle.textContent = `Defect Matrix: All Size Magazines — โซน ${state.zone} (ตารางข้อบกพร่องทุกชีตในโซน)`;
+        matrixTitle.textContent = `Defect Matrix: All Size Magazines — โซน ${state.zone} (ตารางข้อบกพร่องทุก Shelf ในโซน)`;
     }
 
     // Update header zone badge
@@ -32,69 +32,56 @@ function syncShelfViewMode() {
         const blocked = insertBlockedReasonJs(state.zone, state.sheet);
         newBtn.disabled = blocked !== '';
         newBtn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
-        newBtn.title = blocked || `เพิ่มข้อมูลบอร์ดลงในชีต ${state.sheet} / Add board record to ${state.sheet}`;
+        newBtn.title = blocked || `เพิ่มข้อมูลบอร์ดลงใน Shelf ${state.sheet} / Add board record to ${state.sheet}`;
     }
     return isAllSheets;
 }
 window.syncShelfViewMode = syncShelfViewMode;
 
 function renderZoneTabs(zone = state.zone, activeSheet = state.sheet, tabCounts = {}) {
-    const listEl = document.getElementById('sheet-tabs-list');
-    if (!listEl) return;
+    const sel = document.getElementById('sheet-select');
+    if (!sel) return;
     renderSheetTabNotes(zone, activeSheet, tabCounts);
 
-    const allKeys   = getZoneSheetKeysJs(zone, true);   // disabled sheets have no tab but count toward All Size
+    const allKeys   = getZoneSheetKeysJs(zone, true);   // disabled sheets have no option but count toward All Size
     const sheetKeys = getZoneSheetKeysJs(zone);
 
     if (allKeys.length === 0) {
-        listEl.innerHTML = `
-            <span id="zone-no-sheets-pill" role="status" class="px-3 py-1 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
-              <i class="fa-solid fa-circle-info text-amber-600" aria-hidden="true"></i>
-              <span>โซน ${h(zone)} ยังไม่มีชีตในระบบ / No sheets configured in ${h(zone)} zone</span>
-            </span>`;
+        sel.disabled = true;
+        sel.innerHTML = '<option value="ALL" id="tab-ALL">ไม่มี Shelf ในโซนนี้ / No shelves</option>';
+        sel.value = 'ALL';
         return;
     }
 
-    const activeCls   = 'px-4 py-1 rounded text-xs font-bold bg-white text-emerald-800 shadow-sm border-t-2 border-t-emerald-600 border-x border-b border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer';
-    const inactiveCls = 'px-3.5 py-1 rounded text-xs font-medium bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer';
-
+    sel.disabled = false;
     const allCount  = tabCounts.ALL ?? allKeys.reduce((acc, k) => acc + (Number(tabCounts[k]) || 0), 0);
     const allActive = activeSheet === 'ALL';
-    const allHref   = `?zone=${encodeURIComponent(zone)}&sheet=ALL`;
-    // A disabled sheet opened by link has no tab: keep the All tab in the Tab order then
-    const allTabIndex = (allActive || !sheetKeys.includes(activeSheet)) ? '0' : '-1';
 
     let html = `
-        <a href="${h(allHref)}" data-sheet="ALL" id="tab-ALL" role="tab"
-           aria-selected="${allActive ? 'true' : 'false'}" tabindex="${allTabIndex}"
-           title="ดูข้อมูลรวมทุกชีตภายในโซน ${h(zone)} / View all sheets within ${h(zone)} zone"
-           class="${allActive ? activeCls : inactiveCls}">
-          <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block bg-blue-600" aria-hidden="true"></span>
-          <span class="tab-label">ทุกขนาด (All Size Magazine)</span>
-          <span class="tab-count bg-emerald-100 text-emerald-800 text-[10px] px-1.5 rounded font-mono ${allCount === 0 ? 'opacity-50' : ''}">${allCount}</span>
-        </a>`;
+        <option value="ALL" id="tab-ALL"${allActive ? ' selected' : ''}>ทุกขนาด (All Size Magazine) (${allCount})</option>`;
 
     sheetKeys.forEach(k => {
         const meta   = sheetMetaJs(k) || { label: k, dot: '' };
         const label  = meta.label || k;
-        const dot    = meta.dot;
         const n      = Number(tabCounts[k] ?? 0);
         const active = k === activeSheet;
-        const href   = `?zone=${encodeURIComponent(zone)}&sheet=${encodeURIComponent(k)}`;
         html += `
-        <a href="${h(href)}" data-sheet="${h(k)}" id="tab-${h(k)}" role="tab"
-           aria-selected="${active ? 'true' : 'false'}" tabindex="${active ? '0' : '-1'}"
-           title="เลือกชีต ${h(label)} (โซน ${h(zone)}) / Select sheet ${h(label)}"
-           class="${active ? activeCls : inactiveCls}">
-          <span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block ${h(dot)}" aria-hidden="true"></span>
-          <span class="tab-label">${h(label)}</span>
-          <span class="tab-count bg-emerald-100 text-emerald-800 text-[10px] px-1.5 rounded font-mono ${n === 0 ? 'opacity-50' : ''}">${n}</span>
-        </a>`;
+        <option value="${h(k)}" id="tab-${h(k)}"${active ? ' selected' : ''}>${h(label)} (${n})</option>`;
     });
 
-    listEl.innerHTML = html;
+    if (activeSheet !== 'ALL' && !sheetKeys.includes(activeSheet)) {
+        const meta  = sheetMetaJs(activeSheet) || { label: activeSheet };
+        const label = meta.label || activeSheet;
+        const n     = Number(tabCounts[activeSheet] ?? 0);
+        html += `
+        <option value="${h(activeSheet)}" id="tab-${h(activeSheet)}" selected>${h(label)} (ปิดใช้งาน / Disabled) (${n})</option>`;
+    }
+
+    sel.innerHTML = html;
+    sel.value = activeSheet;
 }
 window.renderZoneTabs = renderZoneTabs;
+window.renderSheetSelect = renderZoneTabs;
 
 // Disabled zone / sheet notes next to the tabs (components/sheet-tabs.php #sheet-tabs-notes)
 function renderSheetTabNotes(zone = state.zone, activeSheet = state.sheet, tabCounts = {}) {
@@ -111,12 +98,12 @@ function renderSheetTabNotes(zone = state.zone, activeSheet = state.sheet, tabCo
         html += pill('fa-eye', 'โซนนี้ถูกปิดใช้งาน · ดูได้อย่างเดียว / Zone disabled · view only',
             'ผู้ดูแลระบบปิดใช้งานโซนนี้ จึงไม่แสดงในตัวเลือกโซนและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังดูและส่งออกได้ / An administrator disabled this zone: it is hidden from the zone selector and takes no new records. Existing records can still be viewed and exported.');
     } else if (hasSheets && getZoneSheetKeysJs(zone).length === 0) {
-        html += pill('fa-circle-info text-amber-600', 'ยังไม่มีชีตที่เปิดใช้งาน / No active sheets', NO_ACTIVE_SHEET_INSERT_MSG);
+        html += pill('fa-circle-info text-amber-600', 'ยังไม่มี Shelf ที่เปิดใช้งาน / No active shelves', NO_ACTIVE_SHEET_INSERT_MSG);
     }
     if (activeSheet !== 'ALL' && sheetMetaJs(activeSheet) && !sheetMetaJs(activeSheet).active) {
         const n = Number(tabCounts[activeSheet] ?? 0);
-        html += pill('fa-eye', `ชีต ${activeSheet} ถูกปิดใช้งาน · ดูได้อย่างเดียว / Sheet ${activeSheet} disabled · view only`,
-            'ชีตนี้ไม่แสดงในแท็บและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ / This sheet is hidden from the tabs and takes no new records; its existing records can still be viewed, edited and exported.',
+        html += pill('fa-eye', `Shelf ${activeSheet} ถูกปิดใช้งาน · ดูได้อย่างเดียว / Shelf ${activeSheet} disabled · view only`,
+            'Shelf นี้ไม่แสดงในแท็บและเพิ่มข้อมูลใหม่ไม่ได้ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ / This shelf is hidden from the tabs and takes no new records; its existing records can still be viewed, edited and exported.',
             `<span class="tab-count bg-amber-100 text-amber-800 text-[10px] px-1.5 rounded font-mono" data-sheet-count="${h(activeSheet)}">${n}</span>`);
     }
     box.innerHTML = html;
@@ -136,37 +123,51 @@ function renderZoneSelect() {
 window.renderZoneSelect = renderZoneSelect;
 
 function renderTabCounts(tabCounts) {
-    // Ensure tabs match current zone first
-    const existingTabs = document.querySelectorAll('#sheet-tabs-list a[data-sheet]');
-    const expectedKeys = getZoneSheetKeysJs(state.zone);
-    if (expectedKeys.length === 0 || existingTabs.length !== expectedKeys.length + 1) {
+    const sel = document.getElementById('sheet-select');
+    if (!sel) return;
+    const allKeys   = getZoneSheetKeysJs(state.zone, true);
+    const sheetKeys = getZoneSheetKeysJs(state.zone);
+    if (allKeys.length === 0) {
         renderZoneTabs(state.zone, state.sheet, tabCounts || {});
         return;
     }
-    existingTabs.forEach(a => {
-        const sh = a.dataset.sheet;
-        const countSpan = a.querySelector('.tab-count');
-        const n = tabCounts[sh] ?? 0;
-        if (countSpan) {
-            countSpan.textContent = n;
-            countSpan.classList.toggle('opacity-50', n === 0);
+
+    const counts = tabCounts || {};
+    const allCount = counts.ALL ?? allKeys.reduce((acc, k) => acc + (Number(counts[k]) || 0), 0);
+
+    const optAll = sel.querySelector('option[value="ALL"]');
+    if (optAll) {
+        optAll.textContent = `ทุกขนาด (All Size Magazine) (${allCount})`;
+    }
+
+    sheetKeys.forEach(k => {
+        const opt = sel.querySelector(`option[value="${CSS.escape(k)}"]`);
+        if (opt) {
+            const meta  = sheetMetaJs(k) || { label: k };
+            const label = meta.label || k;
+            const n     = Number(counts[k] ?? 0);
+            opt.textContent = `${label} (${n})`;
         }
     });
-    renderSheetTabNotes(state.zone, state.sheet, tabCounts || {});
+
+    if (state.sheet !== 'ALL' && !sheetKeys.includes(state.sheet)) {
+        const opt = sel.querySelector(`option[value="${CSS.escape(state.sheet)}"]`);
+        if (opt) {
+            const meta  = sheetMetaJs(state.sheet) || { label: state.sheet };
+            const label = meta.label || state.sheet;
+            const n     = Number(counts[state.sheet] ?? 0);
+            opt.textContent = `${label} (ปิดใช้งาน / Disabled) (${n})`;
+        }
+    }
+
+    renderSheetTabNotes(state.zone, state.sheet, counts);
 }
 
 function updateTabActiveClasses(activeSheet) {
-    const tabbable = getZoneSheetKeysJs(state.zone).includes(activeSheet) ? activeSheet : 'ALL';
-    document.querySelectorAll('#sheet-tabs-list a[data-sheet]').forEach(a => {
-        const isActive = a.dataset.sheet === activeSheet;
-        a.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        a.setAttribute('tabindex', a.dataset.sheet === tabbable ? '0' : '-1');
-        if (isActive) {
-            a.className = 'px-4 py-1 rounded text-xs font-bold bg-white text-emerald-800 shadow-sm border-t-2 border-t-emerald-600 border-x border-b border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer';
-        } else {
-            a.className = 'px-3.5 py-1 rounded text-xs font-medium bg-transparent text-slate-600 hover:bg-white border border-transparent hover:border-slate-300 transition shrink-0 flex items-center gap-1.5 cursor-pointer';
-        }
-    });
+    const sel = document.getElementById('sheet-select');
+    if (sel && sel.value !== activeSheet) {
+        sel.value = activeSheet;
+    }
 }
 
 async function switchZone(newZone) {
@@ -258,7 +259,37 @@ async function applyTopology(newTopology) {
 }
 window.applyTopology = applyTopology;
 
-// Listeners: Zone selector + Sheet tabs (click + full keyboard navigation)
+
+async function saveTabOrder(zoneKey, newOrderKeys) {
+    if (!window.isAdmin) return;
+    try {
+        const res = await fetch('api/topology.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sheet_reorder',
+                zone_key: zoneKey,
+                order: newOrderKeys,
+                csrf: window.csrfToken
+            })
+        });
+        const json = await res.json();
+        if (json.success && json.topology) {
+            await applyTopology(json.topology);
+            showFlash('ok', json.message || 'จัดลำดับ Shelf เรียบร้อยแล้ว / Shelf order saved.');
+        } else {
+            renderZoneTabs(state.zone, state.sheet);
+            const err = (json.errors && json.errors[0]) || 'บันทึกการจัดลำดับไม่สำเร็จ / Could not save shelf order.';
+            showFlash('err', err);
+        }
+    } catch (err) {
+        console.error('saveTabOrder error:', err);
+        renderZoneTabs(state.zone, state.sheet);
+        showFlash('err', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ / Network error.');
+    }
+}
+
+// Listeners: Zone selector + Shelf selector
 function setupSheetTabs() {
     const zoneSelect = document.getElementById('zone-select');
     if (zoneSelect) {
@@ -272,42 +303,17 @@ function setupSheetTabs() {
         });
     }
 
-    const nav = document.getElementById('sheet-tabs');
-    nav?.addEventListener('click', (e) => {
-        const a = e.target.closest('a[data-sheet]');
-        if (!a) return;
-        e.preventDefault();
-        switchSheet(a.dataset.sheet);
-    });
-
-    // Keyboard navigation on sheet tabs (ArrowLeft / ArrowRight / Home / End / Enter / Space)
-    nav?.addEventListener('keydown', (e) => {
-        const currentTab = e.target.closest('a[data-sheet]');
-        if (!currentTab) return;
-        const tabs = Array.from(nav.querySelectorAll('a[data-sheet]'));
-        if (tabs.length === 0) return;
-
-        const idx = tabs.indexOf(currentTab);
-        let nextIdx = -1;
-        if (e.key === 'ArrowRight') {
-            nextIdx = (idx + 1) % tabs.length;
-        } else if (e.key === 'ArrowLeft') {
-            nextIdx = (idx - 1 + tabs.length) % tabs.length;
-        } else if (e.key === 'Home') {
-            nextIdx = 0;
-        } else if (e.key === 'End') {
-            nextIdx = tabs.length - 1;
-        } else if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault();
-            switchSheet(currentTab.dataset.sheet);
-            return;
-        }
-
-        if (nextIdx >= 0) {
-            e.preventDefault();
-            const target = tabs[nextIdx];
-            target.focus();
-            switchSheet(target.dataset.sheet);
-        }
-    });
+    const sheetSelect = document.getElementById('sheet-select');
+    if (sheetSelect) {
+        sheetSelect.addEventListener('change', (e) => {
+            switchSheet(e.target.value);
+        });
+        sheetSelect.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                sheetSelect.blur();
+            }
+        });
+    }
 }
+
+
