@@ -20,6 +20,7 @@ function buildMatrixApiUrl() {
     url.searchParams.set('matrix', '1');
     if (state.search) url.searchParams.set('search', state.search);
     if (state.shelf && state.shelf !== 'ALL') url.searchParams.set('shelf', state.shelf);
+    if (state.period && state.period !== 'ALL') url.searchParams.set('period', state.period);
     if (state.board_type && state.board_type !== 'ALL') url.searchParams.set('board_type', state.board_type);
     if (state.status && state.status !== 'ALL') url.searchParams.set('status', state.status);
     if (state.other && state.other !== 'ALL') url.searchParams.set('other', state.other);
@@ -69,6 +70,9 @@ async function loadDefectMatrix() {
 
     if (json.defect_labels) {
         window.DEFECT_LABELS = json.defect_labels;
+    }
+    if (Array.isArray(json.period_options)) {
+        renderPeriodFilterOptions(json.period_options);
     }
 
     matrixView.status = 'ready';

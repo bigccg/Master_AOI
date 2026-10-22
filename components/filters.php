@@ -36,6 +36,17 @@
             <option value="M<?= $mg ?>" <?= $shelfF === "M$mg" ? 'selected' : '' ?>><?= h(magazineTitle($mg)) ?></option>
           <?php endfor; ?>
         </select>
+        <select name="period" id="filter-period" aria-label="กรองตามช่วงเวลา / Filter by Period" class="bg-slate-50 border border-slate-300 text-slate-900 text-xs rounded-md py-2 px-3 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer">
+          <option value="ALL">ทุกช่วงเวลา</option>
+          <?php
+            $nowYM = date('Y-m');
+            $periodOpts = periodOptions($pdo, $zone, $isAllSheets ? 'ALL' : $sheet);
+          ?>
+          <option value="THIS" <?= $periodF === 'THIS' ? 'selected' : '' ?>>เดือนนี้ / This month</option>
+          <?php foreach ($periodOpts as $po): ?>
+            <option value="<?= h($po['value']) ?>" <?= $periodF === $po['value'] ? 'selected' : '' ?>><?= h($po['label']) ?> (<?= $po['count'] ?>)</option>
+          <?php endforeach; ?>
+        </select>
         <select name="board_type" id="filter-board-type" aria-label="กรองตามประเภทบอร์ด / Filter by Board Type" class="bg-slate-50 border border-slate-300 text-slate-900 text-xs rounded-md py-2 px-3 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer">
           <option value="ALL">ทุกประเภทบอร์ด</option>
           <?php foreach (BOARD_TYPES as $bt): ?>

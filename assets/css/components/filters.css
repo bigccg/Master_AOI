@@ -48,7 +48,7 @@
         gap: 0.375rem;
     }
     #filters .aoi-filter-controls {
-        grid-template-columns: minmax(200px, 1.3fr) repeat(4, minmax(110px, 1fr));
+        grid-template-columns: minmax(200px, 1.3fr) repeat(5, minmax(110px, 1fr));
         gap: 0.375rem;
     }
     #filters .aoi-search-wrap {

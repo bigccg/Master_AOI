@@ -80,6 +80,10 @@ async function loadTable(refreshMatrix = true) {
     renderTable();
     renderPagination();
 
+    if (Array.isArray(json.period_options)) {
+        renderPeriodFilterOptions(json.period_options);
+    }
+
     document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total, search: state.search } }));
 
     if (json.truncated) {

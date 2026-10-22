@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.sheet      = resolveSheetInZoneJs(state.zone, params.get('sheet') || window.initialSheet || 'ALL');
     state.search     = params.get('q') || '';
     state.shelf      = params.get('shelf') || 'ALL';
+    state.period     = params.get('period') || 'ALL';
     state.board_type = params.get('board_type') || 'ALL';
     state.status     = params.get('status') || 'ALL';
     state.other      = params.get('other') || 'ALL';

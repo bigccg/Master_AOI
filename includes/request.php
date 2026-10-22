@@ -24,6 +24,10 @@ $modalSheet    = $isAllSheets ? defaultSheetForZone($zone) : $sheet;
 
 $q          = trim(qs('q'));
 $shelfF     = qs('shelf', 'ALL');
+$periodF    = qs('period', 'ALL');
+if ($periodF !== 'ALL' && $periodF !== 'THIS' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodF)) {
+    $periodF = 'ALL';   // invalid format → silently fall back
+}
 $boardTypeF = qs('board_type', 'ALL');
 $statusF    = qs('status', 'ALL');
 $otherF     = qs('other', 'ALL');

@@ -22,6 +22,29 @@ function renderShelfFilterOptions(magOptions) {
     syncShelfViewMode();
 }
 
+function renderPeriodFilterOptions(periodOptions) {
+    const sel = document.getElementById('filter-period');
+    if (!sel || !Array.isArray(periodOptions)) return;
+    const validValues = new Set(['ALL', 'THIS', ...periodOptions.map(o => o.value)]);
+    let reset = false;
+    if (state.period !== 'ALL' && !validValues.has(state.period)) {
+        state.period = 'ALL';
+        reset = true;
+        syncBrowserUrl();
+    }
+    const curVal = state.period;
+    let html = '<option value="ALL">ทุกช่วงเวลา</option>';
+    html += `<option value="THIS" ${curVal === 'THIS' ? 'selected' : ''}>เดือนนี้ / This month</option>`;
+    periodOptions.forEach(opt => {
+        html += `<option value="${h(opt.value)}" ${curVal === opt.value ? 'selected' : ''}>${h(opt.label)} (${opt.count})</option>`;
+    });
+    sel.innerHTML = html;
+    if (reset) {
+        loadTable();
+    }
+}
+window.renderPeriodFilterOptions = renderPeriodFilterOptions;
+
 let searchDebounceTimer = null;
 
 function setupSearch() {
@@ -47,6 +70,7 @@ function setupFilters() {
     // Dropdowns
     const mapping = {
         'filter-shelf':      'shelf',
+        'filter-period':     'period',
         'filter-board-type': 'board_type',
         'filter-status':     'status',
         'filter-other':      'other',
@@ -81,6 +105,7 @@ function setupFilters() {
         e.preventDefault();
         state.search = '';
         state.shelf = 'ALL';
+        state.period = 'ALL';
         state.board_type = 'ALL';
         state.status = 'ALL';
         state.other = 'ALL';
@@ -92,7 +117,7 @@ function setupFilters() {
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
-        ['filter-shelf', 'filter-board-type', 'filter-status', 'filter-other'].forEach(id => {
+        ['filter-shelf', 'filter-period', 'filter-board-type', 'filter-status', 'filter-other'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = 'ALL';
         });

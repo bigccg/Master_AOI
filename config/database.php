@@ -494,6 +494,90 @@ function magazineTitle(int $n): string
 }
 
 /**
+ * Parse a period string 'YYYY-MM' into a [from, to) date range for created_at filtering.
+ * Returns null for 'ALL' or invalid values. Works with both MySQL and SQLite.
+ * @return ?array{string, string}  ['YYYY-MM-DD 00:00:00', 'YYYY-MM-DD 00:00:00']
+ */
+function periodRange(string $p): ?array
+{
+    if ($p === 'THIS') {
+        $p = date('Y-m');
+    }
+    if ($p === 'ALL' || !preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $p, $m)) {
+        return null;
+    }
+    $y  = (int)$m[1];
+    $mo = (int)$m[2];
+    $from = sprintf('%04d-%02d-01 00:00:00', $y, $mo);
+    if ($mo === 12) {
+        $to = sprintf('%04d-01-01 00:00:00', $y + 1);
+    } else {
+        $to = sprintf('%04d-%02d-01 00:00:00', $y, $mo + 1);
+    }
+    return [$from, $to];
+}
+
+/**
+ * Available period options for the filter dropdown: months that actually have data
+ * within the given zone (and optional sheet), ordered newest → oldest.
+ * Each element: ['value' => 'YYYY-MM', 'label' => 'ต.ค. 2026', 'count' => 4]
+ * Works with both MySQL and SQLite (uses string substr on created_at).
+ * Supports both signatures: periodOptions(PDO $pdo, string $zone, string $sheet = 'ALL')
+ * and periodOptions(string $zone, string $sheet = 'ALL', ?PDO $pdo = null).
+ */
+function periodOptions($a, $b = 'ALL', $c = null): array
+{
+    if ($a instanceof PDO) {
+        $pdo   = $a;
+        $zone  = (string)$b;
+        $sheet = is_string($c) ? $c : 'ALL';
+    } else {
+        $pdo   = ($c instanceof PDO) ? $c : db();
+        $zone  = (string)$a;
+        $sheet = (string)$b;
+    }
+    $where  = ['zone = :zone'];
+    $params = [':zone' => $zone];
+    if ($sheet !== 'ALL') {
+        $where[]          = 'sheet = :sheet';
+        $params[':sheet'] = $sheet;
+    }
+    $whereSql = implode(' AND ', $where);
+
+    // SUBSTR works on both MySQL and SQLite for 'YYYY-MM-DD HH:MM:SS' strings
+    // created_at > '1970-01-01' avoids SQLSTATE[HY000]: 1525 Incorrect DATETIME value: '' on MySQL strict mode
+    $sql = "SELECT SUBSTR(created_at, 1, 7) AS ym, COUNT(*) AS cnt
+            FROM boards
+            WHERE $whereSql AND created_at IS NOT NULL AND created_at > '1970-01-01'
+            GROUP BY ym
+            ORDER BY ym DESC";
+
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+
+    // Thai abbreviated month names (1-indexed)
+    $thaiMonths = [
+        1 => 'ม.ค.', 2 => 'ก.พ.', 3 => 'มี.ค.', 4 => 'เม.ย.',
+        5 => 'พ.ค.', 6 => 'มิ.ย.', 7 => 'ก.ค.', 8 => 'ส.ค.',
+        9 => 'ก.ย.', 10 => 'ต.ค.', 11 => 'พ.ย.', 12 => 'ธ.ค.',
+    ];
+
+    $options = [];
+    while ($r = $st->fetch()) {
+        $ym = (string)$r['ym'];
+        if (!preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $ym, $m)) continue;
+        $y   = (int)$m[1];
+        $mo  = (int)$m[2];
+        $options[] = [
+            'value' => $ym,
+            'label' => ($thaiMonths[$mo] ?? $m[2]) . " $y",
+            'count' => (int)$r['cnt'],
+        ];
+    }
+    return $options;
+}
+
+/**
  * Shelf filter value -> [from, to] shelf_no range, or null.
  * "M2" = Magazine 2nd (51-100); the old B1-B10 / B11-B20 / B21-B25 keys still work for existing links.
  */

@@ -22,6 +22,7 @@ function buildApiUrl(overrides = {}) {
     url.searchParams.set('sheet', state.sheet);
     if (state.search) url.searchParams.set('search', state.search);
     if (state.shelf && state.shelf !== 'ALL') url.searchParams.set('shelf', state.shelf);
+    if (state.period && state.period !== 'ALL') url.searchParams.set('period', state.period);
     if (state.board_type && state.board_type !== 'ALL') url.searchParams.set('board_type', state.board_type);
     if (state.status && state.status !== 'ALL') url.searchParams.set('status', state.status);
     if (state.other && state.other !== 'ALL') url.searchParams.set('other', state.other);
@@ -47,6 +48,7 @@ function syncBrowserUrl() {
     url.searchParams.set('sheet', state.sheet);
     if (state.search) url.searchParams.set('q', state.search); else url.searchParams.delete('q');
     if (state.shelf && state.shelf !== 'ALL') url.searchParams.set('shelf', state.shelf); else url.searchParams.delete('shelf');
+    if (state.period && state.period !== 'ALL') url.searchParams.set('period', state.period); else url.searchParams.delete('period');
     if (state.board_type && state.board_type !== 'ALL') url.searchParams.set('board_type', state.board_type); else url.searchParams.delete('board_type');
     if (state.status && state.status !== 'ALL') url.searchParams.set('status', state.status); else url.searchParams.delete('status');
     if (state.other && state.other !== 'ALL') url.searchParams.set('other', state.other); else url.searchParams.delete('other');

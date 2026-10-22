@@ -27,7 +27,7 @@ $addBtnTitle    = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อม�
             </span>
           </p>
         </div>
-      </div>
+      </div>s
 
       <!-- Right: Clock & Actions Toolbar -->
       <div class="flex items-center justify-between lg:justify-end gap-2 sm:gap-3 text-xs text-slate-600 shrink-0 flex-nowrap overflow-x-auto sm:overflow-visible">

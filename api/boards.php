@@ -10,7 +10,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-header('Content-Type: application/json; charset=utf-8');
+if (!headers_sent()) {
+    header('Content-Type: application/json; charset=utf-8');
+}
 
 // ──────────────────────────────────────────────
 // Request parameters
@@ -38,6 +40,10 @@ $boardTypeF = qs('board_type', 'ALL');
 $statusF    = qs('status', 'ALL');
 $otherF     = qs('other', 'ALL');
 $shelfF     = qs('shelf', 'ALL');
+$periodF    = qs('period', 'ALL');
+if ($periodF !== 'ALL' && $periodF !== 'THIS' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodF)) {
+    $periodF = 'ALL';
+}
 $isMatrix   = (qs('matrix') === '1' || qs('mode') === 'matrix');
 
 // ──────────────────────────────────────────────
@@ -114,6 +120,13 @@ if ($range = shelfFilterRange($shelfF)) {
     [$params[':s1'], $params[':s2']] = $range;
 }
 
+// Period filter (created_at range)
+if ($pRange = periodRange($periodF)) {
+    $where[] = 'created_at >= :p_from AND created_at < :p_to';
+    $params[':p_from'] = $pRange[0];
+    $params[':p_to']   = $pRange[1];
+}
+
 $whereSql = implode(' AND ', $where);
 
 $pdo      = db();
@@ -158,13 +171,14 @@ if ($isMatrix) {
     }
 
     echo json_encode([
-        'success'       => true,
-        'zone'          => $zone,
-        'sheet'         => $sheet,
-        'has_sheets'    => $hasZoneSheets,
-        'data'          => $matrixData,
-        'total'         => count($matrixData),
-        'defect_labels' => DEFECT_LABELS,
+        'success'        => true,
+        'zone'           => $zone,
+        'sheet'          => $sheet,
+        'has_sheets'     => $hasZoneSheets,
+        'data'           => $matrixData,
+        'total'          => count($matrixData),
+        'defect_labels'  => DEFECT_LABELS,
+        'period_options' => periodOptions($pdo, $zone, $sheet),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -253,12 +267,13 @@ foreach ($rows as $r) {
 // ──────────────────────────────────────────────
 
 echo json_encode([
-    'zone'       => $zone,
-    'sheet'      => $sheet,
-    'has_sheets' => $hasZoneSheets,
-    'data'       => $data,
-    'total'      => $total,
-    'truncated'  => $isAll && $total > MAX_ALL_ROWS,
-    'page'       => $page,
-    'pages'      => $pages,
+    'zone'           => $zone,
+    'sheet'          => $sheet,
+    'has_sheets'     => $hasZoneSheets,
+    'data'           => $data,
+    'total'          => $total,
+    'truncated'      => $isAll && $total > MAX_ALL_ROWS,
+    'page'           => $page,
+    'pages'          => $pages,
+    'period_options' => periodOptions($pdo, $zone, $sheet),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

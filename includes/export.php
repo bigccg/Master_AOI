@@ -40,6 +40,11 @@ if (isset($_GET['export'])) {
         $where[] = 'shelf_no BETWEEN :s1 AND :s2';
         [$params[':s1'], $params[':s2']] = $range;
     }
+    if ($pRange = periodRange($periodF)) {
+        $where[] = 'created_at >= :p_from AND created_at < :p_to';
+        $params[':p_from'] = $pRange[0];
+        $params[':p_to']   = $pRange[1];
+    }
     $whereSql = implode(' AND ', $where);
 
     $sortCols = ['shelf' => 'shelf_no', 'code' => 'code', 'product' => 'product'];

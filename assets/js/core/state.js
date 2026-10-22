@@ -14,6 +14,7 @@ const state = {
     pageSize: 10,
     search: '',
     shelf: 'ALL',
+    period: 'ALL',
     board_type: 'ALL',
     status: 'ALL',
     other: 'ALL',
