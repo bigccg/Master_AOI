@@ -1,0 +1,131 @@
+/**
+ * AOI Program Tracker - Quick Add Dock
+ */
+
+.prog-quick-add-dock {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--prog-radius-card);
+  padding: 0.625rem 1rem;
+  box-shadow: var(--prog-shadow-l1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.prog-quick-add-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prog-quick-add-badge {
+  height: var(--prog-ctl-h);
+  padding: 0 0.625rem;
+  border-radius: var(--prog-radius-ctl);
+  background-color: var(--prog-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  box-shadow: var(--prog-shadow-l1);
+}
+
+.prog-quick-add-input {
+  height: var(--prog-ctl-h);
+  width: 12.5rem;
+  padding: 0 0.625rem;
+  border-radius: var(--prog-radius-ctl);
+  border: 1px solid #86efac;
+  background-color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--prog-text);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.prog-quick-add-input:focus {
+  border-color: var(--prog-primary);
+  box-shadow: 0 0 0 2px var(--prog-primary-ring);
+}
+
+.prog-quick-add-select {
+  height: var(--prog-ctl-h);
+  padding: 0 0.625rem;
+  border-radius: var(--prog-radius-ctl);
+  border: 1px solid #86efac;
+  background-color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--prog-text);
+  outline: none;
+  cursor: pointer;
+}
+
+.prog-quick-add-btn {
+  height: var(--prog-ctl-h);
+  padding: 0 0.875rem;
+  border-radius: var(--prog-radius-ctl);
+  background-color: var(--prog-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: var(--prog-shadow-l1);
+  transition: all 0.15s ease;
+}
+
+.prog-quick-add-btn:hover {
+  background-color: var(--prog-primary-hover);
+  transform: translateY(-1px);
+}
+
+.prog-quick-add-btn:active {
+  transform: translateY(0);
+}
+
+/* Feedback & Notification Alerts */
+.prog-quick-add-feedback {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.prog-quick-add-hint {
+  color: var(--prog-text-muted);
+}
+
+.prog-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--prog-radius-ctl);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.prog-alert-badge.is-duplicate {
+  background-color: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.prog-alert-badge.is-similar {
+  background-color: #e0f2fe;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}

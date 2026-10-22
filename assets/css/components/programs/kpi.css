@@ -1,0 +1,174 @@
+/**
+ * AOI Program Tracker - KPI Cards
+ */
+
+.prog-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .prog-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .prog-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.prog-kpi-card {
+  position: relative;
+  background-color: var(--prog-surface);
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-card);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--prog-shadow-l1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  overflow: hidden;
+}
+
+.prog-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--prog-shadow-l2);
+  border-color: #cbd5e1;
+}
+
+.prog-kpi-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.prog-kpi-card.is-active {
+  border-color: var(--prog-primary);
+  background-color: #f0fdf4;
+  box-shadow: 0 0 0 2px var(--prog-primary);
+}
+
+.prog-kpi-card.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--prog-primary);
+}
+
+/* Card Header */
+.prog-kpi-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.prog-kpi-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--prog-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.prog-kpi-title .sub-en {
+  font-size: 0.6875rem;
+  color: var(--prog-text-sub);
+  font-weight: 400;
+}
+
+.prog-kpi-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--prog-radius-ctl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+/* Value & Metric */
+.prog-kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.prog-kpi-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--prog-text);
+  line-height: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.prog-kpi-card.is-overdue .prog-kpi-num {
+  color: var(--prog-status-error-text);
+}
+
+.prog-kpi-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--prog-primary);
+}
+
+/* Subtext Footer */
+.prog-kpi-footer {
+  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--prog-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Progress bar inside complete card */
+.prog-kpi-progress {
+  width: 100%;
+  height: 4px;
+  background-color: #e2e8f0;
+  border-radius: var(--prog-radius-full);
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.prog-kpi-progress-bar {
+  height: 100%;
+  background-color: var(--prog-primary);
+  border-radius: var(--prog-radius-full);
+  transition: width 0.4s ease;
+}
+
+/* Collapsed mini KPI bar when scrolled */
+.prog-kpi-collapsed-bar {
+  display: none;
+  background-color: var(--prog-surface);
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--prog-text-muted);
+  box-shadow: var(--prog-shadow-l1);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prog-kpi-collapsed-bar.is-visible {
+  display: flex;
+}

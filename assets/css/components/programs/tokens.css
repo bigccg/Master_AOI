@@ -1,0 +1,96 @@
+/**
+ * AOI Program Tracker - Design Tokens
+ * Industrial Utility + Precision High-Density Tokens
+ */
+
+:root {
+  /* Surfaces & Canvas */
+  --prog-canvas: #f8fafc;
+  --prog-surface: #ffffff;
+  --prog-surface-tint: #f1f5f9;
+  --prog-surface-hover: #f8fafc;
+  --prog-surface-selected: #f0fdf4;
+  --prog-border: #e2e8f0;
+  --prog-border-subtle: #f1f5f9;
+  --prog-border-focus: #059669;
+
+  /* Typography Colors */
+  --prog-text: #0f172a;
+  --prog-text-muted: #64748b;
+  --prog-text-sub: #94a3b8;
+  --prog-text-inverse: #ffffff;
+
+  /* Brand Colors (Emerald) */
+  --prog-primary: #059669;
+  --prog-primary-hover: #047857;
+  --prog-primary-active: #065f46;
+  --prog-primary-tint: #f0fdf4;
+  --prog-primary-ring: rgba(5, 150, 105, 0.2);
+
+  /* Semantic Status Palette */
+  /* 1. Done / Complete */
+  --prog-status-done-bg: #d1fae5;
+  --prog-status-done-text: #047857;
+  --prog-status-done-border: #a7f3d0;
+
+  /* 2. In Progress / Active */
+  --prog-status-wip-bg: #fffbeb;
+  --prog-status-wip-text: #b45309;
+  --prog-status-wip-border: #fcd34d;
+
+  /* 3. Not Started / Queued */
+  --prog-status-idle-bg: #f1f5f9;
+  --prog-status-idle-text: #64748b;
+  --prog-status-idle-border: #cbd5e1;
+
+  /* 4. Blocked / Overdue / Defect */
+  --prog-status-error-bg: #fef2f2;
+  --prog-status-error-text: #b91c1c;
+  --prog-status-error-border: #fecaca;
+
+  /* 5. Info / Shelf / Slot */
+  --prog-status-info-bg: #eff6ff;
+  --prog-status-info-text: #2563eb;
+  --prog-status-info-border: #bfdbfe;
+
+  /* Machine Palette */
+  --prog-mach-omron-bg: #eff6ff;
+  --prog-mach-omron-text: #1d4ed8;
+  --prog-mach-omron-border: #bfdbfe;
+
+  --prog-mach-yamaha-bg: #f5f3ff;
+  --prog-mach-yamaha-text: #6d28d9;
+  --prog-mach-yamaha-border: #ddd6fe;
+
+  --prog-mach-tri-bg: #ecfdf5;
+  --prog-mach-tri-text: #0f766e;
+  --prog-mach-tri-border: #99f6e4;
+
+  /* Metrics & Dimensions */
+  --prog-ctl-h: 2rem;           /* 32px standard control height */
+  --prog-row-h: 2.75rem;        /* 44px standard row height */
+  --prog-row-compact-h: 2.125rem;/* 34px compact row */
+  --prog-row-cozy-h: 3.25rem;   /* 52px comfortable row */
+  --prog-header-h: 2.25rem;     /* 36px table header */
+
+  /* Radii */
+  --prog-radius-sm: 0.25rem;    /* 4px */
+  --prog-radius-ctl: 0.5rem;    /* 8px */
+  --prog-radius-card: 0.75rem;  /* 12px */
+  --prog-radius-modal: 0.875rem;/* 14px */
+  --prog-radius-full: 9999px;
+
+  /* Elevation Shadows */
+  --prog-shadow-l1: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --prog-shadow-l2: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  --prog-shadow-l3: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+
+  /* Z-Index Hierarchy */
+  --prog-z-table-sticky: 10;
+  --prog-z-command: 20;
+  --prog-z-bulk: 25;
+  --prog-z-header: 40;
+  --prog-z-panel: 50;
+  --prog-z-modal: 60;
+  --prog-z-toast: 70;
+}

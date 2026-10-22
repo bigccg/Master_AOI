@@ -1,0 +1,413 @@
+/**
+ * AOI Program Tracker - Command Bar & Filters
+ */
+
+.prog-command-card {
+  background-color: var(--prog-surface);
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-card);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--prog-shadow-l1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.prog-command-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+}
+
+.prog-controls-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+
+.prog-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Glass Search Bar */
+.prog-search-box {
+  position: relative;
+  width: 18rem;
+  height: var(--prog-ctl-h);
+  display: flex;
+  align-items: center;
+}
+
+.prog-search-input {
+  width: 100%;
+  height: 100%;
+  padding-left: 2rem;
+  padding-right: 4.5rem;
+  background-color: #f8fafc;
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--prog-text);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.prog-search-input:focus {
+  background-color: var(--prog-surface);
+  border-color: var(--prog-primary);
+  box-shadow: 0 0 0 2px var(--prog-primary-ring);
+}
+
+.prog-search-icon {
+  position: absolute;
+  left: 0.625rem;
+  color: var(--prog-text-sub);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.prog-search-trailing {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.prog-search-badge {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--prog-radius-sm);
+  background-color: #e2e8f0;
+  color: var(--prog-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.prog-search-clear {
+  color: var(--prog-text-sub);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.125rem;
+  border-radius: var(--prog-radius-sm);
+  display: none;
+}
+
+.prog-search-clear.is-active {
+  display: inline-flex;
+}
+
+.prog-search-clear:hover {
+  color: var(--prog-text);
+}
+
+.prog-search-kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  color: var(--prog-text-muted);
+}
+
+/* Glass Selects */
+.prog-select {
+  height: var(--prog-ctl-h);
+  padding: 0 0.625rem;
+  background-color: #f8fafc;
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--prog-text);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prog-select:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.prog-select:focus {
+  border-color: var(--prog-primary);
+  box-shadow: 0 0 0 2px var(--prog-primary-ring);
+  background-color: var(--prog-surface);
+}
+
+/* Saved Views Bar (Pills) */
+.prog-saved-views-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.prog-saved-views-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--prog-text-sub);
+  margin-right: 0.25rem;
+}
+
+.prog-view-pill {
+  height: 1.5rem;
+  padding: 0 0.625rem;
+  border-radius: var(--prog-radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #f1f5f9;
+  color: var(--prog-text-muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.prog-view-pill:hover {
+  background-color: #e2e8f0;
+  color: var(--prog-text);
+}
+
+.prog-view-pill.is-active {
+  background-color: var(--prog-primary-tint);
+  color: var(--prog-primary);
+  border-color: #a7f3d0;
+  font-weight: 600;
+}
+
+/* Active Filter Chips Sub-bar */
+.prog-active-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.prog-chip {
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--prog-radius-ctl);
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: #f1f5f9;
+  border: 1px solid var(--prog-border);
+  color: var(--prog-text);
+}
+
+.prog-chip.is-machine {
+  background-color: var(--prog-mach-omron-bg);
+  border-color: var(--prog-mach-omron-border);
+  color: var(--prog-mach-omron-text);
+}
+
+.prog-chip.is-status {
+  background-color: var(--prog-status-done-bg);
+  border-color: var(--prog-status-done-border);
+  color: var(--prog-status-done-text);
+}
+
+.prog-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.prog-chip-remove:hover {
+  opacity: 1;
+}
+
+.prog-chip-clear-all {
+  font-size: 0.75rem;
+  color: var(--prog-text-muted);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 0.25rem;
+}
+
+.prog-chip-clear-all:hover {
+  color: var(--prog-text);
+}
+
+/* ===== Sticky Bulk Action Bar ===== */
+.prog-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #a7f3d0;
+  border-radius: var(--prog-radius-ctl);
+  margin-top: 0.25rem;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.08);
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prog-bulk-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prog-bulk-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  color: #065f46;
+}
+
+.prog-bulk-deselect {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #047857;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--prog-radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.prog-bulk-deselect:hover {
+  background-color: #d1fae5;
+  color: #064e3b;
+}
+
+.prog-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prog-bulk-btn {
+  height: var(--prog-ctl-h);
+  padding: 0 0.75rem;
+  border-radius: var(--prog-radius-ctl);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: var(--prog-surface);
+  border: 1px solid #cbd5e1;
+  color: var(--prog-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+}
+
+.prog-bulk-btn:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.prog-bulk-btn.is-primary {
+  background-color: var(--prog-primary);
+  border-color: var(--prog-primary);
+  color: #ffffff;
+}
+
+.prog-bulk-btn.is-primary:hover {
+  background-color: var(--prog-primary-hover);
+  border-color: var(--prog-primary-hover);
+}
+
+/* Dropdown Menu Container & Popover */
+.prog-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.prog-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 13rem;
+  background-color: #ffffff;
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  box-shadow: var(--prog-shadow-l2);
+  padding: 0.375rem 0;
+  z-index: var(--prog-z-dropdown);
+  display: none;
+}
+
+.prog-dropdown-menu.is-open {
+  display: block;
+}
+
+.prog-dropdown-header {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--prog-text-sub);
+}
+
+.prog-dropdown-item {
+  width: 100%;
+  padding: 0.4375rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--prog-text);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.15s ease;
+}
+
+.prog-dropdown-item:hover {
+  background-color: #f1f5f9;
+}
+
+.prog-dropdown-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 0.25rem 0;
+}

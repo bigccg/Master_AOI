@@ -60,3 +60,37 @@ const ADMIN_JS_FILES = [
     'components/popups/topology-confirm.js',
     'components/topology-manager.js',
 ];
+
+// ──────────────────────────────────────────────
+// AOI Programs Page Assets
+// ──────────────────────────────────────────────
+const PROGRAM_CSS_FILES = [
+    'base/base.css',
+    'theme/hyprland.css',
+    'components/clock.css',
+    'components/glass-select.css',
+    'components/search.css',
+    'components/programs/tokens.css',
+    'components/programs/layout.css',
+    'components/programs/kpi.css',
+    'components/programs/command-bar.css',
+    'components/programs/quick-add.css',
+    'components/programs/table.css',
+    'components/programs/stepper.css',
+    'components/programs/toast.css',
+];
+
+const PROGRAM_JS_FILES = [
+    'core/messages.js',
+    'core/utils.js',
+    'components/clock.js',
+    'components/programs/state.js',
+    'components/programs/api.js',
+    'components/programs/toast-undo.js',
+    'components/programs/kpi.js',
+    'components/programs/command-bar.js',
+    'components/programs/quick-add.js',
+    'components/programs/stepper.js',
+    'components/programs/table.js',
+    'components/programs/main.js',
+];

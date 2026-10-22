@@ -143,6 +143,24 @@ const DEFECT_LABELS = [
     20 => 'SOLDER OPEN',
 ];
 
+// AOI Program Tracking Constants
+const PROGRAM_STAGES = [
+    1 => ['key' => 'stage_1', 'short' => 'Capture', 'label' => 'Capture P/D', 'th' => 'ถ่ายภาพชิ้นงาน P/D'],
+    2 => ['key' => 'stage_2', 'short' => 'Good',    'label' => 'Make Good / Sheet', 'th' => 'สร้างแผ่น Good / Sheet'],
+    3 => ['key' => 'stage_3', 'short' => 'G+D',     'label' => 'Master Good+Defect', 'th' => 'รวม Master G+D'],
+    4 => ['key' => 'stage_4', 'short' => 'Test',    'label' => 'Run Test Program', 'th' => 'ทดสอบโปรแกรมเสร็จ'],
+];
+
+const PROGRAM_STAGE_STATUS = [
+    0 => ['code' => 'not_started', 'label' => 'ยังไม่เริ่ม / Not Started', 'icon' => 'fa-regular fa-circle', 'color' => 'slate'],
+    1 => ['code' => 'in_progress', 'label' => 'กำลังดำเนินการ / In Progress', 'icon' => 'fa-solid fa-circle-half-stroke', 'color' => 'amber'],
+    2 => ['code' => 'complete',    'label' => 'เสร็จสมบูรณ์ / Complete',    'icon' => 'fa-solid fa-check', 'color' => 'emerald'],
+    9 => ['code' => 'not_needed',  'label' => 'ไม่ต้องทำ / N/A',            'icon' => 'fa-solid fa-slash', 'color' => 'slate-strike'],
+];
+
+const PROGRAM_MACHINES = ['OMRON (2D)', 'YAMAHA (3D)', 'TRI INNOVATION'];
+const PROGRAM_SIDES    = ['F-Side', 'B-Side'];
+
 // ──────────────────────────────────────────────
 // Zone & Sheet Helpers (zones / sheets tables, see topology())
 // ──────────────────────────────────────────────
@@ -1260,6 +1278,53 @@ function runMigrations(PDO $pdo): void
                 created_at  DATETIME    NOT NULL
             )
         ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_programs (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_model VARCHAR(50)  NOT NULL,
+                side          VARCHAR(10)  NOT NULL DEFAULT "F-Side",
+                family_key    VARCHAR(20)  NOT NULL DEFAULT "",
+                machine_type  VARCHAR(30)  NOT NULL DEFAULT "OMRON (2D)",
+                stage_1       TINYINT      NOT NULL DEFAULT 0,
+                stage_1_by    VARCHAR(50)  NULL,
+                stage_1_at    DATETIME     NULL,
+                stage_2       TINYINT      NOT NULL DEFAULT 0,
+                stage_2_by    VARCHAR(50)  NULL,
+                stage_2_at    DATETIME     NULL,
+                stage_3       TINYINT      NOT NULL DEFAULT 0,
+                stage_3_by    VARCHAR(50)  NULL,
+                stage_3_at    DATETIME     NULL,
+                stage_4       TINYINT      NOT NULL DEFAULT 0,
+                stage_4_by    VARCHAR(50)  NULL,
+                stage_4_at    DATETIME     NULL,
+                owner         VARCHAR(50)  NULL,
+                shelf         VARCHAR(50)  NULL,
+                program_ok    VARCHAR(50)  NULL,
+                wait_reason   VARCHAR(100) NULL,
+                note          TEXT         NULL,
+                version       INTEGER      NOT NULL DEFAULT 1,
+                created_at    DATETIME     NOT NULL,
+                updated_at    DATETIME     NOT NULL
+            )
+        ');
+        $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_prog_prod_side ON aoi_programs (product_model, side)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prog_owner ON aoi_programs (owner)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prog_machine ON aoi_programs (machine_type)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prog_updated ON aoi_programs (updated_at)');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_program_audit (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                program_id  INTEGER      NOT NULL,
+                action      VARCHAR(30)  NOT NULL,
+                field_name  VARCHAR(50)  NULL,
+                old_value   TEXT         NULL,
+                new_value   TEXT         NULL,
+                operator    VARCHAR(50)  NOT NULL,
+                ip_address  VARCHAR(45)  NOT NULL DEFAULT "",
+                created_at  DATETIME     NOT NULL
+            )
+        ');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prog_audit_created ON aoi_program_audit (program_id, created_at)');
     } else {
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS zones (
@@ -1306,6 +1371,53 @@ function runMigrations(PDO $pdo): void
                 ip          VARCHAR(45) NOT NULL DEFAULT "",
                 created_at  DATETIME    NOT NULL,
                 KEY idx_entity (entity_type, entity_key, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_programs (
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                product_model VARCHAR(50)  NOT NULL,
+                side          VARCHAR(10)  NOT NULL DEFAULT "F-Side",
+                family_key    VARCHAR(20)  NOT NULL DEFAULT "",
+                machine_type  VARCHAR(30)  NOT NULL DEFAULT "OMRON (2D)",
+                stage_1       TINYINT      NOT NULL DEFAULT 0,
+                stage_1_by    VARCHAR(50)  NULL,
+                stage_1_at    DATETIME     NULL,
+                stage_2       TINYINT      NOT NULL DEFAULT 0,
+                stage_2_by    VARCHAR(50)  NULL,
+                stage_2_at    DATETIME     NULL,
+                stage_3       TINYINT      NOT NULL DEFAULT 0,
+                stage_3_by    VARCHAR(50)  NULL,
+                stage_3_at    DATETIME     NULL,
+                stage_4       TINYINT      NOT NULL DEFAULT 0,
+                stage_4_by    VARCHAR(50)  NULL,
+                stage_4_at    DATETIME     NULL,
+                owner         VARCHAR(50)  NULL,
+                shelf         VARCHAR(50)  NULL,
+                program_ok    VARCHAR(50)  NULL,
+                wait_reason   VARCHAR(100) NULL,
+                note          TEXT         NULL,
+                version       INT          NOT NULL DEFAULT 1,
+                created_at    DATETIME     NOT NULL,
+                updated_at    DATETIME     NOT NULL,
+                UNIQUE KEY uq_prog_prod_side (product_model, side),
+                KEY idx_prog_owner (owner),
+                KEY idx_prog_machine (machine_type),
+                KEY idx_prog_updated (updated_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_program_audit (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                program_id  INT          NOT NULL,
+                action      VARCHAR(30)  NOT NULL,
+                field_name  VARCHAR(50)  NULL,
+                old_value   TEXT         NULL,
+                new_value   TEXT         NULL,
+                operator    VARCHAR(50)  NOT NULL,
+                ip_address  VARCHAR(45)  NOT NULL DEFAULT "",
+                created_at  DATETIME     NOT NULL,
+                KEY idx_prog_audit_created (program_id, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ');
     }

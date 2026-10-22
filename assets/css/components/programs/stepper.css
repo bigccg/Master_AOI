@@ -1,0 +1,198 @@
+/**
+ * AOI Program Tracker - 4-Stage Stepper
+ */
+
+.prog-stepper-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  user-select: none;
+}
+
+/* Individual Cell (44x28px desktop, 48x36px tablet) */
+.prog-step-cell {
+  position: relative;
+  width: 44px;
+  height: 28px;
+  background-color: #f8fafc;
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  z-index: 1;
+}
+
+@media (max-width: 1023px) {
+  .prog-step-cell {
+    width: 48px;
+    height: 36px;
+    font-size: 0.875rem;
+  }
+}
+
+.prog-step-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+  border-color: #94a3b8;
+}
+
+.prog-step-cell:focus-visible {
+  box-shadow: 0 0 0 2px var(--prog-primary);
+  border-color: var(--prog-primary);
+}
+
+/* State 2: Complete */
+.prog-step-cell.is-complete {
+  background-color: var(--prog-status-done-bg);
+  border-color: var(--prog-status-done-border);
+  color: var(--prog-status-done-text);
+  font-weight: 600;
+}
+
+/* State 1: In Progress */
+.prog-step-cell.is-progress {
+  background-color: var(--prog-status-wip-bg);
+  border-color: var(--prog-status-wip-border);
+  color: var(--prog-status-wip-text);
+  font-weight: 600;
+}
+
+/* State 9: N/A */
+.prog-step-cell.is-na {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+/* Next Step Ring Indicator */
+.prog-step-cell.is-next {
+  border-color: var(--prog-primary);
+  box-shadow: 0 0 0 1.5px var(--prog-primary);
+}
+
+/* Skip-step warning indicator (⚠) */
+.prog-step-warning {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  background-color: #f59e0b;
+  color: #ffffff;
+  border-radius: 9999px;
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Connector Line between cells */
+.prog-step-connector {
+  width: 8px;
+  height: 2px;
+  background-color: #e2e8f0;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.prog-step-connector.is-active {
+  background-color: #10b981;
+}
+
+/* Tooltip (Custom Floating) */
+.prog-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #0f172a;
+  color: #ffffff;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--prog-radius-ctl);
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 100;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.prog-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+}
+
+.prog-step-cell:hover .prog-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Stepper Context Menu */
+.prog-step-context-menu {
+  position: fixed;
+  background-color: #ffffff;
+  border: 1px solid var(--prog-border);
+  border-radius: var(--prog-radius-ctl);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 0.375rem 0;
+  z-index: 1000;
+  min-width: 175px;
+  animation: contextFadeIn 0.12s ease-out;
+}
+
+@keyframes contextFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.prog-step-context-header {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--prog-text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0.25rem;
+}
+
+.prog-step-context-item {
+  width: 100%;
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--prog-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+
+.prog-step-context-item:hover {
+  background-color: #f1f5f9;
+}
+
+.prog-step-context-item.is-active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
