@@ -1,44 +1,30 @@
 /**
  * AOI Program Tracker - Command Bar & Filter Handlers
+ * Search bar effects (clear button, Esc, /, count chip) are handled by shared assets/js/components/search-fx.js
  */
 
-let searchDebounceTimer = null;
+let progSearchDebounceTimer = null;
 
 function initProgCommandBar() {
-  const inputSearch = document.getElementById('prog-search-input');
-  const btnClearSearch = document.getElementById('prog-search-clear');
+  const inputSearch = document.getElementById('barcode-search-input');
   const selMachine = document.getElementById('prog-filter-machine');
   const selOwner = document.getElementById('prog-filter-owner');
   const selStatus = document.getElementById('prog-filter-status');
   const selStage = document.getElementById('prog-filter-stage');
   const selPageSize = document.getElementById('prog-page-size');
-  const btnRefresh = document.getElementById('prog-refresh-btn');
   const btnClearAll = document.getElementById('prog-clear-filters-btn');
   const btnDensity = document.getElementById('prog-density-btn');
-  const densityLabel = document.getElementById('prog-density-label');
 
-  // Search input debounce (200ms)
+  // Search input debounce (200ms); search-fx.js dispatches 'input' on clear/Esc
   inputSearch?.addEventListener('input', (e) => {
     const val = e.target.value.trim();
-    if (btnClearSearch) {
-      btnClearSearch.classList.toggle('is-active', val !== '');
-    }
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
+    clearTimeout(progSearchDebounceTimer);
+    progSearchDebounceTimer = setTimeout(() => {
+      if (val === progState.search) return;
       progState.search = val;
       progState.page = 1;
       loadProgramsData();
     }, 200);
-  });
-
-  // Search clear button
-  btnClearSearch?.addEventListener('click', () => {
-    if (inputSearch) inputSearch.value = '';
-    btnClearSearch.classList.remove('is-active');
-    progState.search = '';
-    progState.page = 1;
-    loadProgramsData();
-    inputSearch?.focus();
   });
 
   // Filter selects
@@ -70,10 +56,6 @@ function initProgCommandBar() {
     const val = e.target.value;
     progState.pageSize = val.toLowerCase() === 'all' ? 'all' : parseInt(val, 10);
     progState.page = 1;
-    loadProgramsData();
-  });
-
-  btnRefresh?.addEventListener('click', () => {
     loadProgramsData();
   });
 
@@ -109,35 +91,48 @@ function applyProgDensity(density) {
   table.classList.add(`density-${density}`);
 
   if (label) {
-    const map = { compact: 'กะทัดรัด (34px)', standard: 'มาตรฐาน (44px)', comfortable: 'สบายตา (52px)' };
+    const map = { compact: 'กะทัดรัด', standard: 'มาตรฐาน', comfortable: 'สบายตา' };
     label.textContent = map[density] || 'มาตรฐาน';
   }
 }
 
-function applySavedView(viewKey) {
-  // Update UI pills
-  document.querySelectorAll('.prog-view-pill').forEach(p => {
-    p.classList.toggle('is-active', p.getAttribute('data-saved-view') === viewKey);
-  });
+function syncSavedViewsPillState() {
+  let activeView = '';
+  if (progState.status === 'ALL' && progState.owner === 'ALL' && progState.machine === 'ALL' && progState.stage === 'ALL') {
+    activeView = 'all';
+  } else if (progState.status === 'overdue' && progState.owner === 'ALL' && progState.machine === 'ALL' && progState.stage === 'ALL') {
+    activeView = 'overdue';
+  } else if (progState.owner === 'unassigned' && progState.status === 'ALL' && progState.machine === 'ALL' && progState.stage === 'ALL') {
+    activeView = 'unassigned';
+  } else if (progState.status === 'complete' && progState.owner === 'ALL' && progState.machine === 'ALL' && progState.stage === 'ALL') {
+    activeView = 'complete';
+  }
 
+  document.querySelectorAll('.prog-view-pill').forEach(p => {
+    p.classList.toggle('is-active', p.getAttribute('data-saved-view') === activeView);
+  });
+}
+
+function applySavedView(viewKey) {
   if (viewKey === 'all') {
     progState.status = 'ALL';
     progState.owner = 'ALL';
     progState.machine = 'ALL';
     progState.stage = 'ALL';
-  } else if (viewKey === 'my_tasks') {
-    progState.owner = progState.currentUser;
-    progState.status = 'ALL';
   } else if (viewKey === 'overdue') {
     progState.status = 'overdue';
+    progState.owner = 'ALL';
   } else if (viewKey === 'unassigned') {
     progState.owner = 'unassigned';
+    progState.status = 'ALL';
   } else if (viewKey === 'complete') {
     progState.status = 'complete';
+    progState.owner = 'ALL';
   }
 
   progState.page = 1;
   syncFilterControlsFromState();
+  syncSavedViewsPillState();
   loadProgramsData();
 }
 
@@ -161,53 +156,27 @@ function resetAllProgFilters() {
   progState.stage = 'ALL';
   progState.page = 1;
 
-  const inputSearch = document.getElementById('prog-search-input');
-  if (inputSearch) inputSearch.value = '';
-
-  const btnClearSearch = document.getElementById('prog-search-clear');
-  if (btnClearSearch) btnClearSearch.classList.remove('is-active');
+  const inputSearch = document.getElementById('barcode-search-input');
+  if (inputSearch) {
+    inputSearch.value = '';
+    inputSearch.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 
   syncFilterControlsFromState();
+  syncSavedViewsPillState();
   loadProgramsData();
 }
 
 function populateProgOwners(ownersList) {
   const selOwner = document.getElementById('prog-filter-owner');
-  if (selOwner) {
-    const currentVal = selOwner.value;
-    selOwner.innerHTML = `
-      <option value="ALL">ผู้ทำ: ทั้งหมด</option>
-      <option value="unassigned">-- ยังไม่มอบหมาย --</option>
-      ${ownersList.map(o => `<option value="${h(o)}">${h(o)}</option>`).join('')}
-    `;
-    selOwner.value = currentVal;
-  }
-
-  // Also populate bulk owner list
-  const bulkOwnerList = document.getElementById('prog-bulk-owner-list');
-  if (bulkOwnerList) {
-    bulkOwnerList.innerHTML = ownersList.map(o => `
-      <button type="button" class="prog-dropdown-item" data-bulk-owner="${h(o)}">
-        <i class="fa-solid fa-user text-slate-400 mr-1.5"></i>${h(o)}
-      </button>
-    `).join('');
-
-    bulkOwnerList.querySelectorAll('[data-bulk-owner]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const ownerMenu = document.getElementById('prog-bulk-owner-menu');
-        ownerMenu?.classList.remove('is-open');
-        const targetOwner = btn.getAttribute('data-bulk-owner');
-        try {
-          const res = await apiBulkAction('assign_owner', Array.from(progState.selectedIds), { owner: targetOwner });
-          showProgToast('มอบหมายสำเร็จ', `มอบหมายให้ "${targetOwner}" สำหรับ ${res.updated_count || progState.selectedIds.size} รายการ`);
-          progState.selectedIds.clear();
-          await loadProgramsData();
-        } catch (err) {
-          showProgErrorToast('มอบหมายไม่สำเร็จ', err.message);
-        }
-      });
-    });
-  }
+  if (!selOwner) return;
+  const currentVal = progState.owner || selOwner.value || 'ALL';
+  selOwner.innerHTML = `
+    <option value="ALL">ผู้ทำ: ทั้งหมด</option>
+    <option value="unassigned">-- ยังไม่มอบหมาย --</option>
+    ${ownersList.map(o => `<option value="${h(o)}">${h(o)}</option>`).join('')}
+  `;
+  selOwner.value = (currentVal === 'ALL' || currentVal === 'unassigned' || ownersList.includes(currentVal)) ? currentVal : 'ALL';
 }
 
 function renderProgActiveChips() {
@@ -225,7 +194,7 @@ function renderProgActiveChips() {
     chips.push({ key: 'owner', label: `ผู้ทำ: ${oLabel}` });
   }
   if (progState.status !== 'ALL') {
-    const sMap = { complete: 'เสร็จสมบูรณ์', wait_master: 'รอ Master', queued: 'รอทำโปรแกรม', overdue: 'ค้างนาน' };
+    const sMap = { complete: 'เสร็จสมบูรณ์', wait_master: 'รอ Master', queued: 'รอทำโปรแกรม', overdue: 'ค้างนาน > 14 วัน' };
     chips.push({ key: 'status', label: `สถานะ: ${sMap[progState.status] || progState.status}`, cls: 'is-status' });
   }
   if (progState.stage !== 'ALL') {
@@ -242,8 +211,8 @@ function renderProgActiveChips() {
   list.innerHTML = chips.map(c => `
     <span class="prog-chip ${c.cls || ''}">
       <span>${h(c.label)}</span>
-      <button type="button" class="prog-chip-remove" data-remove-chip="${c.key}" title="ลบตัวกรองนี้">
-        <i class="fa-solid fa-xmark text-[11px]"></i>
+      <button type="button" class="prog-chip-remove" data-remove-chip="${c.key}" title="ลบตัวกรอง ${h(c.label)}" aria-label="ลบตัวกรอง ${h(c.label)}">
+        <i class="fa-solid fa-xmark text-[11px]" aria-hidden="true"></i>
       </button>
     </span>
   `).join('');
@@ -257,10 +226,13 @@ function renderProgActiveChips() {
       if (k === 'stage') progState.stage = 'ALL';
       progState.page = 1;
       syncFilterControlsFromState();
+      syncSavedViewsPillState();
       loadProgramsData();
     });
   });
 
   const btnClearAllChips = document.getElementById('prog-chips-clear-all');
-  btnClearAllChips?.addEventListener('click', resetAllProgFilters);
+  if (btnClearAllChips) {
+    btnClearAllChips.onclick = resetAllProgFilters;
+  }
 }

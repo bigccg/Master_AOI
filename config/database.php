@@ -939,6 +939,14 @@ function saveBoardRecord(PDO $pdo, array $input): array
             $message = "บันทึกข้อมูลลงโซน $zone · ชีต $sheet เรียบร้อยแล้ว (Number Code: $code, Shelf: $shelf) / Record saved to Zone $zone · Sheet $sheet.";
         }
 
+        if (in_array($status, ['D', 'GD'], true) && in_array($side, PROGRAM_SIDES, true) && $product !== '') {
+            try {
+                syncProgramFromBoard($pdo, $product, $side, $shelf);
+            } catch (Throwable $_) {
+                // Non-fatal if aoi_programs table is absent in isolated unit tests
+            }
+        }
+
         return [
             'success'     => true,
             'status_code' => 200,
@@ -1423,6 +1431,118 @@ function runMigrations(PDO $pdo): void
     }
     seedTopology($pdo);
     topology($pdo, true);   // (re)load; also makes $pdo the database of helpers that take no handle
+    syncProgramsFromMasterBoards($pdo);
+}
+
+/**
+ * Ensure a program tracking row exists in `aoi_programs` when a Defect (D / GD) board is saved on Master Board.
+ * Strictly accepts F-Side or B-Side only; never guesses or converts other side values, and never overwrites
+ * existing stage progress, machine_type, owner, or notes.
+ */
+function syncProgramFromBoard(PDO $pdo, string $product, string $side, string $shelf = ''): bool
+{
+    $product = strtoupper(trim($product));
+    $side    = trim($side);
+    $shelf   = strtoupper(trim($shelf));
+    if ($product === '' || !in_array($side, PROGRAM_SIDES, true)) {
+        return false;
+    }
+
+    $parts  = explode('-', $product);
+    $family = count($parts) >= 2 ? ($parts[0] . '-' . $parts[1]) : substr($product, 0, 20);
+    $family = substr($family, 0, 20);
+    $now    = (new DateTimeImmutable('now', new DateTimeZone(CODE_TZ)))->format('Y-m-d H:i:s');
+
+    $chk = $pdo->prepare('SELECT id, shelf FROM aoi_programs WHERE product_model = :model AND side = :side LIMIT 1');
+    $chk->execute([':model' => $product, ':side' => $side]);
+    $existing = $chk->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        if ($shelf !== '' && trim((string)($existing['shelf'] ?? '')) === '') {
+            $upd = $pdo->prepare('UPDATE aoi_programs SET shelf = :shelf WHERE id = :id');
+            $upd->execute([':shelf' => $shelf, ':id' => (int)$existing['id']]);
+        }
+        return false;
+    }
+
+    $driver   = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $insertKw = ($driver === 'sqlite') ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
+
+    $ins = $pdo->prepare("
+        $insertKw INTO aoi_programs (
+            product_model, side, family_key, machine_type,
+            stage_1, stage_1_by, stage_1_at,
+            stage_2, stage_2_by, stage_2_at,
+            stage_3, stage_3_by, stage_3_at,
+            stage_4, stage_4_by, stage_4_at,
+            owner, shelf, program_ok, wait_reason, note,
+            version, created_at, updated_at
+        ) VALUES (
+            :model, :side, :family, 'OMRON (2D)',
+            0, NULL, NULL,
+            0, NULL, NULL,
+            0, NULL, NULL,
+            0, NULL, NULL,
+            NULL, :shelf, 'Queued', NULL, NULL,
+            1, :now, :now
+        )
+    ");
+    $ins->execute([
+        ':model'  => $product,
+        ':side'   => $side,
+        ':family' => $family,
+        ':shelf'  => $shelf !== '' ? $shelf : null,
+        ':now'    => $now,
+    ]);
+
+    if ($ins->rowCount() > 0) {
+        $newId = (int)$pdo->lastInsertId();
+        if ($newId > 0) {
+            $log = $pdo->prepare('
+                INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
+                VALUES (:pid, :act, NULL, NULL, :val, :op, :ip, :now)
+            ');
+            $log->execute([
+                ':pid' => $newId,
+                ':act' => 'sync_from_board',
+                ':val' => "{$product} ({$side})",
+                ':op'  => 'Master Board',
+                ':ip'  => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                ':now' => $now,
+            ]);
+        }
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Non-destructive migration: ensures every (product, side) in `boards` with status IN ('D', 'GD')
+ * and valid side IN ('F-Side', 'B-Side') has a corresponding row in `aoi_programs`.
+ * Never deletes or modifies existing `aoi_programs` rows, and never guesses invalid `boards.side` values.
+ */
+function syncProgramsFromMasterBoards(PDO $pdo): int
+{
+    // Anti-join: only (product, side) pairs that have no aoi_programs row yet come back, so the common case
+    // (everything already synced) is ONE query instead of one SELECT per board group. This runs on every
+    // request (runMigrations), so it must stay cheap.
+    $st = $pdo->query("
+        SELECT b.product AS product, b.side AS side, MIN(b.shelf) AS first_shelf
+        FROM boards b
+        LEFT JOIN aoi_programs p ON p.product_model = b.product AND p.side = b.side
+        WHERE b.status IN ('D', 'GD')
+          AND b.product != ''
+          AND b.side IN ('F-Side', 'B-Side')
+          AND p.id IS NULL
+        GROUP BY b.product, b.side
+    ");
+    $added = 0;
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $b) {
+        if (syncProgramFromBoard($pdo, (string)$b['product'], (string)$b['side'], (string)($b['first_shelf'] ?? ''))) {
+            $added++;
+        }
+    }
+    return $added;
 }
 
 /**

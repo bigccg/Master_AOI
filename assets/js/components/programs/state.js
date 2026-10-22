@@ -8,14 +8,12 @@ const progState = {
   owner: 'ALL',
   status: 'ALL',
   stage: 'ALL',
-  view: 'table',
   density: 'standard',
   sort: 'updated_at',
   dir: 'desc',
   page: 1,
   pageSize: 50,
   currentUser: 'Thanapol',
-  selectedIds: new Set(),
   rows: [],
   kpi: {
     total: 0,
@@ -27,6 +25,7 @@ const progState = {
     omron: 0,
     yamaha: 0,
     tri: 0,
+    unlinked: 0,
   },
   total: 0,
   pages: 1,
@@ -51,8 +50,26 @@ function setStoredItem(key, value) {
   }
 }
 
+function removeStoredPrefix(prefix) {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
 // Initialise state from URL & localStorage
 function initProgState() {
+  // Purge legacy Quick Add keys
+  removeStoredPrefix('aoi_quick_');
+
   const url = new URL(window.location.href);
 
   progState.search = url.searchParams.get('q') || url.searchParams.get('search') || '';
@@ -60,26 +77,23 @@ function initProgState() {
   progState.owner = url.searchParams.get('owner') || 'ALL';
   progState.status = url.searchParams.get('status') || 'ALL';
   progState.stage = url.searchParams.get('stage') || 'ALL';
-  progState.view = url.searchParams.get('view') || 'table';
   progState.sort = url.searchParams.get('sort') || 'updated_at';
-  progState.dir = (url.searchParams.get('dir') || 'desc').toLowerCase();
+  progState.dir = (url.searchParams.get('dir') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
   progState.page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-  
+
   const rawLimit = url.searchParams.get('limit') || '50';
   progState.pageSize = rawLimit.toLowerCase() === 'all' ? 'all' : (parseInt(rawLimit, 10) || 50);
 
   progState.density = getStoredItem('aoi_prog_density', 'standard');
   progState.currentUser = getStoredItem('aoi_prog_user', 'Thanapol');
-
-  const rawSelect = url.searchParams.get('select');
-  if (rawSelect) {
-    rawSelect.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean).forEach(id => progState.selectedIds.add(id));
-  }
 }
 
-// Sync state to browser URL without reload
+// Sync state to browser URL and header Export button without reload
 function syncProgUrl() {
   const url = new URL(window.location.href);
+
+  url.searchParams.delete('select');
+  url.searchParams.delete('search');
 
   if (progState.search) url.searchParams.set('q', progState.search);
   else url.searchParams.delete('q');
@@ -96,9 +110,6 @@ function syncProgUrl() {
   if (progState.stage !== 'ALL') url.searchParams.set('stage', progState.stage);
   else url.searchParams.delete('stage');
 
-  if (progState.view !== 'table') url.searchParams.set('view', progState.view);
-  else url.searchParams.delete('view');
-
   if (progState.sort !== 'updated_at') url.searchParams.set('sort', progState.sort);
   else url.searchParams.delete('sort');
 
@@ -112,4 +123,12 @@ function syncProgUrl() {
   else url.searchParams.delete('limit');
 
   window.history.replaceState({}, '', url.toString());
+
+  // Sync header Export CSV link with active filters & sort
+  const exportBtn = document.getElementById('prog-export-btn');
+  if (exportBtn) {
+    const expUrl = new URL(url.toString());
+    expUrl.searchParams.set('export', '1');
+    exportBtn.href = expUrl.toString();
+  }
 }

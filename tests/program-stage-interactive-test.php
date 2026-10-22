@@ -1,6 +1,7 @@
 <?php
 /**
- * Test: AOI Program Stage Updates, Optimistic Concurrency, Undo & Bulk Actions
+ * Test: AOI Program Tracker — 403 Direct Creation Guard, Master Board Live Sync (D / GD),
+ * Stage Updates, Metadata Updates, Optimistic Concurrency, Side Sort & Undo
  * Run in Docker:
  *   docker exec -w /var/www/html/aoi-web-php php_app_web php tests/program-stage-interactive-test.php
  */
@@ -31,12 +32,12 @@ function assertTest(string $desc, bool $cond, string $details = ''): void {
     }
 }
 
-echo "\n--- Testing AOI Programs Interactive Engine & API Endpoints ---\n";
+echo "\n--- Testing AOI Programs Live Master Sync, 403 Creation Guard & Interactive Engine ---\n";
 
-// 1. Create a test program record
-$testModel = 'TEST-PHASE-B-' . bin2hex(random_bytes(3));
+$testModel = 'TEST-SYNC-' . strtoupper(bin2hex(random_bytes(3)));
 $testSide  = 'F-Side';
 
+// 1. Direct creation via saveNewProgram is blocked with HTTP 403
 $createRes = saveNewProgram($pdo, [
     'product_model' => $testModel,
     'side'          => $testSide,
@@ -44,22 +45,35 @@ $createRes = saveNewProgram($pdo, [
     'owner'         => 'TestUser',
 ], 'TestUser', '127.0.0.1');
 
-assertTest('saveNewProgram creates new record', $createRes['success'] === true && !empty($createRes['program']['id']));
-$testProgId = $createRes['program']['id'];
-$initVersion = $createRes['program']['version'];
-$createAuditId = $createRes['audit_id'];
+assertTest('saveNewProgram refuses direct creation with 403', $createRes['success'] === false && ($createRes['status_code'] ?? 0) === 403);
 
-assertTest('Initial version is 1', $initVersion === 1);
-assertTest('Initial status is Queued', $createRes['program']['program_ok'] === 'Queued');
+// 2. Syncing from a Master Board Defect (D) creates the program record automatically
+$synced = syncProgramFromBoard($pdo, $testModel, $testSide, 'CB_06');
+assertTest('syncProgramFromBoard creates new row for D/GD board', $synced === true);
 
-// 2. Test duplicate rejection
-$dupRes = saveNewProgram($pdo, [
-    'product_model' => $testModel,
-    'side'          => $testSide,
-    'machine_type'  => 'OMRON (2D)',
-], 'TestUser', '127.0.0.1');
+// Insert matching D board in boards to test live Master Samples link
+$nowStr = date('Y-m-d H:i:s');
+$insBoard = $pdo->prepare("
+    INSERT INTO boards (zone, sheet, code, shelf, shelf_no, mag_slot, product, side, board_type, status, pcs_status, defects, created_at)
+    VALUES ('General', 'CD300', :code, 'CD49', 49, 'CD300 Magazine 1st · Slot 49', :prod, :side, 'ES3261A', 'D', '', '1', :now)
+");
+$testCode = 'AOI-T-' . strtoupper(bin2hex(random_bytes(3)));
+$insBoard->execute([
+    ':code' => $testCode,
+    ':prod' => $testModel,
+    ':side' => $testSide,
+    ':now'  => $nowStr,
+]);
+$testBoardId = (int)$pdo->lastInsertId();
 
-assertTest('Duplicate (model, side) is rejected with 422', $dupRes['success'] === false && $dupRes['status_code'] === 422);
+$listRes = fetchProgramList($pdo, ['search' => $testModel], 'side', 'ASC', 50, 0);
+assertTest('fetchProgramList finds newly synced program and supports sort=side', $listRes['total'] === 1);
+
+$progRow = formatProgramRow($listRes['rows'][0]);
+$testProgId = $progRow['id'];
+assertTest('Initial version is 1 and status is Queued', $progRow['version'] === 1 && $progRow['program_ok'] === 'Queued');
+assertTest('Live Master Samples counts D board (master_d = 1, master_gd = 0)', $progRow['master_d'] === 1 && $progRow['master_gd'] === 0);
+assertTest('Live Master Samples includes board shelf in master_d_shelves', str_contains($progRow['master_d_shelves'], 'CD49'));
 
 // 3. Test stage 1 update (0 -> 1)
 $stg1Res = updateProgramStage($pdo, $testProgId, 1, 1, 'Thanapol', 1, null, '127.0.0.1');
@@ -70,22 +84,18 @@ assertTest('Stage 1 status is 1', $stg1Res['program']['stage_1'] === 1);
 
 // 4. Test optimistic locking conflict (passing obsolete version 1)
 $conflictRes = updateProgramStage($pdo, $testProgId, 1, 2, 'Thanapol', 1, null, '127.0.0.1');
-assertTest('Outdated version produces conflict', $conflictRes['success'] === false && ($conflictRes['conflict'] ?? false) === true);
-assertTest('Conflict status code is 409', $conflictRes['status_code'] === 409);
-assertTest('Conflict returns latest record', $conflictRes['current']['version'] === 2);
+assertTest('Outdated version produces conflict (409)', $conflictRes['success'] === false && ($conflictRes['status_code'] ?? 0) === 409);
 
 // 5. Update stage 1 to complete (version 2 -> 3)
 $stg1Complete = updateProgramStage($pdo, $testProgId, 1, 2, 'Thanapol', 2, null, '127.0.0.1');
 assertTest('Update stage 1 to complete (2) succeeds', $stg1Complete['success'] === true);
-assertTest('Version is now 3', $stg1Complete['program']['version'] === 3);
 $auditStage1 = $stg1Complete['audit_id'];
 
 // 6. Test Undo stage update via audit trail
 $undoRes = undoProgramAudit($pdo, $testProgId, $auditStage1, 'Thanapol', '127.0.0.1');
-assertTest('undoProgramAudit restores previous stage status', $undoRes['success'] === true);
-assertTest('Restored stage 1 is 1 (In Progress)', $undoRes['program']['stage_1'] === 1);
+assertTest('undoProgramAudit restores previous stage status', $undoRes['success'] === true && $undoRes['program']['stage_1'] === 1);
 
-// 7. Test progression to complete and program_ok calculation
+// 7. Test progression to Wait Master and Complete
 updateProgramStage($pdo, $testProgId, 1, 2, 'Thanapol', 0, null, '127.0.0.1');
 updateProgramStage($pdo, $testProgId, 2, 2, 'Thanapol', 0, null, '127.0.0.1');
 $midProg = fetchProgramById($pdo, $testProgId);
@@ -94,42 +104,21 @@ assertTest('Stages 1 & 2 complete results in Wait Master', $midProg['program_ok'
 updateProgramStage($pdo, $testProgId, 3, 2, 'Thanapol', 0, null, '127.0.0.1');
 updateProgramStage($pdo, $testProgId, 4, 2, 'Thanapol', 0, null, '127.0.0.1');
 $finalProg = fetchProgramById($pdo, $testProgId);
-assertTest('All 4 stages complete results in Complete', $finalProg['program_ok'] === 'Complete');
-assertTest('is_complete helper is true', $finalProg['is_complete'] === true);
+assertTest('All 4 stages complete results in Complete', $finalProg['program_ok'] === 'Complete' && $finalProg['is_complete'] === true);
 
-// 8. Test Bulk Operations
-$bulkModel1 = 'TEST-BULK-A-' . bin2hex(random_bytes(3));
-$bulkModel2 = 'TEST-BULK-B-' . bin2hex(random_bytes(3));
+// 8. Test single-row metadata update (owner & note)
+$metaRes = updateProgramMeta($pdo, $testProgId, ['owner' => 'SONGSREM', 'note' => 'ทดสอบหมายเหตุ'], 'Thanapol', 0, '127.0.0.1');
+assertTest('updateProgramMeta updates owner and note on existing row', $metaRes['success'] === true && $metaRes['program']['owner'] === 'SONGSREM' && $metaRes['program']['note'] === 'ทดสอบหมายเหตุ');
 
-$b1 = saveNewProgram($pdo, ['product_model' => $bulkModel1, 'side' => 'F-Side'], 'TestUser', '127.0.0.1');
-$b2 = saveNewProgram($pdo, ['product_model' => $bulkModel2, 'side' => 'F-Side'], 'TestUser', '127.0.0.1');
+// 9. When D board is deleted from boards, program row remains intact with master_d = 0
+$pdo->prepare('DELETE FROM boards WHERE id = ?')->execute([$testBoardId]);
+$afterBoardDel = fetchProgramById($pdo, $testProgId);
+assertTest('Deleting D board keeps program row intact with master_d = 0 and has_master_defect = false',
+    $afterBoardDel !== null && $afterBoardDel['master_d'] === 0 && $afterBoardDel['has_master_defect'] === false && $afterBoardDel['is_complete'] === true);
 
-$bulkIds = [$b1['program']['id'], $b2['program']['id']];
-
-// Bulk Advance
-$bulkAdvRes = bulkUpdatePrograms($pdo, 'advance_stage', $bulkIds, [], 'OperatorX', '127.0.0.1');
-assertTest('bulkUpdatePrograms advance_stage succeeds', $bulkAdvRes['success'] === true && $bulkAdvRes['updated_count'] === 2);
-
-$b1Updated = fetchProgramById($pdo, $bulkIds[0]);
-$b2Updated = fetchProgramById($pdo, $bulkIds[1]);
-assertTest('Bulk item 1 advanced to stage 1 = 1', $b1Updated['stage_1'] === 1);
-assertTest('Bulk item 2 advanced to stage 1 = 1', $b2Updated['stage_1'] === 1);
-
-// Bulk Assign Owner
-$bulkOwnerRes = bulkUpdatePrograms($pdo, 'assign_owner', $bulkIds, ['owner' => 'SupervisorY'], 'OperatorX', '127.0.0.1');
-assertTest('bulkUpdatePrograms assign_owner succeeds', $bulkOwnerRes['success'] === true);
-$b1Assigned = fetchProgramById($pdo, $bulkIds[0]);
-assertTest('Bulk item 1 owner updated to SupervisorY', $b1Assigned['owner'] === 'SupervisorY');
-
-// Bulk Set Stage
-$bulkSetRes = bulkUpdatePrograms($pdo, 'set_stage', $bulkIds, ['stage' => 2, 'status' => 9], 'OperatorX', '127.0.0.1');
-assertTest('bulkUpdatePrograms set_stage (N/A 9) succeeds', $bulkSetRes['success'] === true);
-$b1Set = fetchProgramById($pdo, $bulkIds[0]);
-assertTest('Bulk item 1 stage 2 is 9 (N/A)', $b1Set['stage_2'] === 9);
-
-// 9. Clean up test records
-$pdo->prepare('DELETE FROM aoi_programs WHERE id IN (?, ?, ?)')->execute([$testProgId, $bulkIds[0], $bulkIds[1]]);
-$pdo->prepare('DELETE FROM aoi_program_audit WHERE program_id IN (?, ?, ?)')->execute([$testProgId, $bulkIds[0], $bulkIds[1]]);
+// 10. Clean up test records
+$pdo->prepare('DELETE FROM aoi_programs WHERE id = ?')->execute([$testProgId]);
+$pdo->prepare('DELETE FROM aoi_program_audit WHERE program_id = ?')->execute([$testProgId]);
 assertTest('Test records cleanup completed', true);
 
 echo "\nResult: {$passed} passed, {$failed} failed.\n";

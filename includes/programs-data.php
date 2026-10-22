@@ -1,9 +1,11 @@
 <?php
 /**
- * Data Retrieval & KPI Calculation for AOI Program Tracker
+ * Data Retrieval, Live Master Samples Link & Stage Tracking for AOI Program Tracker
  */
 
 declare(strict_types=1);
+
+const PROGRAM_CREATE_FORBIDDEN_ERROR = 'ไม่สามารถสร้างโปรแกรมใหม่จากหน้านี้ได้ เนื่องจากรายการโปรแกรมต้องเชื่อมโยงจากบอร์ด Defect (D / G+D) ในหน้า Master Board เท่านั้น กรุณาเพิ่มข้อมูลบอร์ดที่หน้า Master Board / Creating programs directly from this page is disabled. Programs are synced automatically from Defect (D / G+D) boards on the Master Board.';
 
 /**
  * Format relative date (Rule: <= 7 days = relative, > 7 days = YYYY-MM-DD)
@@ -80,51 +82,123 @@ function computeProgramStatus(array $r): string
 }
 
 /**
+ * Normalize comma-separated shelf list from GROUP_CONCAT
+ */
+function normalizeShelfList(?string $raw): string
+{
+    $raw = trim((string)$raw);
+    if ($raw === '') return '';
+    $parts = array_values(array_unique(array_filter(array_map('trim', explode(',', $raw)), static fn(string $s) => $s !== '')));
+    return implode(', ', $parts);
+}
+
+/**
+ * Single aggregation subquery on `boards` (GROUP BY product, side) for D and GD boards.
+ * Compatible with both SQLite and MySQL; avoids N+1 queries.
+ */
+function boardsMasterSubquerySql(PDO $pdo): string
+{
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $dConcat  = "GROUP_CONCAT(CASE WHEN status = 'D' THEN shelf END, ', ')";
+        $gdConcat = "GROUP_CONCAT(CASE WHEN status = 'GD' THEN shelf END, ', ')";
+        $shConcat = "GROUP_CONCAT(DISTINCT shelf)";
+    } else {
+        $dConcat  = "GROUP_CONCAT(CASE WHEN status = 'D' THEN shelf END ORDER BY shelf ASC SEPARATOR ', ')";
+        $gdConcat = "GROUP_CONCAT(CASE WHEN status = 'GD' THEN shelf END ORDER BY shelf ASC SEPARATOR ', ')";
+        $shConcat = "GROUP_CONCAT(DISTINCT shelf ORDER BY shelf ASC SEPARATOR ', ')";
+    }
+    return "
+        SELECT
+            product AS b_product,
+            side AS b_side,
+            SUM(CASE WHEN status = 'D' THEN 1 ELSE 0 END) AS master_d,
+            SUM(CASE WHEN status = 'GD' THEN 1 ELSE 0 END) AS master_gd,
+            $dConcat AS master_d_shelves,
+            $gdConcat AS master_gd_shelves,
+            $shConcat AS board_shelves
+        FROM boards
+        WHERE status IN ('D', 'GD')
+          AND side IN ('F-Side', 'B-Side')
+        GROUP BY product, side
+    ";
+}
+
+/**
  * Standardize and enrich program record for API/UI output
  */
 function formatProgramRow(array $r): array
 {
-    $complete = isProgramComplete($r);
-    $overdue = overdueDays($r['updated_at'] ?? null, $complete);
+    $complete  = isProgramComplete($r);
+    $overdue   = overdueDays($r['updated_at'] ?? null, $complete);
+    $masterD   = (int)($r['master_d'] ?? 0);
+    $masterGd  = (int)($r['master_gd'] ?? 0);
+    $dShelves  = normalizeShelfList($r['master_d_shelves'] ?? '');
+    $gdShelves = normalizeShelfList($r['master_gd_shelves'] ?? '');
+    $bShelves  = normalizeShelfList($r['board_shelves'] ?? '');
+    $shelfVal  = trim((string)($r['shelf'] ?? ''));
+    if ($shelfVal === '' && $bShelves !== '') {
+        $shelfVal = $bShelves;
+    }
 
     return [
-        'id'            => (int)($r['id'] ?? 0),
-        'product_model' => (string)($r['product_model'] ?? ''),
-        'side'          => (string)($r['side'] ?? 'F-Side'),
-        'family_key'    => (string)($r['family_key'] ?? ''),
-        'machine_type'  => (string)($r['machine_type'] ?? 'OMRON (2D)'),
-        'stage_1'       => (int)($r['stage_1'] ?? 0),
-        'stage_1_by'    => (string)($r['stage_1_by'] ?? ''),
-        'stage_1_at'    => (string)($r['stage_1_at'] ?? ''),
-        'stage_2'       => (int)($r['stage_2'] ?? 0),
-        'stage_2_by'    => (string)($r['stage_2_by'] ?? ''),
-        'stage_2_at'    => (string)($r['stage_2_at'] ?? ''),
-        'stage_3'       => (int)($r['stage_3'] ?? 0),
-        'stage_3_by'    => (string)($r['stage_3_by'] ?? ''),
-        'stage_3_at'    => (string)($r['stage_3_at'] ?? ''),
-        'stage_4'       => (int)($r['stage_4'] ?? 0),
-        'stage_4_by'    => (string)($r['stage_4_by'] ?? ''),
-        'stage_4_at'    => (string)($r['stage_4_at'] ?? ''),
-        'owner'         => (string)($r['owner'] ?? ''),
-        'shelf'         => (string)($r['shelf'] ?? ''),
-        'program_ok'    => (string)($r['program_ok'] ?? ''),
-        'wait_reason'   => (string)($r['wait_reason'] ?? ''),
-        'note'          => (string)($r['note'] ?? ''),
-        'version'       => (int)($r['version'] ?? 1),
-        'created_at'    => (string)($r['created_at'] ?? ''),
-        'updated_at'    => (string)($r['updated_at'] ?? ''),
-        'updated_rel'   => formatProgramDate($r['updated_at'] ?? null),
-        'is_complete'   => $complete,
-        'overdue_days'  => $overdue,
+        'id'                => (int)($r['id'] ?? 0),
+        'product_model'     => (string)($r['product_model'] ?? ''),
+        'side'              => (string)($r['side'] ?? 'F-Side'),
+        'family_key'        => (string)($r['family_key'] ?? ''),
+        'machine_type'      => (string)($r['machine_type'] ?? 'OMRON (2D)'),
+        'stage_1'           => (int)($r['stage_1'] ?? 0),
+        'stage_1_by'        => (string)($r['stage_1_by'] ?? ''),
+        'stage_1_at'        => (string)($r['stage_1_at'] ?? ''),
+        'stage_2'           => (int)($r['stage_2'] ?? 0),
+        'stage_2_by'        => (string)($r['stage_2_by'] ?? ''),
+        'stage_2_at'        => (string)($r['stage_2_at'] ?? ''),
+        'stage_3'           => (int)($r['stage_3'] ?? 0),
+        'stage_3_by'        => (string)($r['stage_3_by'] ?? ''),
+        'stage_3_at'        => (string)($r['stage_3_at'] ?? ''),
+        'stage_4'           => (int)($r['stage_4'] ?? 0),
+        'stage_4_by'        => (string)($r['stage_4_by'] ?? ''),
+        'stage_4_at'        => (string)($r['stage_4_at'] ?? ''),
+        'master_d'          => $masterD,
+        'master_gd'         => $masterGd,
+        'master_d_shelves'  => $dShelves,
+        'master_gd_shelves' => $gdShelves,
+        'has_master_defect' => ($masterD + $masterGd) > 0,
+        'owner'             => (string)($r['owner'] ?? ''),
+        'shelf'             => $shelfVal,
+        'program_ok'        => (string)($r['program_ok'] ?? ''),
+        'wait_reason'       => (string)($r['wait_reason'] ?? ''),
+        'note'              => (string)($r['note'] ?? ''),
+        'version'           => (int)($r['version'] ?? 1),
+        'created_at'        => (string)($r['created_at'] ?? ''),
+        'updated_at'        => (string)($r['updated_at'] ?? ''),
+        'updated_rel'       => formatProgramDate($r['updated_at'] ?? null),
+        'is_complete'       => $complete,
+        'overdue_days'      => $overdue,
     ];
 }
 
 /**
- * Fetch single program by ID
+ * Fetch single program by ID (including live Master Samples counts from `boards`)
  */
 function fetchProgramById(PDO $pdo, int $id): ?array
 {
-    $st = $pdo->prepare('SELECT * FROM aoi_programs WHERE id = :id LIMIT 1');
+    $sub = boardsMasterSubquerySql($pdo);
+    $sql = "
+        SELECT
+            p.*,
+            COALESCE(b.master_d, 0) AS master_d,
+            COALESCE(b.master_gd, 0) AS master_gd,
+            b.master_d_shelves,
+            b.master_gd_shelves,
+            b.board_shelves
+        FROM aoi_programs p
+        LEFT JOIN ($sub) b
+          ON b.b_product = p.product_model AND b.b_side = p.side
+        WHERE p.id = :id
+        LIMIT 1
+    ";
+    $st = $pdo->prepare($sql);
     $st->execute([':id' => $id]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
     return $row ? formatProgramRow($row) : null;
@@ -144,17 +218,17 @@ function updateProgramStage(
     string $ip = ''
 ): array {
     if (!in_array($stage, [1, 2, 3, 4], true)) {
-        return ['success' => false, 'errors' => ['หมายเลขขั้นไม่ถูกต้อง (ต้องเป็น 1, 2, 3 หรือ 4) / Invalid stage number.']];
+        return ['success' => false, 'status_code' => 422, 'errors' => ['อัปเดตขั้นไม่สำเร็จ เนื่องจากหมายเลขขั้นไม่ถูกต้อง (ต้องเป็น 1–4) กรุณาลองใหม่ / Invalid stage number.']];
     }
     if (!in_array($status, [0, 1, 2, 9], true)) {
-        return ['success' => false, 'errors' => ['สถานะขั้นไม่ถูกต้อง / Invalid stage status.']];
+        return ['success' => false, 'status_code' => 422, 'errors' => ['อัปเดตสถานะไม่สำเร็จ เนื่องจากค่าสถานะไม่ถูกต้อง กรุณาเลือกสถานะจากรายการ / Invalid stage status.']];
     }
 
     $st = $pdo->prepare('SELECT * FROM aoi_programs WHERE id = :id');
     $st->execute([':id' => $id]);
     $current = $st->fetch(PDO::FETCH_ASSOC);
     if (!$current) {
-        return ['success' => false, 'status_code' => 404, 'errors' => ['ไม่พบข้อมูลโปรแกรมที่ระบุ / Program record not found.']];
+        return ['success' => false, 'status_code' => 404, 'errors' => ['ไม่พบรายการโปรแกรมที่ต้องการอัปเดต กรุณาโหลดข้อมูลใหม่ / Program record not found.']];
     }
 
     $currentVer = (int)$current['version'];
@@ -163,8 +237,8 @@ function updateProgramStage(
             'success'     => false,
             'conflict'    => true,
             'status_code' => 409,
-            'current'     => formatProgramRow($current),
-            'errors'      => ['ข้อมูลถูกแก้ไขโดยผู้อื่นแล้ว กรุณารีเฟรชข้อมูล / Record was modified by someone else. Please reload.'],
+            'current'     => fetchProgramById($pdo, $id),
+            'errors'      => ['บันทึกไม่สำเร็จ เนื่องจากมีผู้ใช้อื่นแก้ไขรายการนี้ไปแล้ว กรุณากดโหลดข้อมูลใหม่ / Record was modified by someone else. Please reload.'],
         ];
     }
 
@@ -177,7 +251,6 @@ function updateProgramStage(
     $newBy = ($status === 0) ? null : ($operator !== '' ? $operator : 'System');
     $newAt = ($status === 0) ? null : $now;
 
-    // Simulate new record to compute new program_ok
     $tempRow = $current;
     $tempRow[$stageCol] = $status;
     $newProgramOk = computeProgramStatus($tempRow);
@@ -208,18 +281,16 @@ function updateProgramStage(
     ]);
 
     if ($upd->rowCount() === 0) {
-        // Race condition: another query won the lock
         $latest = fetchProgramById($pdo, $id);
         return [
             'success'     => false,
             'conflict'    => true,
             'status_code' => 409,
             'current'     => $latest,
-            'errors'      => ['การบันทึกล้มเหลวเนื่องจากมีการแก้ไขชนกัน กรุณาลองใหม่ / Conflict detected. Please retry.'],
+            'errors'      => ['การบันทึกล้มเหลวเนื่องจากมีการแก้ไขชนกัน กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง / Conflict detected. Please retry.'],
         ];
     }
 
-    // Insert audit record
     $auditStmt = $pdo->prepare('
         INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
         VALUES (:pid, :act, :field, :old, :new, :op, :ip, :now)
@@ -246,7 +317,116 @@ function updateProgramStage(
 }
 
 /**
- * Revert previous action via audit log
+ * Update existing program row metadata (Operator `owner` or `note`) with optimistic locking & audit trail.
+ * Never creates a new row.
+ */
+function updateProgramMeta(
+    PDO $pdo,
+    int $id,
+    array $fields,
+    string $operator,
+    int $expectedVersion = 0,
+    string $ip = ''
+): array {
+    $st = $pdo->prepare('SELECT * FROM aoi_programs WHERE id = :id');
+    $st->execute([':id' => $id]);
+    $current = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$current) {
+        return ['success' => false, 'status_code' => 404, 'errors' => ['ไม่พบรายการโปรแกรมที่ต้องการแก้ไข กรุณาโหลดข้อมูลใหม่ / Program record not found.']];
+    }
+
+    $currentVer = (int)$current['version'];
+    if ($expectedVersion > 0 && $currentVer !== $expectedVersion) {
+        return [
+            'success'     => false,
+            'conflict'    => true,
+            'status_code' => 409,
+            'current'     => fetchProgramById($pdo, $id),
+            'errors'      => ['บันทึกไม่สำเร็จ เนื่องจากมีผู้ใช้อื่นแก้ไขรายการนี้ไปแล้ว กรุณากดโหลดข้อมูลใหม่ / Record was modified by someone else. Please reload.'],
+        ];
+    }
+
+    $hasOwner = array_key_exists('owner', $fields);
+    $hasNote  = array_key_exists('note', $fields);
+    if (!$hasOwner && !$hasNote) {
+        return ['success' => false, 'status_code' => 422, 'errors' => ['ไม่ได้ระบุฟิลด์ที่ต้องการแก้ไข (ผู้ทำ หรือ หมายเหตุ) / No editable fields provided.']];
+    }
+
+    $newOwner = $hasOwner ? trim((string)$fields['owner']) : (string)($current['owner'] ?? '');
+    $newNote  = $hasNote  ? trim((string)$fields['note'])  : (string)($current['note'] ?? '');
+
+    if (mb_strlen($newOwner) > 50) {
+        return ['success' => false, 'status_code' => 422, 'errors' => ['บันทึกชื่อผู้ทำไม่ได้ เนื่องจากความยาวเกิน 50 ตัวอักษร กรุณาย่อชื่อให้สั้นลง / Operator name exceeds 50 characters.']];
+    }
+
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok')))->format('Y-m-d H:i:s');
+
+    $upd = $pdo->prepare('
+        UPDATE aoi_programs
+        SET owner = :owner,
+            note = :note,
+            version = version + 1,
+            updated_at = :now
+        WHERE id = :id AND version = :version
+    ');
+    $upd->execute([
+        ':owner'   => $newOwner !== '' ? $newOwner : null,
+        ':note'    => $newNote !== '' ? $newNote : null,
+        ':now'     => $now,
+        ':id'      => $id,
+        ':version' => $currentVer,
+    ]);
+
+    if ($upd->rowCount() === 0) {
+        return [
+            'success'     => false,
+            'conflict'    => true,
+            'status_code' => 409,
+            'current'     => fetchProgramById($pdo, $id),
+            'errors'      => ['การบันทึกล้มเหลวเนื่องจากมีการแก้ไขชนกัน กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง / Conflict detected. Please retry.'],
+        ];
+    }
+
+    // One audit row per field that actually changed, so each can be undone on its own
+    // (a combined "owner,note" row could not be undone and lost the old owner value).
+    $changes = [];
+    if ($hasOwner && $newOwner !== (string)($current['owner'] ?? '')) {
+        $changes['owner'] = [(string)($current['owner'] ?? ''), $newOwner];
+    }
+    if ($hasNote && $newNote !== (string)($current['note'] ?? '')) {
+        $changes['note'] = [(string)($current['note'] ?? ''), $newNote];
+    }
+
+    $auditStmt = $pdo->prepare('
+        INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
+        VALUES (:pid, :act, :field, :old, :new, :op, :ip, :now)
+    ');
+    $auditId = 0;
+    foreach ($changes as $fieldName => [$oldVal, $newVal]) {
+        $auditStmt->execute([
+            ':pid'   => $id,
+            ':act'   => 'meta_update',
+            ':field' => $fieldName,
+            ':old'   => $oldVal,
+            ':new'   => $newVal,
+            ':op'    => $operator !== '' ? $operator : 'System',
+            ':ip'    => $ip,
+            ':now'   => $now,
+        ]);
+        $auditId = (int)$pdo->lastInsertId();
+    }
+
+    return [
+        'success'  => true,
+        'message'  => $hasOwner ? 'อัปเดตผู้ทำเรียบร้อยแล้ว / Operator updated.' : 'อัปเดตหมายเหตุเรียบร้อยแล้ว / Note updated.',
+        'program'  => fetchProgramById($pdo, $id),
+        'audit_id' => $auditId,
+    ];
+}
+
+/**
+ * Revert previous stage or metadata update via audit log.
+ * Never inserts or deletes rows in `aoi_programs`.
  */
 function undoProgramAudit(PDO $pdo, int $programId, int $auditId, string $operator, string $ip): array
 {
@@ -261,34 +441,10 @@ function undoProgramAudit(PDO $pdo, int $programId, int $auditId, string $operat
     $action = (string)$audit['action'];
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok')))->format('Y-m-d H:i:s');
 
-    if ($action === 'create') {
-        // Undo create = delete the program record
-        $del = $pdo->prepare('DELETE FROM aoi_programs WHERE id = :id');
-        $del->execute([':id' => $programId]);
-
-        $log = $pdo->prepare('
-            INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-            VALUES (:pid, :act, NULL, NULL, NULL, :op, :ip, :now)
-        ');
-        $log->execute([
-            ':pid' => $programId,
-            ':act' => 'undo_create',
-            ':op'  => $operator ?: 'System',
-            ':ip'  => $ip,
-            ':now' => $now,
-        ]);
-
-        return [
-            'success'    => true,
-            'message'    => 'ยกเลิกการสร้างโปรแกรมเรียบร้อยแล้ว / Program creation undone.',
-            'deleted_id' => $programId,
-        ];
-    }
-
     if ($action === 'stage_update') {
         $field = (string)$audit['field_name'];
-        if (!str_starts_with($field, 'stage_')) {
-            return ['success' => false, 'errors' => ['ไม่สามารถเลิกทำฟิลด์นี้ได้ / Cannot undo this field.']];
+        if (!in_array($field, ['stage_1', 'stage_2', 'stage_3', 'stage_4'], true)) {
+            return ['success' => false, 'status_code' => 422, 'errors' => ['ไม่สามารถเลิกทำฟิลด์นี้ได้ / Cannot undo this field.']];
         }
 
         $stage = (int)str_replace('stage_', '', $field);
@@ -298,7 +454,7 @@ function undoProgramAudit(PDO $pdo, int $programId, int $auditId, string $operat
         $progSt->execute([':id' => $programId]);
         $current = $progSt->fetch(PDO::FETCH_ASSOC);
         if (!$current) {
-            return ['success' => false, 'status_code' => 404, 'errors' => ['ไม่พบโปรแกรม / Program not found.']];
+            return ['success' => false, 'status_code' => 404, 'errors' => ['ไม่พบโปรแกรมที่ต้องการเลิกทำ / Program not found.']];
         }
 
         $byCol = "stage_{$stage}_by";
@@ -347,339 +503,99 @@ function undoProgramAudit(PDO $pdo, int $programId, int $auditId, string $operat
         ];
     }
 
-    return ['success' => false, 'errors' => ['ประเภทรายการไม่รองรับการเลิกทำ / Unsupported undo action.']];
-}
+    if ($action === 'meta_update') {
+        $field = (string)$audit['field_name'];
+        if (!in_array($field, ['owner', 'note'], true)) {
+            return ['success' => false, 'status_code' => 422, 'errors' => ['ไม่สามารถเลิกทำฟิลด์นี้ได้ / Cannot undo this field.']];
+        }
+        $oldVal = trim((string)($audit['old_value'] ?? ''));
 
-/**
- * Save brand new program record (e.g. from Quick Add or Full Modal)
- */
-function saveNewProgram(PDO $pdo, array $input, string $operator, string $ip): array
-{
-    $model = trim((string)($input['product_model'] ?? ''));
-    if ($model === '') {
-        return ['success' => false, 'status_code' => 422, 'errors' => ['กรุณาระบุรหัสโมเดล / Product model is required.']];
-    }
-    if (mb_strlen($model) > 50) {
-        return ['success' => false, 'status_code' => 422, 'errors' => ['รหัสโมเดลยาวเกิน 50 ตัวอักษร / Product model exceeds 50 chars.']];
-    }
+        $upd = $pdo->prepare("
+            UPDATE aoi_programs
+            SET $field = :val,
+                version = version + 1,
+                updated_at = :now
+            WHERE id = :id
+        ");
+        $upd->execute([
+            ':val' => $oldVal !== '' ? $oldVal : null,
+            ':now' => $now,
+            ':id'  => $programId,
+        ]);
 
-    $side = trim((string)($input['side'] ?? 'F-Side'));
-    if (!in_array($side, ['F-Side', 'B-Side'], true)) {
-        $side = 'F-Side';
-    }
+        $log = $pdo->prepare('
+            INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
+            VALUES (:pid, :act, :field, :old, :new, :op, :ip, :now)
+        ');
+        $log->execute([
+            ':pid'   => $programId,
+            ':act'   => 'undo_meta',
+            ':field' => $field,
+            ':old'   => (string)($audit['new_value'] ?? ''),
+            ':new'   => $oldVal,
+            ':op'    => $operator ?: 'System',
+            ':ip'    => $ip,
+            ':now'   => $now,
+        ]);
 
-    $machine = trim((string)($input['machine_type'] ?? 'OMRON (2D)'));
-    if (!in_array($machine, PROGRAM_MACHINES, true)) {
-        $machine = 'OMRON (2D)';
-    }
-
-    // Check duplicate model + side
-    $chk = $pdo->prepare('SELECT id FROM aoi_programs WHERE product_model = :model AND side = :side LIMIT 1');
-    $chk->execute([':model' => $model, ':side' => $side]);
-    if ($chk->fetch()) {
         return [
-            'success'     => false,
-            'status_code' => 422,
-            'errors'      => ["โมเดล '{$model}' ฝั่ง '{$side}' มีอยู่ในระบบแล้ว / Model and side already exist."],
+            'success' => true,
+            'message' => 'เลิกทำสำเร็จ คืนค่าข้อมูลเดิมเรียบร้อยแล้ว / Change reverted.',
+            'program' => fetchProgramById($pdo, $programId),
         ];
     }
 
-    $family = trim((string)($input['family_key'] ?? ''));
-    if ($family === '') {
-        // Auto extract family prefix (e.g. NKSZ from NKSZ-268MW-0C-B)
-        if (preg_match('/^([A-Za-z0-9]+)/', $model, $m)) {
-            $family = $m[1];
-        }
-    }
-
-    $owner = trim((string)($input['owner'] ?? ''));
-    $shelf = trim((string)($input['shelf'] ?? ''));
-    $note  = trim((string)($input['note'] ?? ''));
-
-    $s1 = isset($input['stage_1']) ? (int)$input['stage_1'] : 0;
-    $s2 = isset($input['stage_2']) ? (int)$input['stage_2'] : 0;
-    $s3 = isset($input['stage_3']) ? (int)$input['stage_3'] : 0;
-    $s4 = isset($input['stage_4']) ? (int)$input['stage_4'] : 0;
-
-    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok')))->format('Y-m-d H:i:s');
-
-    $s1By = ($s1 > 0) ? ($operator ?: 'System') : null;
-    $s1At = ($s1 > 0) ? $now : null;
-    $s2By = ($s2 > 0) ? ($operator ?: 'System') : null;
-    $s2At = ($s2 > 0) ? $now : null;
-    $s3By = ($s3 > 0) ? ($operator ?: 'System') : null;
-    $s3At = ($s3 > 0) ? $now : null;
-    $s4By = ($s4 > 0) ? ($operator ?: 'System') : null;
-    $s4At = ($s4 > 0) ? $now : null;
-
-    $progOk = computeProgramStatus([
-        'stage_1' => $s1,
-        'stage_2' => $s2,
-        'stage_3' => $s3,
-        'stage_4' => $s4,
-    ]);
-
-    $stmt = $pdo->prepare('
-        INSERT INTO aoi_programs (
-            product_model, side, family_key, machine_type,
-            stage_1, stage_1_by, stage_1_at,
-            stage_2, stage_2_by, stage_2_at,
-            stage_3, stage_3_by, stage_3_at,
-            stage_4, stage_4_by, stage_4_at,
-            owner, shelf, program_ok, wait_reason, note,
-            version, created_at, updated_at
-        ) VALUES (
-            :model, :side, :family, :machine,
-            :s1, :s1_by, :s1_at,
-            :s2, :s2_by, :s2_at,
-            :s3, :s3_by, :s3_at,
-            :s4, :s4_by, :s4_at,
-            :owner, :shelf, :prog_ok, NULL, :note,
-            1, :now, :now
-        )
-    ');
-
-    $stmt->execute([
-        ':model'   => $model,
-        ':side'    => $side,
-        ':family'  => $family,
-        ':machine' => $machine,
-        ':s1'      => $s1,
-        ':s1_by'   => $s1By,
-        ':s1_at'   => $s1At,
-        ':s2'      => $s2,
-        ':s2_by'   => $s2By,
-        ':s2_at'   => $s2At,
-        ':s3'      => $s3,
-        ':s3_by'   => $s3By,
-        ':s3_at'   => $s3At,
-        ':s4'      => $s4,
-        ':s4_by'   => $s4By,
-        ':s4_at'   => $s4At,
-        ':owner'   => $owner ?: null,
-        ':shelf'   => $shelf ?: null,
-        ':prog_ok' => $progOk,
-        ':note'    => $note ?: null,
-        ':now'     => $now,
-    ]);
-
-    $newId = (int)$pdo->lastInsertId();
-
-    $log = $pdo->prepare('
-        INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-        VALUES (:pid, :act, NULL, NULL, :model, :op, :ip, :now)
-    ');
-    $log->execute([
-        ':pid'   => $newId,
-        ':act'   => 'create',
-        ':model' => "{$model} ({$side})",
-        ':op'    => $operator ?: 'System',
-        ':ip'    => $ip,
-        ':now'   => $now,
-    ]);
-    $auditId = (int)$pdo->lastInsertId();
-
-    $created = fetchProgramById($pdo, $newId);
     return [
-        'success'  => true,
-        'message'  => "เพิ่มโปรแกรม {$model} ({$side}) สำเร็จ / Program added successfully.",
-        'program'  => $created,
-        'audit_id' => $auditId,
+        'success'     => false,
+        'status_code' => 403,
+        'errors'      => ['ไม่อนุญาตให้เลิกทำรายการประเภทนี้ เพื่อป้องกันการสร้างหรือลบแถวโปรแกรมย้อนกลับ / Undo is only supported for stage and metadata updates on existing programs.'],
     ];
 }
 
 /**
- * Execute batch operations on multiple program IDs
+ * Direct program creation from programs.php is permanently disabled (HTTP 403).
+ * Programs must originate from Defect (D / G+D) boards saved on Master Board (index.php).
  */
-function bulkUpdatePrograms(PDO $pdo, string $action, array $ids, array $payload, string $operator, string $ip): array
+function saveNewProgram(PDO $pdo, array $input, string $operator, string $ip): array
 {
-    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id) => $id > 0)));
-    if (empty($ids)) {
-        return ['success' => false, 'status_code' => 422, 'errors' => ['ไม่ได้เลือกรายการใดๆ / No items selected.']];
-    }
+    return [
+        'success'     => false,
+        'status_code' => 403,
+        'error'       => PROGRAM_CREATE_FORBIDDEN_ERROR,
+        'errors'      => [PROGRAM_CREATE_FORBIDDEN_ERROR],
+    ];
+}
 
-    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok')))->format('Y-m-d H:i:s');
-    $pdo->beginTransaction();
+/**
+ * Inspect `boards` for any row whose `side` is not in ('F-Side', 'B-Side') so callers can report without guessing.
+ */
+function findInvalidBoardSides(PDO $pdo): array
+{
+    $st = $pdo->query("
+        SELECT id, zone, sheet, code, shelf, product, side, status
+        FROM boards
+        WHERE side NOT IN ('F-Side', 'B-Side')
+        ORDER BY id ASC
+    ");
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
 
-    try {
-        $count = 0;
-
-        if ($action === 'advance_stage') {
-            // Advance the earliest incomplete stage
-            foreach ($ids as $id) {
-                $st = $pdo->prepare('SELECT * FROM aoi_programs WHERE id = :id FOR UPDATE');
-                $st->execute([':id' => $id]);
-                $r = $st->fetch(PDO::FETCH_ASSOC);
-                if (!$r) continue;
-
-                $targetStage = 0;
-                for ($s = 1; $s <= 4; $s++) {
-                    $stVal = (int)$r["stage_{$s}"];
-                    if ($stVal < 2) {
-                        $targetStage = $s;
-                        break;
-                    }
-                }
-
-                if ($targetStage > 0) {
-                    $currVal = (int)$r["stage_{$targetStage}"];
-                    $nextVal = ($currVal === 0) ? 1 : 2;
-
-                    $r["stage_{$targetStage}"] = $nextVal;
-                    $newOk = computeProgramStatus($r);
-
-                    $upd = $pdo->prepare("
-                        UPDATE aoi_programs
-                        SET stage_{$targetStage} = :val,
-                            stage_{$targetStage}_by = :by,
-                            stage_{$targetStage}_at = :at,
-                            program_ok = :prog_ok,
-                            version = version + 1,
-                            updated_at = :now
-                        WHERE id = :id
-                    ");
-                    $upd->execute([
-                        ':val'     => $nextVal,
-                        ':by'      => $operator ?: 'System',
-                        ':at'      => $now,
-                        ':prog_ok' => $newOk,
-                        ':now'     => $now,
-                        ':id'      => $id,
-                    ]);
-
-                    $audit = $pdo->prepare('
-                        INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-                        VALUES (:pid, :act, :field, :old, :new, :op, :ip, :now)
-                    ');
-                    $audit->execute([
-                        ':pid'   => $id,
-                        ':act'   => 'bulk_advance',
-                        ':field' => "stage_{$targetStage}",
-                        ':old'   => (string)$currVal,
-                        ':new'   => (string)$nextVal,
-                        ':op'    => $operator ?: 'System',
-                        ':ip'    => $ip,
-                        ':now'   => $now,
-                    ]);
-                    $count++;
-                }
-            }
-        } elseif ($action === 'set_stage') {
-            $stage = max(1, min(4, (int)($payload['stage'] ?? 1)));
-            $status = in_array((int)($payload['status'] ?? 2), [0, 1, 2, 9], true) ? (int)$payload['status'] : 2;
-            $by = ($status === 0) ? null : ($operator ?: 'System');
-            $at = ($status === 0) ? null : $now;
-
-            foreach ($ids as $id) {
-                $st = $pdo->prepare('SELECT * FROM aoi_programs WHERE id = :id FOR UPDATE');
-                $st->execute([':id' => $id]);
-                $r = $st->fetch(PDO::FETCH_ASSOC);
-                if (!$r) continue;
-
-                $r["stage_{$stage}"] = $status;
-                $newOk = computeProgramStatus($r);
-
-                $upd = $pdo->prepare("
-                    UPDATE aoi_programs
-                    SET stage_{$stage} = :val,
-                        stage_{$stage}_by = :by,
-                        stage_{$stage}_at = :at,
-                        program_ok = :prog_ok,
-                        version = version + 1,
-                        updated_at = :now
-                    WHERE id = :id
-                ");
-                $upd->execute([
-                    ':val'     => $status,
-                    ':by'      => $by,
-                    ':at'      => $at,
-                    ':prog_ok' => $newOk,
-                    ':now'     => $now,
-                    ':id'      => $id,
-                ]);
-
-                $audit = $pdo->prepare('
-                    INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-                    VALUES (:pid, :act, :field, :old, :new, :op, :ip, :now)
-                ');
-                $audit->execute([
-                    ':pid'   => $id,
-                    ':act'   => 'bulk_set_stage',
-                    ':field' => "stage_{$stage}",
-                    ':old'   => (string)$r["stage_{$stage}"],
-                    ':new'   => (string)$status,
-                    ':op'    => $operator ?: 'System',
-                    ':ip'    => $ip,
-                    ':now'   => $now,
-                ]);
-                $count++;
-            }
-        } elseif ($action === 'assign_owner') {
-            $owner = trim((string)($payload['owner'] ?? ''));
-            foreach ($ids as $id) {
-                $upd = $pdo->prepare('
-                    UPDATE aoi_programs
-                    SET owner = :owner, version = version + 1, updated_at = :now
-                    WHERE id = :id
-                ');
-                $upd->execute([
-                    ':owner' => $owner !== '' ? $owner : null,
-                    ':now'   => $now,
-                    ':id'    => $id,
-                ]);
-
-                $audit = $pdo->prepare('
-                    INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-                    VALUES (:pid, :act, :field, NULL, :new, :op, :ip, :now)
-                ');
-                $audit->execute([
-                    ':pid'   => $id,
-                    ':act'   => 'bulk_assign_owner',
-                    ':field' => 'owner',
-                    ':new'   => $owner,
-                    ':op'    => $operator ?: 'System',
-                    ':ip'    => $ip,
-                    ':now'   => $now,
-                ]);
-                $count++;
-            }
-        } elseif ($action === 'delete') {
-            foreach ($ids as $id) {
-                $del = $pdo->prepare('DELETE FROM aoi_programs WHERE id = :id');
-                $del->execute([':id' => $id]);
-
-                $audit = $pdo->prepare('
-                    INSERT INTO aoi_program_audit (program_id, action, field_name, old_value, new_value, operator, ip_address, created_at)
-                    VALUES (:pid, :act, NULL, NULL, NULL, :op, :ip, :now)
-                ');
-                $audit->execute([
-                    ':pid' => $id,
-                    ':act' => 'bulk_delete',
-                    ':op'  => $operator ?: 'System',
-                    ':ip'  => $ip,
-                    ':now' => $now,
-                ]);
-                $count++;
-            }
-        } else {
-            $pdo->rollBack();
-            return ['success' => false, 'status_code' => 400, 'errors' => ['การดำเนินการไม่ถูกต้อง / Invalid action.']];
-        }
-
-        $pdo->commit();
-        return [
-            'success'       => true,
-            'message'       => "อัปเดตข้อมูล {$count} รายการเรียบร้อยแล้ว / Updated {$count} records successfully.",
-            'updated_count' => $count,
-        ];
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        return [
-            'success'     => false,
-            'status_code' => 500,
-            'errors'      => ['เกิดข้อผิดพลาดในการบันทึกข้อมูลแบบกลุ่ม: ' . $e->getMessage()],
-        ];
-    }
+/**
+ * Count how many rows in `aoi_programs` currently have no Defect (D / GD) board in `boards`.
+ */
+function countUnlinkedPrograms(PDO $pdo): int
+{
+    $sql = "
+        SELECT COUNT(*)
+        FROM aoi_programs p
+        LEFT JOIN (
+            SELECT DISTINCT product, side
+            FROM boards
+            WHERE status IN ('D', 'GD') AND side IN ('F-Side', 'B-Side')
+        ) b ON b.product = p.product_model AND b.side = p.side
+        WHERE b.product IS NULL
+    ";
+    return (int)$pdo->query($sql)->fetchColumn();
 }
 
 /**
@@ -722,6 +638,7 @@ function fetchProgramKpis(PDO $pdo): array
         'omron'        => (int)($row['cnt_omron'] ?? 0),
         'yamaha'       => (int)($row['cnt_yamaha'] ?? 0),
         'tri'          => (int)($row['cnt_tri'] ?? 0),
+        'unlinked'     => countUnlinkedPrograms($pdo),
     ];
 }
 
@@ -735,75 +652,102 @@ function fetchProgramOwners(PDO $pdo): array
 }
 
 /**
- * Build filtered list query
+ * Build filtered list query with single-subquery Master Samples join on `boards`
  */
 function fetchProgramList(PDO $pdo, array $filters, string $sortCol, string $dir, int $limit, int $offset): array
 {
     $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     $overdueSql = ($driver === 'sqlite')
-        ? "updated_at < datetime('now', '-14 days')"
-        : "updated_at < (NOW() - INTERVAL 14 DAY)";
+        ? "p.updated_at < datetime('now', '-14 days')"
+        : "p.updated_at < (NOW() - INTERVAL 14 DAY)";
+
+    $sub = boardsMasterSubquerySql($pdo);
 
     $where = ['1=1'];
     $params = [];
 
-    // Search query
+    // Search query (Product / Shelf / Operator / Note)
     $q = trim((string)($filters['search'] ?? ''));
     if ($q !== '') {
-        $where[] = '(product_model LIKE :q OR family_key LIKE :q OR shelf LIKE :q OR owner LIKE :q OR note LIKE :q OR program_ok LIKE :q)';
+        $where[] = "(p.product_model LIKE :q OR p.shelf LIKE :q OR COALESCE(b.board_shelves, '') LIKE :q OR p.owner LIKE :q OR p.note LIKE :q OR p.program_ok LIKE :q)";
         $params[':q'] = "%$q%";
     }
 
     // Machine filter
     $mach = (string)($filters['machine'] ?? 'ALL');
     if ($mach !== 'ALL') {
-        $where[] = 'machine_type = :mach';
+        $where[] = 'p.machine_type = :mach';
         $params[':mach'] = $mach;
     }
 
     // Owner filter
     $owner = (string)($filters['owner'] ?? 'ALL');
     if ($owner === 'unassigned') {
-        $where[] = "(owner IS NULL OR owner = '')";
+        $where[] = "(p.owner IS NULL OR p.owner = '')";
     } elseif ($owner !== 'ALL') {
-        $where[] = 'owner = :owner';
+        $where[] = 'p.owner = :owner';
         $params[':owner'] = $owner;
     }
 
     // Status filter
     $status = (string)($filters['status'] ?? 'ALL');
     if ($status === 'complete') {
-        $where[] = 'stage_1 = 2 AND (stage_2 = 2 OR stage_2 = 9) AND stage_3 = 2 AND stage_4 = 2';
+        $where[] = 'p.stage_1 = 2 AND (p.stage_2 = 2 OR p.stage_2 = 9) AND p.stage_3 = 2 AND p.stage_4 = 2';
     } elseif ($status === 'wait_master') {
-        $where[] = 'stage_1 = 2 AND (stage_2 = 2 OR stage_2 = 9) AND stage_3 < 2';
+        $where[] = 'p.stage_1 = 2 AND (p.stage_2 = 2 OR p.stage_2 = 9) AND p.stage_3 < 2';
     } elseif ($status === 'queued') {
-        $where[] = 'stage_1 < 2';
+        $where[] = 'p.stage_1 < 2';
     } elseif ($status === 'overdue') {
-        $where[] = "NOT (stage_1 = 2 AND (stage_2 = 2 OR stage_2 = 9) AND stage_3 = 2 AND stage_4 = 2) AND $overdueSql";
+        $where[] = "NOT (p.stage_1 = 2 AND (p.stage_2 = 2 OR p.stage_2 = 9) AND p.stage_3 = 2 AND p.stage_4 = 2) AND $overdueSql";
     }
 
     // Stage filter (stuck at stage X)
     $stage = (string)($filters['stage'] ?? 'ALL');
     if (in_array($stage, ['1', '2', '3', '4'], true)) {
-        $stgCol = "stage_{$stage}";
+        $stgCol = "p.stage_{$stage}";
         $where[] = "$stgCol IN (0, 1)";
     }
 
     $whereSql = implode(' AND ', $where);
 
     // Count total filtered
-    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM aoi_programs WHERE $whereSql");
+    $countSql = "
+        SELECT COUNT(*)
+        FROM aoi_programs p
+        LEFT JOIN ($sub) b
+          ON b.b_product = p.product_model AND b.b_side = p.side
+        WHERE $whereSql
+    ";
+    $countStmt = $pdo->prepare($countSql);
     $countStmt->execute($params);
     $totalFiltered = (int)$countStmt->fetchColumn();
 
-    // Fetch page rows
-    $sortColSafe = in_array($sortCol, ['product_model', 'machine_type', 'owner', 'updated_at', 'created_at', 'id'], true) ? $sortCol : 'updated_at';
+    // Whitelisted sort columns (including 'side')
+    $allowedSort = [
+        'product_model' => 'p.product_model',
+        'side'          => 'p.side',
+        'machine_type'  => 'p.machine_type',
+        'owner'         => 'p.owner',
+        'updated_at'    => 'p.updated_at',
+        'created_at'    => 'p.created_at',
+        'id'            => 'p.id',
+    ];
+    $sortColSafe = $allowedSort[$sortCol] ?? 'p.updated_at';
     $dirSafe = ($dir === 'ASC') ? 'ASC' : 'DESC';
 
     $sql = "
-        SELECT * FROM aoi_programs
+        SELECT
+            p.*,
+            COALESCE(b.master_d, 0) AS master_d,
+            COALESCE(b.master_gd, 0) AS master_gd,
+            b.master_d_shelves,
+            b.master_gd_shelves,
+            b.board_shelves
+        FROM aoi_programs p
+        LEFT JOIN ($sub) b
+          ON b.b_product = p.product_model AND b.b_side = p.side
         WHERE $whereSql
-        ORDER BY $sortColSafe $dirSafe, id DESC
+        ORDER BY $sortColSafe $dirSafe, p.id DESC
         LIMIT :limit OFFSET :offset
     ";
 

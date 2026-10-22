@@ -1,5 +1,5 @@
 /**
- * AOI Program Tracker - API Client
+ * AOI Program Tracker - API Client (Read, Stage Update, Meta Update & Undo only)
  */
 
 function buildProgApiUrl(overrides = {}) {
@@ -39,12 +39,12 @@ async function loadProgramsData() {
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      throw new Error(`HTTP ${res.status}`);
     }
 
     const json = await res.json();
     if (!json.success) {
-      throw new Error(json.error || 'Failed to load programs data.');
+      throw new Error(json.error || 'ไม่สามารถโหลดข้อมูลโปรแกรมได้');
     }
 
     progState.rows = Array.isArray(json.data) ? json.data : [];
@@ -53,7 +53,6 @@ async function loadProgramsData() {
     progState.pages = json.pages || 1;
     progState.viewStatus = progState.rows.length > 0 ? 'ready' : 'empty';
 
-    // Populate owners dropdown if given
     if (Array.isArray(json.owners)) {
       populateProgOwners(json.owners);
     }
@@ -62,13 +61,16 @@ async function loadProgramsData() {
     renderProgTable();
     renderProgPagination();
     renderProgActiveChips();
+    syncSavedViewsPillState();
     syncProgUrl();
 
+    // Notify shared search-fx.js (aoi:loaded) to update result count badge
+    document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total: progState.total } }));
     document.dispatchEvent(new CustomEvent('aoi:programs-loaded', { detail: { count: progState.rows.length, total: progState.total } }));
   } catch (err) {
     console.error('AOI Programs load error:', err);
     progState.viewStatus = 'error';
-    renderProgTableError(err.message);
+    renderProgTableError();
   }
 }
 
@@ -78,6 +80,7 @@ async function loadProgramsData() {
 async function apiUpdateStage(id, stage, status, expectedVersion, note = null) {
   const payload = {
     csrf: window.csrfToken,
+    action: 'stage',
     id: id,
     stage: stage,
     status: status,
@@ -97,7 +100,7 @@ async function apiUpdateStage(id, stage, status, expectedVersion, note = null) {
 
   const json = await res.json();
   if (!res.ok) {
-    const err = new Error(json.errors ? json.errors.join(' ') : `HTTP ${res.status}`);
+    const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถบันทึกสถานะขั้นตอนได้ กรุณาลองใหม่อีกครั้ง');
     err.status = res.status;
     err.data = json;
     throw err;
@@ -106,7 +109,38 @@ async function apiUpdateStage(id, stage, status, expectedVersion, note = null) {
 }
 
 /**
- * Revert previous stage change or creation
+ * Update existing program row metadata (owner or note)
+ */
+async function apiUpdateMeta(id, fields, expectedVersion = 0) {
+  const payload = Object.assign({}, fields, {
+    csrf: window.csrfToken,
+    action: 'meta',
+    id: id,
+    version: expectedVersion,
+    operator: progState.currentUser || 'Thanapol'
+  });
+
+  const res = await fetch('api/program_stage.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+    err.status = res.status;
+    err.data = json;
+    throw err;
+  }
+  return json;
+}
+
+/**
+ * Revert previous stage or metadata change on an existing program row
  */
 async function apiUndoAction(programId, auditId) {
   const payload = {
@@ -127,66 +161,7 @@ async function apiUndoAction(programId, auditId) {
 
   const json = await res.json();
   if (!res.ok) {
-    const err = new Error(json.errors ? json.errors.join(' ') : `HTTP ${res.status}`);
-    err.status = res.status;
-    err.data = json;
-    throw err;
-  }
-  return json;
-}
-
-/**
- * Save new program (Quick Add or Full Modal)
- */
-async function apiSaveProgram(formData) {
-  const payload = Object.assign({}, formData, {
-    csrf: window.csrfToken,
-    operator: progState.currentUser || 'Thanapol'
-  });
-
-  const res = await fetch('api/program_save.php', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const err = new Error(json.errors ? json.errors.join(' ') : `HTTP ${res.status}`);
-    err.status = res.status;
-    err.data = json;
-    throw err;
-  }
-  return json;
-}
-
-/**
- * Bulk updates on multiple IDs
- */
-async function apiBulkAction(action, ids, payload = {}) {
-  const body = {
-    csrf: window.csrfToken,
-    action: action,
-    ids: ids,
-    payload: payload,
-    operator: progState.currentUser || 'Thanapol'
-  };
-
-  const res = await fetch('api/program_bulk.php', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const err = new Error(json.errors ? json.errors.join(' ') : `HTTP ${res.status}`);
+    const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถเลิกทำรายการได้ กรุณาลองใหม่อีกครั้ง');
     err.status = res.status;
     err.data = json;
     throw err;

@@ -11,9 +11,20 @@ require_once __DIR__ . '/../includes/programs-data.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    http_response_code(403);
+    echo json_encode([
+        'success'     => false,
+        'status_code' => 403,
+        'error'       => PROGRAM_CREATE_FORBIDDEN_ERROR,
+        'errors'      => [PROGRAM_CREATE_FORBIDDEN_ERROR],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed (GET required).'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'error' => 'ไม่อนุญาตให้เรียกด้วยเมธอดนี้ (รองรับเฉพาะ GET) / Method not allowed (GET required).'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -44,9 +55,9 @@ $filters = [
     'stage'   => $stageF,
 ];
 
-$kpi = fetchProgramKpis($pdo);
+$kpi    = fetchProgramKpis($pdo);
 $owners = fetchProgramOwners($pdo);
-$res = fetchProgramList($pdo, $filters, $sort, $dir, $limit, $offset);
+$res    = fetchProgramList($pdo, $filters, $sort, $dir, $limit, $offset);
 
 $formattedRows = array_map('formatProgramRow', $res['rows']);
 

@@ -1,130 +1,195 @@
 /**
- * AOI Program Tracker - 4-Stage Stepper
+ * AOI Program Tracker - 4-Stage Pipeline — Glass Dynamic (HyperOS)
+ * Translucent glass capsules, hairline 1px border, subtle inner highlight, single soft shadow,
+ * gradient connectors that fill when the previous stage is complete, and 240ms spring/ease-out motion.
  */
 
 .prog-stepper-track {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0;
   user-select: none;
 }
 
-/* Individual Cell (44x28px desktop, 48x36px tablet) */
+/* Individual Glass Capsule */
 .prog-step-cell {
   position: relative;
   width: 44px;
-  height: 28px;
-  background-color: #f8fafc;
-  border: 1px solid var(--prog-border);
-  border-radius: var(--prog-radius-ctl);
+  height: 26px;
+  padding: 0 var(--prog-space-1-5);
+  border-radius: var(--prog-radius-full);
+  background: var(--prog-step-idle-bg);
+  -webkit-backdrop-filter: blur(var(--prog-step-blur)) saturate(1.4);
+          backdrop-filter: blur(var(--prog-step-blur)) saturate(1.4);
+  border: 1px solid var(--prog-step-idle-border);
+  box-shadow: var(--prog-step-inset), var(--prog-step-shadow);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--prog-step-idle-text);
   cursor: pointer;
-  transition: all 0.15s ease;
   outline: none;
   z-index: 1;
+  transition:
+    transform var(--prog-duration-motion) var(--prog-ease-spring),
+    background var(--prog-duration-motion) var(--prog-ease-out),
+    border-color var(--prog-duration-motion) var(--prog-ease-out),
+    box-shadow var(--prog-duration-motion) var(--prog-ease-out),
+    color var(--prog-duration-motion) var(--prog-ease-out);
 }
 
-@media (max-width: 1023px) {
-  .prog-step-cell {
-    width: 48px;
-    height: 36px;
-    font-size: 0.875rem;
-  }
+/* Density-aware capsule sizing (never increases row height) */
+.density-compact .prog-step-cell {
+  width: 40px;
+  height: 22px;
+  font-size: 0.6875rem;
+}
+
+.density-comfortable .prog-step-cell {
+  width: 48px;
+  height: 30px;
+  font-size: 0.8125rem;
 }
 
 .prog-step-cell:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
-  border-color: #94a3b8;
+  transform: translateY(-1.5px);
+  box-shadow: var(--prog-step-inset), var(--prog-step-shadow-hover);
+  border-color: var(--prog-border-strong);
+  z-index: 3;
+}
+
+.prog-step-cell:active {
+  transform: translateY(0) scale(0.95);
 }
 
 .prog-step-cell:focus-visible {
-  box-shadow: 0 0 0 2px var(--prog-primary);
-  border-color: var(--prog-primary);
+  outline: 2px solid var(--prog-border-focus);
+  outline-offset: 2px;
+  z-index: 4;
 }
 
-/* State 2: Complete */
+.prog-step-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.prog-step-icon.is-muted {
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+.prog-step-na-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* State 2: Complete (Soft Emerald Glass + Check) */
 .prog-step-cell.is-complete {
-  background-color: var(--prog-status-done-bg);
-  border-color: var(--prog-status-done-border);
-  color: var(--prog-status-done-text);
+  background: var(--prog-step-done-bg);
+  border-color: var(--prog-step-done-border);
+  color: var(--prog-step-done-text);
   font-weight: 600;
 }
 
-/* State 1: In Progress */
+/* State 1: In Progress (Soft Amber Glass + Half-Ring) */
 .prog-step-cell.is-progress {
-  background-color: var(--prog-status-wip-bg);
-  border-color: var(--prog-status-wip-border);
-  color: var(--prog-status-wip-text);
+  background: var(--prog-step-wip-bg);
+  border-color: var(--prog-step-wip-border);
+  color: var(--prog-step-wip-text);
   font-weight: 600;
 }
 
-/* State 9: N/A */
+/* State 9: N/A (Mid-Gray Glass + Dashed Hairline Border) */
 .prog-step-cell.is-na {
-  background-color: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #94a3b8;
-  text-decoration: line-through;
+  background: var(--prog-step-na-bg);
+  border-style: dashed;
+  border-color: var(--prog-step-na-border);
+  color: var(--prog-step-na-text);
 }
 
-/* Next Step Ring Indicator */
+/* State 0: Not Started (Very Faint Glass) */
+.prog-step-cell.is-idle {
+  background: var(--prog-step-idle-bg);
+  border-color: var(--prog-step-idle-border);
+  color: var(--prog-step-idle-text);
+}
+
+/* Current Active Step Glow */
 .prog-step-cell.is-next {
-  border-color: var(--prog-primary);
-  box-shadow: 0 0 0 1.5px var(--prog-primary);
+  border-color: var(--prog-step-next-border);
+  box-shadow: var(--prog-step-inset), var(--prog-step-next-glow);
 }
 
-/* Skip-step warning indicator (⚠) */
+/* Skip-step warning indicator (!) */
 .prog-step-warning {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 12px;
-  height: 12px;
-  background-color: #f59e0b;
-  color: #ffffff;
-  border-radius: 9999px;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  background-color: var(--prog-status-wip-accent);
+  color: var(--prog-text-inverse);
+  border-radius: var(--prog-radius-full);
   font-size: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
 }
 
-/* Connector Line between cells */
+/* Gradient Connector Line between capsules */
 .prog-step-connector {
-  width: 8px;
+  position: relative;
+  width: 10px;
   height: 2px;
-  background-color: #e2e8f0;
-  transition: background-color 0.2s ease;
+  background-color: var(--prog-connector-track);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.prog-step-connector.is-active {
-  background-color: #10b981;
+.prog-step-connector-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--prog-connector-fill);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--prog-duration-motion) var(--prog-ease-out);
 }
 
-/* Tooltip (Custom Floating) */
+.prog-step-connector.is-partial .prog-step-connector-fill {
+  background: var(--prog-connector-partial);
+  transform: scaleX(0.5);
+}
+
+.prog-step-connector.is-active .prog-step-connector-fill {
+  transform: scaleX(1);
+}
+
+/* Floating Tooltip: "ขั้น N · ชื่อขั้น · สถานะ · โดยใคร · เมื่อไร" */
 .prog-tooltip {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 7px);
   left: 50%;
-  transform: translateX(-50%);
-  background-color: #0f172a;
-  color: #ffffff;
-  padding: 0.375rem 0.625rem;
+  transform: translateX(-50%) translateY(2px);
+  background-color: var(--prog-text);
+  color: var(--prog-text-inverse);
+  padding: 0.35rem 0.6rem;
   border-radius: var(--prog-radius-ctl);
   font-size: 0.6875rem;
-  line-height: 1.25;
+  font-weight: 500;
+  line-height: 1.3;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  z-index: 100;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  transition:
+    opacity var(--prog-duration-fast) var(--prog-ease-out),
+    transform var(--prog-duration-fast) var(--prog-ease-out);
+  z-index: var(--prog-z-tooltip);
+  box-shadow: var(--prog-shadow-l2);
 }
 
 .prog-tooltip::after {
@@ -135,46 +200,47 @@
   transform: translateX(-50%);
   border-width: 4px;
   border-style: solid;
-  border-color: #0f172a transparent transparent transparent;
+  border-color: var(--prog-text) transparent transparent transparent;
 }
 
-.prog-step-cell:hover .prog-tooltip {
+.prog-step-cell:hover .prog-tooltip,
+.prog-step-cell:focus-visible .prog-tooltip {
   opacity: 1;
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateX(-50%) translateY(0);
 }
 
-/* Stepper Context Menu */
+/* Stepper Context Menu Popover */
 .prog-step-context-menu {
   position: fixed;
-  background-color: #ffffff;
-  border: 1px solid var(--prog-border);
-  border-radius: var(--prog-radius-ctl);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  padding: 0.375rem 0;
-  z-index: 1000;
-  min-width: 175px;
-  animation: contextFadeIn 0.12s ease-out;
+  background-color: var(--prog-surface-glass-hover);
+  -webkit-backdrop-filter: blur(var(--prog-glass-blur)) saturate(1.5);
+          backdrop-filter: blur(var(--prog-glass-blur)) saturate(1.5);
+  border: 1px solid var(--prog-border-glass);
+  border-radius: var(--prog-radius-card);
+  box-shadow: var(--prog-glass-highlight), var(--prog-shadow-l3);
+  padding: var(--prog-space-1-5) 0;
+  z-index: var(--prog-z-popover);
+  min-width: 185px;
+  animation: progContextFadeIn var(--prog-duration-motion) var(--prog-ease-spring);
 }
 
-@keyframes contextFadeIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
+@keyframes progContextFadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .prog-step-context-header {
-  padding: 0.375rem 0.75rem;
+  padding: var(--prog-space-1-5) var(--prog-space-3);
   font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--prog-text-sub);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 0.25rem;
+  color: var(--prog-text-muted);
+  border-bottom: 1px solid var(--prog-border-subtle);
+  margin-bottom: var(--prog-space-1);
 }
 
 .prog-step-context-item {
   width: 100%;
-  padding: 0.4375rem 0.75rem;
+  padding: 0.4375rem var(--prog-space-3);
   font-size: 0.75rem;
   color: var(--prog-text);
   background: none;
@@ -182,17 +248,24 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--prog-space-2);
   text-align: left;
-  transition: background-color 0.12s ease;
+  transition: background-color var(--prog-duration-fast) ease;
 }
 
-.prog-step-context-item:hover {
-  background-color: #f1f5f9;
+.prog-step-context-item:hover,
+.prog-step-context-item:focus-visible {
+  background-color: var(--prog-surface-tint);
+  outline: none;
 }
 
 .prog-step-context-item.is-active {
-  background-color: #ecfdf5;
-  color: #065f46;
+  background-color: var(--prog-primary-soft);
+  color: var(--prog-primary-active);
   font-weight: 600;
 }
+
+.prog-ctx-icon.is-idle { color: var(--prog-text-sub); }
+.prog-ctx-icon.is-wip  { color: var(--prog-status-wip-accent); }
+.prog-ctx-icon.is-done { color: var(--prog-primary); }
+.prog-ctx-icon.is-na   { color: var(--prog-text-muted); }

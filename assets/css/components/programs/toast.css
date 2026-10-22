@@ -1,5 +1,6 @@
 /**
  * AOI Program Tracker - Real-time Toast & Undo
+ * Uses --prog-* design tokens.
  */
 
 .prog-toast-container {
@@ -9,24 +10,36 @@
   z-index: var(--prog-z-toast);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--prog-space-2);
   max-width: 24rem;
   pointer-events: none;
 }
 
 .prog-toast {
-  background-color: #ffffff;
+  background-color: var(--prog-surface);
   border: 1px solid var(--prog-border);
   border-radius: var(--prog-radius-card);
-  padding: 0.75rem 1rem;
+  padding: var(--prog-space-3) var(--prog-space-4);
   box-shadow: var(--prog-shadow-l3);
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: var(--prog-space-1-5);
   position: relative;
   overflow: hidden;
   pointer-events: auto;
-  animation: prog-toast-in 0.3s var(--ease-spring) both;
+  animation: prog-toast-in var(--prog-duration-motion) var(--prog-ease-spring) both;
+  transition: opacity var(--prog-duration-motion) ease, transform var(--prog-duration-motion) ease;
+}
+
+.prog-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.prog-toast.is-error {
+  background-color: var(--prog-status-error-bg);
+  border-color: var(--prog-status-error-border);
+  color: var(--prog-status-error-text);
 }
 
 @keyframes prog-toast-in {
@@ -44,13 +57,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--prog-space-3);
 }
 
 .prog-toast-content {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--prog-space-2);
   min-width: 0;
 }
 
@@ -58,8 +71,8 @@
   width: 1.5rem;
   height: 1.5rem;
   border-radius: var(--prog-radius-full);
-  background-color: #d1fae5;
-  color: #047857;
+  background-color: var(--prog-status-done-bg);
+  color: var(--prog-status-done-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,11 +80,20 @@
   flex-shrink: 0;
 }
 
+.prog-toast-icon.is-error {
+  background-color: var(--prog-status-error-accent);
+  color: var(--prog-text-inverse);
+}
+
 .prog-toast-title {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--prog-text);
   line-height: 1.25;
+}
+
+.prog-toast.is-error .prog-toast-title {
+  color: var(--prog-status-error-text);
 }
 
 .prog-toast-desc {
@@ -83,6 +105,10 @@
   text-overflow: ellipsis;
 }
 
+.prog-toast.is-error .prog-toast-desc {
+  color: var(--prog-status-error-text);
+}
+
 .prog-toast-undo-btn {
   font-size: 0.75rem;
   font-weight: 600;
@@ -91,13 +117,23 @@
   border: none;
   cursor: pointer;
   text-decoration: underline;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--prog-radius-sm);
+  padding: var(--prog-space-1) var(--prog-space-2);
+  border-radius: var(--prog-radius-xs);
   flex-shrink: 0;
 }
 
 .prog-toast-undo-btn:hover {
   background-color: var(--prog-primary-tint);
+}
+
+.prog-toast-undo-btn:focus-visible {
+  outline: 2px solid var(--prog-border-focus);
+}
+
+.prog-toast-undo-btn.is-error {
+  background-color: var(--prog-status-error-strong);
+  color: var(--prog-text-inverse);
+  text-decoration: none;
 }
 
 .prog-toast-progress-track {
@@ -106,7 +142,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background-color: #e2e8f0;
+  background-color: var(--prog-border);
 }
 
 .prog-toast-progress-bar {

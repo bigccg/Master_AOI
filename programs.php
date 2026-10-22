@@ -25,6 +25,73 @@ require __DIR__ . '/includes/assets.php';
 require __DIR__ . '/includes/programs-request.php';
 require __DIR__ . '/includes/programs-data.php';
 
+// GET ?export=1 -> CSV download of programs (including Side and Master Samples D / G+D)
+if (isset($_GET['export'])) {
+    $exportFilters = [
+        'search'  => $search,
+        'machine' => $machineF,
+        'owner'   => $ownerF,
+        'status'  => $statusF,
+        'stage'   => $stageF,
+    ];
+    $exportRes = fetchProgramList($pdo, $exportFilters, $sortCol, $dir, MAX_ALL_ROWS, 0);
+
+    if (!headers_sent()) {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="aoi_programs_' . date('Ymd_His') . '.csv"');
+    }
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM for Thai Excel compatibility
+    fputcsv($out, [
+        'Product Model',
+        'Side',
+        'Machine',
+        'Stage 1 (Capture P/D)',
+        'Stage 2 (Make Good/Sheet)',
+        'Stage 3 (Master G+D)',
+        'Stage 4 (Run Test)',
+        'Master D',
+        'Master G+D',
+        'Shelf',
+        'Operator',
+        'Status',
+        'Updated At',
+        'Note / Reason',
+    ]);
+
+    $stageLabelMap = [
+        0 => 'ยังไม่เริ่ม',
+        1 => 'กำลังทำ',
+        2 => 'เสร็จสมบูรณ์',
+        9 => 'N/A',
+    ];
+
+    foreach ($exportRes['rows'] as $rawRow) {
+        $r = formatProgramRow($rawRow);
+        $noteText = $r['wait_reason'] !== ''
+            ? ($r['note'] !== '' ? ($r['wait_reason'] . ': ' . $r['note']) : $r['wait_reason'])
+            : ($r['note'] !== '' ? $r['note'] : (!$r['has_master_defect'] ? 'ไม่มีแผ่น Defect ใน Master Board' : ''));
+        fputcsv($out, [
+            $r['product_model'],
+            $r['side'],
+            $r['machine_type'],
+            $stageLabelMap[$r['stage_1']] ?? (string)$r['stage_1'],
+            $stageLabelMap[$r['stage_2']] ?? (string)$r['stage_2'],
+            $stageLabelMap[$r['stage_3']] ?? (string)$r['stage_3'],
+            $stageLabelMap[$r['stage_4']] ?? (string)$r['stage_4'],
+            $r['master_d'],
+            $r['master_gd'],
+            $r['shelf'],
+            $r['owner'],
+            $r['program_ok'],
+            $r['updated_at'],
+            $noteText,
+        ]);
+    }
+    fclose($out);
+    exit;
+}
+
 $currentPage = 'programs';
 $pageTitle = 'โปรแกรม AOI | AOI Program Tracker - Precision SMT Hub';
 ?>
@@ -36,35 +103,19 @@ $pageTitle = 'โปรแกรม AOI | AOI Program Tracker - Precision SMT Hu
 <?php require __DIR__ . '/components/layout/app-header.php'; ?>
 
 <!-- ===== Main Workspace ===== -->
-<main class="flex-1 overflow-y-auto px-4 lg:px-8 py-5 flex flex-col gap-5 bg-slate-50">
-  <div class="prog-container">
+<main class="flex-1 overflow-y-auto px-4 lg:px-8 py-5 flex flex-col gap-5">
 
-    <!-- Page Title & View Switcher -->
-    <div class="prog-page-toolbar">
-      <div class="prog-title-group">
-        <h2>
-          <span>โปรแกรม AOI</span>
-          <span class="text-xs font-normal text-slate-400 font-mono">/ AOI Program Pipeline</span>
-        </h2>
-        <p>ติดตามความคืบหน้าการสร้างโปรแกรมบอร์ด AOI 4 ขั้นตอน ตรวจสอบแผ่น Master และสถานะเครื่องจักร</p>
-      </div>
-    </div>
+  <!-- 1. KPI Cards -->
+  <?php require __DIR__ . '/components/programs/kpi-cards.php'; ?>
 
-    <!-- 1. KPI Cards -->
-    <?php require __DIR__ . '/components/programs/kpi-cards.php'; ?>
+  <!-- 2. Command Bar & Filters -->
+  <?php require __DIR__ . '/components/programs/command-bar.php'; ?>
 
-    <!-- 2. Command Bar & Filters -->
-    <?php require __DIR__ . '/components/programs/command-bar.php'; ?>
-
-    <!-- 3. Quick Add Dock -->
-    <?php require __DIR__ . '/components/programs/quick-add.php'; ?>
-
-    <!-- 4. Data Table Workspace -->
-    <div id="prog-view-table-wrapper">
-      <?php require __DIR__ . '/components/programs/table.php'; ?>
-    </div>
-
+  <!-- 3. Data Table Workspace -->
+  <div id="prog-view-table-wrapper">
+    <?php require __DIR__ . '/components/programs/table.php'; ?>
   </div>
+
 </main>
 
 <!-- Floating Toast Container -->

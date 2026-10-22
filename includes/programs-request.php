@@ -1,6 +1,6 @@
 <?php
 /**
- * Request State for AOI Program Tracker
+ * Request State & CSV Export for AOI Program Tracker
  */
 
 declare(strict_types=1);
@@ -10,13 +10,13 @@ $machineF = qs('machine', 'ALL');
 $ownerF   = qs('owner', 'ALL');
 $statusF  = qs('status', 'ALL');
 $stageF   = qs('stage', 'ALL');
-$viewMode = qs('view', 'table'); // table, pipeline, workload
 
 $sort = qs('sort', 'updated_at');
 $dir  = (strtolower(qs('dir', 'desc')) === 'asc') ? 'ASC' : 'DESC';
 
 $allowedSortCols = [
     'product_model' => 'product_model',
+    'side'          => 'side',
     'machine_type'  => 'machine_type',
     'owner'         => 'owner',
     'updated_at'    => 'updated_at',

@@ -44,6 +44,15 @@ function renderProgKpis() {
 
 function initProgKpis() {
   document.querySelectorAll('.prog-kpi-card').forEach(card => {
+    // Cursor spotlight (same effect as the index.php KPI cards)
+    card.addEventListener('pointermove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+    });
     card.addEventListener('click', () => {
       const targetFilter = card.getAttribute('data-kpi-filter');
       if (progState.status === targetFilter && targetFilter !== 'ALL') {

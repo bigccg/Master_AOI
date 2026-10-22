@@ -1,96 +1,182 @@
 /**
- * AOI Program Tracker - Design Tokens
- * Industrial Utility + Precision High-Density Tokens
+ * AOI Program Tracker - Design System Tokens (HyperOS Glass Dynamic + Industrial Utility)
+ * Single source of truth for colors, spacing, radii, shadows, and motion.
  */
 
 :root {
-  /* Surfaces & Canvas */
+  /* Surfaces & Glass Canvas */
   --prog-canvas: #f8fafc;
   --prog-surface: #ffffff;
+  --prog-surface-glass: rgba(255, 255, 255, 0.84);
+  --prog-surface-glass-hover: rgba(255, 255, 255, 0.95);
   --prog-surface-tint: #f1f5f9;
   --prog-surface-hover: #f8fafc;
-  --prog-surface-selected: #f0fdf4;
+  --prog-surface-overdue: #fff9f9;
+  --prog-surface-overdue-hover: #fee2e2;
   --prog-border: #e2e8f0;
+  --prog-border-strong: #cbd5e1;
   --prog-border-subtle: #f1f5f9;
+  --prog-border-glass: rgba(148, 163, 184, 0.36);
   --prog-border-focus: #059669;
+  --prog-glass-blur: 12px;
+  --prog-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.88);
 
   /* Typography Colors */
   --prog-text: #0f172a;
+  --prog-text-secondary: #334155;
   --prog-text-muted: #64748b;
   --prog-text-sub: #94a3b8;
+  --prog-text-faint: #cbd5e1;
   --prog-text-inverse: #ffffff;
 
   /* Brand Colors (Emerald) */
   --prog-primary: #059669;
+  --prog-primary-accent: #10b981;
   --prog-primary-hover: #047857;
   --prog-primary-active: #065f46;
   --prog-primary-tint: #f0fdf4;
-  --prog-primary-ring: rgba(5, 150, 105, 0.2);
+  --prog-primary-soft: #ecfdf5;
+  --prog-primary-border: #a7f3d0;
+  --prog-primary-ring: rgba(5, 150, 105, 0.22);
 
   /* Semantic Status Palette */
-  /* 1. Done / Complete */
+  /* 1. Done / Complete (Emerald) */
   --prog-status-done-bg: #d1fae5;
   --prog-status-done-text: #047857;
   --prog-status-done-border: #a7f3d0;
 
-  /* 2. In Progress / Active */
+  /* 2. In Progress / Wait / G+D (Amber) */
   --prog-status-wip-bg: #fffbeb;
-  --prog-status-wip-text: #b45309;
+  --prog-status-wip-tint: #fef3c7;
+  --prog-status-wip-text: #92400e;
+  --prog-status-wip-accent: #f59e0b;
   --prog-status-wip-border: #fcd34d;
 
-  /* 3. Not Started / Queued */
+  /* 3. Not Started / Queued / Neutral (Slate) */
   --prog-status-idle-bg: #f1f5f9;
   --prog-status-idle-text: #64748b;
   --prog-status-idle-border: #cbd5e1;
 
-  /* 4. Blocked / Overdue / Defect */
+  /* 4. Error / Overdue / Defect D (Red) */
   --prog-status-error-bg: #fef2f2;
-  --prog-status-error-text: #b91c1c;
-  --prog-status-error-border: #fecaca;
+  --prog-status-error-tint: #fee2e2;
+  --prog-status-error-text: #991b1b;
+  --prog-status-error-strong: #dc2626;
+  --prog-status-error-accent: #ef4444;
+  --prog-status-error-border: #fca5a5;
 
-  /* 5. Info / Shelf / Slot */
+  /* 5. Info / Shelf / Side B (Blue) */
   --prog-status-info-bg: #eff6ff;
-  --prog-status-info-text: #2563eb;
+  --prog-status-info-text: #1d4ed8;
   --prog-status-info-border: #bfdbfe;
 
-  /* Machine Palette */
-  --prog-mach-omron-bg: #eff6ff;
-  --prog-mach-omron-text: #1d4ed8;
-  --prog-mach-omron-border: #bfdbfe;
+  /* Machine Badge Palette */
+  --prog-mach-omron-bg: #e0f2fe;
+  --prog-mach-omron-text: #0369a1;
+  --prog-mach-omron-border: #bae6fd;
 
-  --prog-mach-yamaha-bg: #f5f3ff;
-  --prog-mach-yamaha-text: #6d28d9;
-  --prog-mach-yamaha-border: #ddd6fe;
+  --prog-mach-yamaha-bg: #fae8ff;
+  --prog-mach-yamaha-text: #86198f;
+  --prog-mach-yamaha-border: #f5d0fe;
 
-  --prog-mach-tri-bg: #ecfdf5;
-  --prog-mach-tri-text: #0f766e;
-  --prog-mach-tri-border: #99f6e4;
+  --prog-mach-tri-bg: #e0e7ff;
+  --prog-mach-tri-text: #3730a3;
+  --prog-mach-tri-border: #c7d2fe;
+
+  /* Table Column Header Palette (matching index.php) */
+  --prog-th-default-bg: #1e293b;
+  --prog-th-default-border: #0f172a;
+  --prog-th-divider: rgba(255, 255, 255, 0.14);
+  --prog-th-product-bg: #1d4ed8;
+  --prog-th-product-border: #1e3a8a;
+  --prog-th-side-bg: #0f766e;
+  --prog-th-side-border: #115e59;
+  --prog-th-machine-bg: #0e7490;
+  --prog-th-machine-border: #164e63;
+  --prog-th-stepper-bg: #059669;
+  --prog-th-stepper-border: #047857;
+  --prog-th-master-bg: #6d28d9;
+  --prog-th-master-border: #4c1d95;
+  --prog-th-shelf-bg: #0284c7;
+  --prog-th-shelf-border: #0369a1;
+  --prog-th-owner-bg: #4338ca;
+  --prog-th-owner-border: #312e81;
+  --prog-th-updated-bg: #475569;
+  --prog-th-updated-border: #334155;
+  --prog-th-note-bg: #d97706;
+  --prog-th-note-border: #78350f;
+
+  /* 4-Stage Pipeline Glass Dynamic (HyperOS) Tokens */
+  --prog-step-blur: 10px;
+  --prog-step-inset: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --prog-step-shadow: 0 2px 6px -2px rgba(15, 23, 42, 0.08);
+  --prog-step-shadow-hover: 0 4px 10px -2px rgba(15, 23, 42, 0.14);
+
+  --prog-step-done-bg: linear-gradient(135deg, rgba(209, 250, 229, 0.88), rgba(167, 243, 208, 0.68));
+  --prog-step-done-border: rgba(16, 185, 129, 0.52);
+  --prog-step-done-text: #065f46;
+
+  --prog-step-wip-bg: linear-gradient(135deg, rgba(254, 243, 199, 0.90), rgba(253, 230, 138, 0.68));
+  --prog-step-wip-border: rgba(245, 158, 11, 0.56);
+  --prog-step-wip-text: #92400e;
+
+  --prog-step-na-bg: rgba(226, 232, 240, 0.58);
+  --prog-step-na-border: rgba(100, 116, 139, 0.52);
+  --prog-step-na-text: #475569;
+
+  --prog-step-idle-bg: rgba(248, 250, 252, 0.52);
+  --prog-step-idle-border: rgba(203, 213, 225, 0.65);
+  --prog-step-idle-text: rgba(148, 163, 184, 0.72);
+
+  --prog-step-next-border: rgba(16, 185, 129, 0.72);
+  --prog-step-next-glow: 0 0 0 2px rgba(16, 185, 129, 0.18), 0 2px 8px -1px rgba(16, 185, 129, 0.24);
+
+  --prog-connector-track: rgba(203, 213, 225, 0.65);
+  --prog-connector-fill: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  --prog-connector-partial: linear-gradient(90deg, #f59e0b 0%, rgba(203, 213, 225, 0.5) 100%);
+
+  /* Spacing Scale */
+  --prog-space-1: 0.25rem;   /* 4px */
+  --prog-space-1-5: 0.375rem;/* 6px */
+  --prog-space-2: 0.5rem;    /* 8px */
+  --prog-space-2-5: 0.625rem;/* 10px */
+  --prog-space-3: 0.75rem;   /* 12px */
+  --prog-space-4: 1rem;      /* 16px */
 
   /* Metrics & Dimensions */
-  --prog-ctl-h: 2rem;           /* 32px standard control height */
-  --prog-row-h: 2.75rem;        /* 44px standard row height */
+  --prog-ctl-h: 2.25rem;         /* 36px uniform toolbar control height */
+  --prog-pill-h: 1.625rem;       /* 26px saved-view / active chip height */
+  --prog-row-h: 2.75rem;         /* 44px standard row height */
   --prog-row-compact-h: 2.125rem;/* 34px compact row */
-  --prog-row-cozy-h: 3.25rem;   /* 52px comfortable row */
-  --prog-header-h: 2.25rem;     /* 36px table header */
+  --prog-row-cozy-h: 3.25rem;    /* 52px comfortable row */
+  --prog-header-h: 2.25rem;      /* 36px table header */
 
   /* Radii */
-  --prog-radius-sm: 0.25rem;    /* 4px */
-  --prog-radius-ctl: 0.5rem;    /* 8px */
-  --prog-radius-card: 0.75rem;  /* 12px */
-  --prog-radius-modal: 0.875rem;/* 14px */
+  --prog-radius-xs: 0.25rem;     /* 4px */
+  --prog-radius-sm: 0.375rem;    /* 6px */
+  --prog-radius-ctl: 0.5rem;     /* 8px */
+  --prog-radius-card: 0.875rem;  /* 14px */
   --prog-radius-full: 9999px;
 
   /* Elevation Shadows */
   --prog-shadow-l1: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --prog-shadow-l2: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
-  --prog-shadow-l3: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --prog-shadow-l2: 0 6px 16px -4px rgba(15, 23, 42, 0.08);
+  --prog-shadow-l3: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+  --prog-shadow-sticky: 2px 0 6px rgba(15, 23, 42, 0.05);
+
+  /* Motion */
+  --prog-duration-fast: 150ms;
+  --prog-duration-motion: 240ms;
+  --prog-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --prog-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Z-Index Hierarchy */
-  --prog-z-table-sticky: 10;
+  --prog-z-table-sticky: 11;
+  --prog-z-th: 10;
+  --prog-z-th-sticky: 21;
   --prog-z-command: 20;
-  --prog-z-bulk: 25;
   --prog-z-header: 40;
-  --prog-z-panel: 50;
-  --prog-z-modal: 60;
   --prog-z-toast: 70;
+  --prog-z-tooltip: 100;
+  --prog-z-popover: 1000;
 }

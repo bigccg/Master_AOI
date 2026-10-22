@@ -1,8 +1,34 @@
 /**
- * AOI Program Tracker - Stepper Rendering & Interactive Operations
+ * AOI Program Tracker - 4-Stage Glass Dynamic (HyperOS) Stepper & Interactive Operations
  */
 
 let activeContextMenuEl = null;
+
+function formatProgramDate(dtStr) {
+  if (!dtStr) return '—';
+  try {
+    const d = new Date(dtStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(dtStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const pad = n => String(n).padStart(2, '0');
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    if (diffDays === 0 && d.getDate() === now.getDate()) {
+      return `วันนี้ ${timeStr}`;
+    }
+    if (diffDays <= 1) {
+      return `เมื่อวาน ${timeStr}`;
+    }
+    if (diffDays < 7) {
+      return `${diffDays} วันที่แล้ว`;
+    }
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  } catch (e) {
+    return String(dtStr);
+  }
+}
+window.formatProgramDate = formatProgramDate;
 
 function renderProgStepperHtml(row) {
   const s1 = parseInt(row.stage_1, 10) || 0;
@@ -11,13 +37,13 @@ function renderProgStepperHtml(row) {
   const s4 = parseInt(row.stage_4, 10) || 0;
 
   const stages = [
-    { num: 1, key: 'stage_1', val: s1, name: 'Capture P/D', th: 'ถ่ายภาพ P/D', by: row.stage_1_by, at: row.stage_1_at },
-    { num: 2, key: 'stage_2', val: s2, name: 'Make Good/Sheet', th: 'สร้างแผ่น Good/Sheet', by: row.stage_2_by, at: row.stage_2_at },
-    { num: 3, key: 'stage_3', val: s3, name: 'Master G+D', th: 'รวม Master G+D', by: row.stage_3_by, at: row.stage_3_at },
-    { num: 4, key: 'stage_4', val: s4, name: 'Run Test', th: 'ทดสอบโปรแกรมเสร็จ', by: row.stage_4_by, at: row.stage_4_at },
+    { num: 1, key: 'stage_1', val: s1, name: 'Capture P/D', by: row.stage_1_by, at: row.stage_1_at },
+    { num: 2, key: 'stage_2', val: s2, name: 'Make Good/Sheet', by: row.stage_2_by, at: row.stage_2_at },
+    { num: 3, key: 'stage_3', val: s3, name: 'Master G+D', by: row.stage_3_by, at: row.stage_3_at },
+    { num: 4, key: 'stage_4', val: s4, name: 'Run Test', by: row.stage_4_by, at: row.stage_4_at },
   ];
 
-  // Find next step (first step that is not complete and not N/A)
+  // Current active step (first step that is not complete and not N/A)
   let nextStepNum = null;
   for (const stg of stages) {
     if (stg.val === 0 || stg.val === 1) {
@@ -26,33 +52,31 @@ function renderProgStepperHtml(row) {
     }
   }
 
-  // Check skip warnings (e.g. step 4 complete while step 2 or 3 is not complete)
   let hasSkippedBefore = false;
   const cellsHtml = stages.map((stg, idx) => {
-    let stateCls = '';
+    let stateCls = 'is-idle';
     let iconHtml = '';
-    let statusLabel = 'ยังไม่เริ่ม / Not Started';
+    let statusShort = 'ยังไม่เริ่ม';
 
     if (stg.val === 2) {
       stateCls = 'is-complete';
-      iconHtml = '<i class="fa-solid fa-check text-[11px]"></i>';
-      statusLabel = 'เสร็จสมบูรณ์ / Complete';
+      iconHtml = '<i class="fa-solid fa-check prog-step-icon" aria-hidden="true"></i>';
+      statusShort = 'เสร็จสมบูรณ์';
     } else if (stg.val === 1) {
       stateCls = 'is-progress';
-      iconHtml = '<i class="fa-solid fa-circle-half-stroke text-[11px]"></i>';
-      statusLabel = 'กำลังดำเนินการ / In Progress';
+      iconHtml = '<i class="fa-solid fa-circle-half-stroke prog-step-icon" aria-hidden="true"></i>';
+      statusShort = 'กำลังทำ';
     } else if (stg.val === 9) {
       stateCls = 'is-na';
-      iconHtml = '<span class="text-[10px] font-mono font-bold">N/A</span>';
-      statusLabel = 'ไม่ต้องทำ / Not Needed';
+      iconHtml = '<span class="prog-step-na-label">N/A</span>';
+      statusShort = 'ไม่ต้องทำ (N/A)';
     } else {
-      iconHtml = '<i class="fa-regular fa-circle text-[10px] text-slate-300"></i>';
+      iconHtml = '<i class="fa-regular fa-circle prog-step-icon is-muted" aria-hidden="true"></i>';
     }
 
     const isNext = (stg.num === nextStepNum);
     if (isNext) stateCls += ' is-next';
 
-    // Skip warning flag
     let showWarning = false;
     if (stg.val === 2 && hasSkippedBefore) {
       showWarning = true;
@@ -61,16 +85,17 @@ function renderProgStepperHtml(row) {
       hasSkippedBefore = true;
     }
 
-    // Connector line to next cell
+    // Connector line to next capsule: fills when current step is complete (or N/A)
     let connectorHtml = '';
     if (idx < stages.length - 1) {
-      const isConnectorActive = (stg.val === 2 || stg.val === 9);
-      connectorHtml = `<span class="prog-step-connector ${isConnectorActive ? 'is-active' : ''}"></span>`;
+      const isFilled = (stg.val === 2 || stg.val === 9);
+      const isPartial = (stg.val === 1);
+      connectorHtml = `<span class="prog-step-connector ${isFilled ? 'is-active' : (isPartial ? 'is-partial' : '')}" aria-hidden="true"><span class="prog-step-connector-fill"></span></span>`;
     }
 
-    const byText = stg.by ? `โดย: ${h(stg.by)}` : '';
-    const atText = stg.at ? ` (${formatProgramDate(stg.at)})` : '';
-    const updaterInfo = (stg.by || stg.at) ? `<br><span class="text-slate-300 text-[10px]">${byText}${atText}</span>` : '';
+    const byStr = stg.by ? `โดย ${h(stg.by)}` : 'ยังไม่ระบุผู้ทำ';
+    const atStr = stg.at ? formatProgramDate(stg.at) : 'ยังไม่บันทึกเวลา';
+    const tooltipText = `ขั้น ${stg.num} · ${h(stg.name)} · ${statusShort} · ${byStr} · ${h(atStr)}`;
 
     return `
       <div class="prog-step-cell ${stateCls}"
@@ -79,15 +104,10 @@ function renderProgStepperHtml(row) {
            data-status-val="${stg.val}"
            tabindex="0"
            role="button"
-           aria-label="ขั้นที่ ${stg.num}: ${stg.name} (${statusLabel})">
+           aria-label="${tooltipText}">
         ${iconHtml}
-        ${showWarning ? '<span class="prog-step-warning" title="คำเตือน: ขั้นตอนนี้เสร็จก่อนขั้นตอนก่อนหน้า">⚠</span>' : ''}
-        <div class="prog-tooltip">
-          <strong>${stg.num}. ${h(stg.name)}</strong> (${h(stg.th)})<br>
-          <span class="text-emerald-300 font-medium">${statusLabel}</span>
-          ${updaterInfo}
-          <div class="text-[9px] text-slate-400 mt-0.5">คลิก: เลื่อนสถานะ · คลิกขวา/Shift: เมนูเลือก</div>
-        </div>
+        ${showWarning ? '<span class="prog-step-warning" title="ขั้นตอนนี้เสร็จก่อนขั้นตอนก่อนหน้า">!</span>' : ''}
+        <div class="prog-tooltip" role="tooltip">${tooltipText}</div>
       </div>
       ${connectorHtml}
     `;
@@ -104,10 +124,10 @@ function getNextStageStatus(curr) {
 }
 
 function getStageStatusLabel(val) {
-  if (val === 2) return 'เสร็จสิ้น / Complete';
-  if (val === 1) return 'กำลังทำ / In Progress';
-  if (val === 9) return 'ข้าม (N/A) / Skip';
-  return 'ยังไม่เริ่ม / Not Started';
+  if (val === 2) return 'เสร็จสมบูรณ์';
+  if (val === 1) return 'กำลังทำ';
+  if (val === 9) return 'ไม่ต้องทำ (N/A)';
+  return 'ยังไม่เริ่ม';
 }
 
 /**
@@ -131,14 +151,12 @@ async function applyProgStageUpdate(progId, stageNum, nextStatus, note = null) {
     row[`stage_${stageNum}_at`] = new Date().toISOString();
   }
 
-  // Update DOM optimistically
   updateRowInDom(row);
   flashRowInDom(progId);
 
   try {
     const res = await apiUpdateStage(progId, stageNum, nextStatus, originalRow.version, note);
 
-    // Apply server canonical response
     if (res.program) {
       progState.rows[rowIdx] = res.program;
       updateRowInDom(res.program);
@@ -147,15 +165,16 @@ async function applyProgStageUpdate(progId, stageNum, nextStatus, note = null) {
       progState.kpi = res.kpi;
       renderProgKpis();
     }
+    if (Array.isArray(res.owners)) {
+      populateProgOwners(res.owners);
+    }
 
-    // Show Undo Toast
-    const stageNames = ['', 'Capture P/D', 'Make Good', 'Master G+D', 'Run Test'];
+    const stageNames = ['', 'Capture P/D', 'Make Good/Sheet', 'Master G+D', 'Run Test'];
     const sName = stageNames[stageNum] || `ขั้นที่ ${stageNum}`;
     showProgToast(
-      `อัปเดต ${sName} สำเร็จ`,
-      `${row.product_model} (${row.side}): ${getStageStatusLabel(nextStatus)}`,
+      `อัปเดตขั้น ${stageNum} (${sName}) สำเร็จ`,
+      `${row.product_model} · ${row.side} → ${getStageStatusLabel(nextStatus)}`,
       async () => {
-        // Undo callback
         try {
           const undoRes = await apiUndoAction(progId, res.audit_id);
           if (undoRes.program) {
@@ -167,32 +186,31 @@ async function applyProgStageUpdate(progId, stageNum, nextStatus, note = null) {
             progState.kpi = undoRes.kpi;
             renderProgKpis();
           }
-          showProgToast('เลิกทำสำเร็จ', `คืนค่า ${row.product_model} เป็น: ${getStageStatusLabel(oldStatus)}`);
+          showProgToast('เลิกทำสำเร็จ', `คืนค่า ${row.product_model} (${row.side}) เป็น ${getStageStatusLabel(oldStatus)}`);
         } catch (undoErr) {
-          showProgErrorToast('ไม่สามารถเลิกทำได้', undoErr.message);
+          showProgErrorToast('เลิกทำไม่สำเร็จ', undoErr.message);
         }
       }
     );
   } catch (err) {
     console.error('Stage update failed:', err);
-    // Rollback to original
     progState.rows[rowIdx] = originalRow;
     updateRowInDom(originalRow);
 
     if (err.status === 409 || (err.data && err.data.conflict)) {
       showProgErrorToast(
         'ข้อมูลถูกแก้ไขโดยผู้อื่น',
-        'มีผู้ใช้อื่นอัปเดตรายการนี้แล้ว กรุณากดปุ่มเพื่อโหลดข้อมูลล่าสุด',
+        'มีผู้ใช้อื่นอัปเดตรายการนี้ไปแล้ว กรุณากดโหลดข้อมูลใหม่',
         () => loadProgramsData()
       );
     } else {
-      showProgErrorToast('บันทึกไม่สำเร็จ', err.message);
+      showProgErrorToast('บันทึกสถานะไม่สำเร็จ', err.message);
     }
   }
 }
 
 /**
- * Stepper Context Menu
+ * Stepper Context Menu Popover
  */
 function closeProgContextMenu() {
   if (activeContextMenuEl) {
@@ -215,12 +233,12 @@ function openProgContextMenu(stepCell, x, y) {
 
   const menu = document.createElement('div');
   menu.className = 'prog-step-context-menu';
+  menu.setAttribute('role', 'menu');
 
-  // Position nicely within viewport
   const winW = window.innerWidth;
   const winH = window.innerHeight;
-  const menuW = 180;
-  const menuH = 190;
+  const menuW = 190;
+  const menuH = 195;
   const posX = Math.min(x, winW - menuW - 10);
   const posY = Math.min(y, winH - menuH - 10);
 
@@ -228,22 +246,22 @@ function openProgContextMenu(stepCell, x, y) {
   menu.style.top = `${Math.max(10, posY)}px`;
 
   menu.innerHTML = `
-    <div class="prog-step-context-header">${stageNum}. ${h(sName)}</div>
-    <button type="button" class="prog-step-context-item ${currVal === 0 ? 'is-active' : ''}" data-val="0">
-      <i class="fa-regular fa-circle text-slate-400"></i>
-      <span>ยังไม่เริ่ม / Not Started</span>
+    <div class="prog-step-context-header">ขั้น ${stageNum} · ${h(sName)}</div>
+    <button type="button" class="prog-step-context-item ${currVal === 0 ? 'is-active' : ''}" data-val="0" role="menuitem">
+      <i class="fa-regular fa-circle prog-ctx-icon is-idle" aria-hidden="true"></i>
+      <span>ตั้งเป็น ยังไม่เริ่ม</span>
     </button>
-    <button type="button" class="prog-step-context-item ${currVal === 1 ? 'is-active' : ''}" data-val="1">
-      <i class="fa-solid fa-circle-half-stroke text-amber-500"></i>
-      <span>กำลังทำ / In Progress</span>
+    <button type="button" class="prog-step-context-item ${currVal === 1 ? 'is-active' : ''}" data-val="1" role="menuitem">
+      <i class="fa-solid fa-circle-half-stroke prog-ctx-icon is-wip" aria-hidden="true"></i>
+      <span>ตั้งเป็น กำลังทำ</span>
     </button>
-    <button type="button" class="prog-step-context-item ${currVal === 2 ? 'is-active' : ''}" data-val="2">
-      <i class="fa-solid fa-circle-check text-emerald-600"></i>
-      <span>เสร็จสิ้น / Complete</span>
+    <button type="button" class="prog-step-context-item ${currVal === 2 ? 'is-active' : ''}" data-val="2" role="menuitem">
+      <i class="fa-solid fa-check prog-ctx-icon is-done" aria-hidden="true"></i>
+      <span>ตั้งเป็น เสร็จสมบูรณ์</span>
     </button>
-    <button type="button" class="prog-step-context-item ${currVal === 9 ? 'is-active' : ''}" data-val="9">
-      <i class="fa-solid fa-minus text-slate-400"></i>
-      <span>ข้าม (N/A) / Skip</span>
+    <button type="button" class="prog-step-context-item ${currVal === 9 ? 'is-active' : ''}" data-val="9" role="menuitem">
+      <i class="fa-solid fa-slash prog-ctx-icon is-na" aria-hidden="true"></i>
+      <span>ตั้งเป็น ไม่ต้องทำ (N/A)</span>
     </button>
   `;
 
@@ -262,7 +280,6 @@ function openProgContextMenu(stepCell, x, y) {
   });
 }
 
-// Close context menu on outside click or Esc
 document.addEventListener('click', (e) => {
   if (activeContextMenuEl && !activeContextMenuEl.contains(e.target)) {
     closeProgContextMenu();
