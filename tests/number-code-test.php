@@ -2,7 +2,7 @@
 /**
  * Regression tests for the system-wide Number Code work on MySQL (review checklist ก-ฉ):
  *   (ก) runMigrations() twice: no error; the duplicate check and its error_log run at most once per hour
- *   (ข) old DB with cross-sheet duplicate codes: uq_code not added, new saves get MAX+1 without collisions
+ *   (ข) old DB with cross-sheet duplicate codes: uq_code not added, editing without code change succeeds, duplicate/invalid code on edit rejected, new saves get MAX+1 without collisions
  *   (ค) old DB without duplicates: uq_code added, uq_sheet_code dropped (also once duplicates are fixed)
  *   (ง) GET_LOCK not granted: no INSERT, 503 + CODE_LOCK_BUSY_ERROR (saveBoardRecord, api/save.php, index.php)
  *   (จ) scripts/check-duplicate-codes.php runs from the CLI, changes nothing, refuses web requests
@@ -384,6 +384,82 @@ try {
     check('รหัสใหม่ไม่ชนของเดิม (รหัสละ 1 แถว) / new codes do not collide', (int)$st->fetchColumn() === 2);
     check('แถวใหม่เก็บ zone = sheetZone(sheet) / new rows store sheetZone()',
         zoneOf($pdo, $r1['id']) === 'General' && zoneOf($pdo, $r2['id']) === 'General');
+
+    // Edit record with duplicate code without changing its code: must succeed
+    $dupRowId = (int)$pdo->query("SELECT id FROM boards WHERE sheet = 'B200_Gen' AND code = '{$prefix}001'")->fetchColumn();
+    $rEdit = saveBoardRecord($pdo, [
+        'id'           => $dupRowId,
+        'zone'         => 'General',
+        'sheet'        => 'B200_Gen',
+        'code'         => $prefix . '001',
+        'shelf'        => 'B1',
+        'product'      => 'EDITED-PRODUCT',
+        'side'         => 'F-Side',
+        'board_type'   => 'ES3261A',
+        'board_status' => 'G',
+        'pcs'          => '',
+        'defects'      => '',
+    ]);
+    $prodStmt = $pdo->prepare('SELECT product, code FROM boards WHERE id = ?');
+    $prodStmt->execute([$dupRowId]);
+    $row2After = $prodStmt->fetch();
+    check('DB มีรหัสซ้ำข้ามชีต: แก้ไข product โดยไม่เปลี่ยน code สำเร็จ / edit duplicate row without code change succeeds',
+        $rEdit['success'] && ($row2After['product'] ?? '') === 'EDITED-PRODUCT' && ($row2After['code'] ?? '') === $prefix . '001',
+        json_encode([$rEdit['errors'], $row2After], JSON_UNESCAPED_UNICODE));
+
+    // Edit record by changing code to collide with another row: must be rejected with duplicate code error
+    $targetRowId = (int)$pdo->query("SELECT id FROM boards WHERE sheet = 'B200_Gen' AND code = '{$prefix}002'")->fetchColumn();
+    $rDup = saveBoardRecord($pdo, [
+        'id'           => $targetRowId,
+        'zone'         => 'General',
+        'sheet'        => 'B200_Gen',
+        'code'         => $prefix . '001',
+        'shelf'        => 'B2',
+        'product'      => 'ATTEMPT-DUP-CODE',
+        'side'         => 'F-Side',
+        'board_type'   => 'ES3261A',
+        'board_status' => 'G',
+        'pcs'          => '',
+        'defects'      => '',
+    ]);
+    $dupErr = $rDup['errors'][0] ?? '';
+    check('แก้ไขโดยเปลี่ยน code ชนกับรายการอื่น: ถูกปฏิเสธด้วยข้อความ code ซ้ำ / edit changing code to duplicate rejected',
+        !$rDup['success'] && str_contains($dupErr, 'ซ้ำกับรายการที่มีอยู่แล้วในระบบ') && str_contains($dupErr, 'already exists in the system'),
+        json_encode($rDup['errors'], JSON_UNESCAPED_UNICODE));
+    $code3Stmt = $pdo->prepare('SELECT code, product FROM boards WHERE id = ?');
+    $code3Stmt->execute([$targetRowId]);
+    $row3After = $code3Stmt->fetch();
+    check('แถวที่ถูกปฏิเสธ: code และ product ไม่เปลี่ยน / rejected row unchanged',
+        ($row3After['code'] ?? '') === $prefix . '002' && ($row3After['product'] ?? '') === 'TEST-MODEL');
+
+    // Edit record by changing code to invalid format: must be rejected with format error
+    $rInv = saveBoardRecord($pdo, [
+        'id'           => $targetRowId,
+        'zone'         => 'General',
+        'sheet'        => 'B200_Gen',
+        'code'         => 'INVALID-CODE-FORMAT',
+        'shelf'        => 'B2',
+        'product'      => 'ATTEMPT-INVALID-CODE',
+        'side'         => 'F-Side',
+        'board_type'   => 'ES3261A',
+        'board_status' => 'G',
+        'pcs'          => '',
+        'defects'      => '',
+    ]);
+    $invErr = $rInv['errors'][0] ?? '';
+    check('แก้ไขโดยเปลี่ยน code เป็นรูปแบบผิด: ถูกปฏิเสธด้วยข้อความรูปแบบไม่ถูกต้อง / edit changing code to invalid format rejected',
+        !$rInv['success'] && str_contains($invErr, 'รูปแบบ Number Code ไม่ถูกต้อง') && str_contains($invErr, 'Invalid Number Code format'),
+        json_encode($rInv['errors'], JSON_UNESCAPED_UNICODE));
+    $code3Stmt->execute([$targetRowId]);
+    $row3AfterInv = $code3Stmt->fetch();
+    check('แถวที่ส่งรูปแบบผิด: code ไม่เปลี่ยน / invalid format row unchanged',
+        ($row3AfterInv['code'] ?? '') === $prefix . '002');
+
+    // Add new record after edits: still allocates MAX+1 without collision
+    $r3 = saveBoardRecord($pdo, boardInput('B200_Gen', 'B4'));
+    check("หลังแก้ไข record: บันทึกใหม่ยังได้ MAX+1 = {$prefix}008 ไม่ชนของเดิม / new save after edits gets MAX+1",
+        $r3['success'] && $r3['code'] === $prefix . '008',
+        json_encode([$r3['code'], $r3['errors']], JSON_UNESCAPED_UNICODE));
 
     // ── (ค) ────────────────────────────────────
     section('(ค) ฐานข้อมูลเก่าไม่มีรหัสซ้ำ: เพิ่ม uq_code และลบ uq_sheet_code / legacy DB without duplicates');

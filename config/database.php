@@ -693,7 +693,7 @@ function nextNumberCode(PDO $pdo, ?DateTimeInterface $at = null): string
  *    serialize their `nextNumberCode()` read + INSERT without colliding on the shared monthly sequence.
  *    If the lock is not granted (timeout = 0, error = NULL) nothing is inserted: returns status 503 + CODE_LOCK_BUSY_ERROR.
  * 2. Keeps a 5-attempt retry loop on MySQL error 1062 (duplicate key on `uq_code` / `uq_sheet_code`) as a second
- *    line of defense, plus an explicit app-level duplicate check in case `uq_code` migration was deferred.
+ *    line of defense, plus an explicit app-level duplicate check on edit (when code changes) in case `uq_code` migration was deferred.
  *
  * @return array{
  *   success: bool,
@@ -818,8 +818,8 @@ function saveBoardRecord(PDO $pdo, array $input): array
         $formErrors[] = 'บันทึกไม่ได้ เนื่องจากบอร์ดสถานะ Defect ต้องระบุอาการเสีย กรุณาเลือกข้อบกพร่องอย่างน้อย 1 รายการในแผง Select Defects / Please select at least 1 defect for Defect classification.';
     }
 
-    // System-wide duplicate check on edit (no longer scoped to a single sheet)
-    if (!$formErrors && $id > 0) {
+    // System-wide duplicate check on edit (only when code was actually changed, allowing edits to legacy duplicates)
+    if (!$formErrors && $id > 0 && $code !== (string)$old['code']) {
         $dup = $pdo->prepare('SELECT id, zone, sheet FROM boards WHERE code = ? AND id <> ? LIMIT 1');
         $dup->execute([$code, $id]);
         if ($dupRow = $dup->fetch()) {
