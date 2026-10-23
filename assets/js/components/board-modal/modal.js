@@ -82,12 +82,14 @@ window.gmSyncDefectChip = gmSyncDefectChip;
     });
 })();
 
-function updateModalFreeShelves(freeByMag, freeShelves, capacity, sp, isMax, selectedShelf = null) {
+function updateModalFreeShelves(freeByMag = {}, freeShelves = [], capacity = 0, sp = '', isMax = false, selectedShelf = null) {
     const sel = document.getElementById('modal-shelf');
     const info = document.getElementById('modal-shelf-info');
     if (!sel) return;
 
-    if (isMax && !selectedShelf) {
+    const cleanSelected = (selectedShelf || '').trim();
+
+    if (isMax && !cleanSelected) {
         sel.disabled = true;
         sel.className = 'gm-input mono is-max';
         sel.innerHTML = '<option value="">Magazine is Max</option>';
@@ -98,33 +100,79 @@ function updateModalFreeShelves(freeByMag, freeShelves, capacity, sp, isMax, sel
     sel.disabled = false;
     sel.className = 'gm-input mono';
 
-    let html = '<option value="" disabled ' + (selectedShelf ? '' : 'selected') + '>เลือก Shelf...</option>';
-
-    // Grouping
-    for (const [mg, list] of Object.entries(freeByMag)) {
-        html += `<optgroup label="Magazine ${ordinal(Number(mg))} = ${(Number(mg) - 1) * 50 + 1}-${Number(mg) * 50}">`;
-        let includedSelected = false;
-        list.forEach(item => {
-            const isSel = selectedShelf === item.shelf;
-            if (isSel) includedSelected = true;
-            html += `<option value="${h(item.shelf)}" ${isSel ? 'selected' : ''}>${h(item.shelf)}</option>`;
-        });
-        // If editing and selected shelf belongs to this magazine but was occupied
-        if (selectedShelf && !includedSelected) {
-            const match = selectedShelf.match(/\d+$/);
-            if (match) {
-                const sNo = parseInt(match[0], 10);
-                if (Math.floor((sNo - 1) / 50) + 1 === Number(mg)) {
-                    html += `<option value="${h(selectedShelf)}" selected>${h(selectedShelf)} (Current)</option>`;
-                }
-            }
+    let selectedMg = null;
+    let selectedNo = null;
+    if (cleanSelected) {
+        const m = cleanSelected.match(/\d+$/);
+        if (m) {
+            selectedNo = parseInt(m[0], 10);
+            selectedMg = Math.floor((selectedNo - 1) / 50) + 1;
         }
+    }
+
+    // Collect all magazine numbers that need to be displayed:
+    // Any magazine with free shelves, PLUS the magazine of cleanSelected (even if that magazine has no other free shelves)
+    const magKeys = new Set(Object.keys(freeByMag || {}).map(Number));
+    if (selectedMg !== null && selectedMg > 0) {
+        magKeys.add(selectedMg);
+    }
+    const sortedMags = Array.from(magKeys).sort((a, b) => a - b);
+
+    let html = '<option value="" disabled ' + (cleanSelected ? '' : 'selected') + '>เลือก Shelf...</option>';
+    let selectedIncluded = false;
+
+    sortedMags.forEach(mg => {
+        const from = (mg - 1) * 50 + 1;
+        const to = mg * 50;
+        const rawList = Array.isArray(freeByMag?.[mg]) ? [...freeByMag[mg]] : [];
+
+        // Check if selectedShelf is already in the list
+        const alreadyInList = rawList.some(item => item.shelf === cleanSelected);
+
+        // If this is the selected shelf's magazine and it's not in the free list (occupied by current record)
+        if (cleanSelected && selectedMg === mg && !alreadyInList) {
+            rawList.push({
+                no: selectedNo ?? from,
+                shelf: cleanSelected,
+                isCurrent: true
+            });
+        }
+
+        // Sort shelves in this magazine in natural numerical order
+        rawList.sort((a, b) => {
+            const numA = (typeof a.no === 'number') ? a.no : parseInt(String(a.shelf).replace(/\D+/g, ''), 10) || 0;
+            const numB = (typeof b.no === 'number') ? b.no : parseInt(String(b.shelf).replace(/\D+/g, ''), 10) || 0;
+            return numA - numB;
+        });
+
+        if (rawList.length > 0) {
+            html += `<optgroup label="Magazine ${ordinal(mg)} = ${from}-${to}">`;
+            rawList.forEach(item => {
+                const isSel = (cleanSelected && item.shelf === cleanSelected);
+                if (isSel) selectedIncluded = true;
+                const isCurrent = item.isCurrent || isSel;
+                const label = isCurrent ? `${item.shelf} (Current)` : item.shelf;
+                html += `<option value="${h(item.shelf)}" ${isSel ? 'selected' : ''}>${h(label)}</option>`;
+            });
+            html += `</optgroup>`;
+        }
+    });
+
+    // Fallback: If cleanSelected was provided but somehow not placed in any magazine optgroup
+    if (cleanSelected && !selectedIncluded) {
+        html += `<optgroup label="Current Shelf">`;
+        html += `<option value="${h(cleanSelected)}" selected>${h(cleanSelected)} (Current)</option>`;
         html += `</optgroup>`;
     }
 
     sel.innerHTML = html;
+    if (cleanSelected) {
+        sel.value = cleanSelected;
+    }
+
     if (info) {
-        info.innerHTML = `แสดงเฉพาะ Shelf ว่าง (${freeShelves.length}/${capacity})`;
+        const freeCount = freeShelves?.length || 0;
+        info.innerHTML = `แสดงเฉพาะ Shelf ว่าง (${freeCount}/${capacity})`;
     }
 }
 
@@ -224,7 +272,17 @@ async function openEditModal(id) {
             codeHidden.value = d.code || '';
         }
 
-        if ((state.sheet === 'ALL' || state.zone !== activeModalZone) && d.sheet) {
+        // Initialize modal-shelf with current shelf immediately so it never shows previous or wrong slot
+        const selShelf = document.getElementById('modal-shelf');
+        if (selShelf && d.shelf) {
+            selShelf.disabled = false;
+            selShelf.className = 'gm-input mono';
+            selShelf.innerHTML = `<option value="${h(d.shelf)}" selected>${h(d.shelf)} (Current)</option>`;
+            selShelf.value = d.shelf;
+        }
+
+        const needSheetFetch = (state.sheet === 'ALL' || state.zone !== activeModalZone || state.sheet !== d.sheet || !currentSheetData) && d.sheet;
+        if (needSheetFetch) {
             try {
                 const shRes = await fetch(`api/sheet_data.php?zone=${encodeURIComponent(activeModalZone)}&sheet=${encodeURIComponent(d.sheet)}`);
                 const shJson = await shRes.json();

@@ -407,7 +407,7 @@ try {
     check("Number Code ต่อจากเดิม: {$prefix}004 / continues after the existing codes", $r['success'] && $r['code'] === $prefix . '004',
         json_encode([$r['code'], $r['errors']], JSON_UNESCAPED_UNICODE));
     check('แถวใหม่เก็บ zone = General และ mag_slot ตามรูปแบบเดิม / zone + mag_slot as before',
-        rows($pdo, "SELECT zone, mag_slot FROM boards WHERE code = '{$prefix}004'") === [['zone' => 'General', 'mag_slot' => 'C250_Gen Magazine 1st · Slot 1']]);
+        rows($pdo, "SELECT zone, mag_slot FROM boards WHERE code = '{$prefix}004'") === [['zone' => 'General', 'mag_slot' => 'Magazine 1st · Slot 1']]);
 
     // ── (ง) (ฉ) rules, in-process ─────────────
     section('(ง) (ฉ) กฎการแก้ไข (เรียกฟังก์ชันตรง) / manager rules');
@@ -558,7 +558,7 @@ try {
     check("(ค) บันทึกบอร์ดในชีตใหม่ได้ Number Code ต่อจากเลขรวมทั้งระบบ: {$prefix}003 (ไม่เริ่ม 001)",
         $r3['status'] === 200 && ($r3['json']['code'] ?? '') === $prefix . '003', $r3['body']);
     check('(ค) แถวใหม่เก็บ zone = Plant2, shelf PA1, mag_slot ของชีตใหม่',
-        rows($web, "SELECT zone, sheet, shelf, mag_slot FROM boards WHERE code = '{$prefix}003'") === [['zone' => 'Plant2', 'sheet' => 'P2_A', 'shelf' => 'PA1', 'mag_slot' => 'P2_A Magazine 1st · Slot 1']]);
+        rows($web, "SELECT zone, sheet, shelf, mag_slot FROM boards WHERE code = '{$prefix}003'") === [['zone' => 'Plant2', 'sheet' => 'P2_A', 'shelf' => 'PA1', 'mag_slot' => 'Magazine 1st · Slot 1']]);
     $cap = $user->post('/api/save.php', $form(['zone' => 'Plant2', 'sheet' => 'P2_A', 'shelf' => 'PA51']));
     check('(ค) ชีตใหม่เริ่มต้นมี 1 Magazine: PA51 เกินความจุ → 422', $cap['status'] === 422 && str_contains($cap['body'], 'PA50'), $cap['body']);
     $p2 = $user->get('/?zone=Plant2&sheet=P2_A');

@@ -625,19 +625,26 @@ function magazineCount(PDO $pdo, string $sheet): int
     return max(1, $stored, $needed);
 }
 
-/** Magazine / Slot text stored with a record, e.g. "<sheet key> Magazine 5th · Slot 10" */
+/** Magazine / Slot text stored with a record, e.g. "Magazine 5th · Slot 10" */
 function magazineSlotText(string $sheet, int $shelfNo): string
 {
     $magazine = intdiv($shelfNo - 1, MAGAZINE_SIZE) + 1;
     $slot = (($shelfNo - 1) % MAGAZINE_SIZE) + 1;
-    return $sheet . ' Magazine ' . ordinal($magazine) . ' · Slot ' . $slot;
+    return 'Magazine ' . ordinal($magazine) . ' · Slot ' . $slot;
 }
 
-/** Magazine / Slot text of an existing row: the stored value, or the legacy format (no sheet) for rows saved before the column existed */
+/** Magazine / Slot text of an existing row: clean UI display without technical sheet prefix */
 function magazineSlotDisplay(array $row): string
 {
-    if (!empty($row['mag_slot'])) return (string)$row['mag_slot'];
-    $no = (int)$row['shelf_no'];
+    $val = !empty($row['mag_slot']) ? (string)$row['mag_slot'] : '';
+    if ($val !== '') {
+        // Strip sheet prefix if present, e.g. "B200_Gen Magazine 1st · Slot 9" -> "Magazine 1st · Slot 9"
+        if (preg_match('/(Magazine\s+\w+\s*·\s*Slot\s+\d+)/u', $val, $m)) {
+            return $m[1];
+        }
+        return $val;
+    }
+    $no = (int)($row['shelf_no'] ?? 0);
     return 'Magazine ' . ordinal(intdiv($no - 1, MAGAZINE_SIZE) + 1) . ' · Slot ' . ((($no - 1) % MAGAZINE_SIZE) + 1);
 }
 
