@@ -54,7 +54,11 @@ async function loadProgramsData() {
     progState.viewStatus = progState.rows.length > 0 ? 'ready' : 'empty';
 
     if (Array.isArray(json.owners)) {
+      progState.owners = json.owners;
       populateProgOwners(json.owners);
+    }
+    if (Array.isArray(json.operators)) {
+      progState.operators = json.operators;
     }
 
     renderProgKpis();
@@ -132,6 +136,64 @@ async function apiUpdateMeta(id, fields, expectedVersion = 0) {
   const json = await res.json();
   if (!res.ok) {
     const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+    err.status = res.status;
+    err.data = json;
+    throw err;
+  }
+  return json;
+}
+
+/**
+ * Add a new operator option permanently to dropdown options
+ */
+async function apiAddOperator(name) {
+  const payload = {
+    csrf: window.csrfToken,
+    action: 'add_operator',
+    name: name,
+    operator: progState.currentUser || name
+  };
+
+  const res = await fetch('api/program_stage.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถเพิ่มผู้ทำใหม่ได้');
+    err.status = res.status;
+    err.data = json;
+    throw err;
+  }
+  return json;
+}
+
+/**
+ * Remove an operator from the dropdown options (rows already using the name are not changed)
+ */
+async function apiDeleteOperator(name) {
+  const res = await fetch('api/program_stage.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      csrf: window.csrfToken,
+      action: 'delete_operator',
+      name: name,
+      operator: progState.currentUser || ''
+    })
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    const err = new Error(json.errors ? json.errors.join(' ') : 'ไม่สามารถลบผู้ทำได้');
     err.status = res.status;
     err.data = json;
     throw err;

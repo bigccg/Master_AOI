@@ -1340,6 +1340,21 @@ function runMigrations(PDO $pdo): void
             )
         ');
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_prog_audit_created ON aoi_program_audit (program_id, created_at)');
+        // Operator dropdown options. Seeded from existing owners ONLY when the table is first created,
+        // otherwise a deleted operator would come back on the next request.
+        $opsExisted = (bool)$pdo->query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'aoi_operators'")->fetchColumn();
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_operators (
+                name       VARCHAR(50) NOT NULL PRIMARY KEY,
+                created_at DATETIME    NOT NULL
+            )
+        ');
+        if (!$opsExisted) {
+            $pdo->exec('
+                INSERT OR IGNORE INTO aoi_operators (name, created_at)
+                SELECT DISTINCT owner, datetime("now") FROM aoi_programs WHERE owner IS NOT NULL AND owner != ""
+            ');
+        }
     } else {
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS zones (
@@ -1435,6 +1450,21 @@ function runMigrations(PDO $pdo): void
                 KEY idx_prog_audit_created (program_id, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ');
+        // Operator dropdown options. Seeded from existing owners ONLY when the table is first created,
+        // otherwise a deleted operator would come back on the next request.
+        $opsExisted = (bool)$pdo->query("SHOW TABLES LIKE 'aoi_operators'")->fetchColumn();
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS aoi_operators (
+                name       VARCHAR(50) NOT NULL PRIMARY KEY,
+                created_at DATETIME    NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ');
+        if (!$opsExisted) {
+            $pdo->exec('
+                INSERT IGNORE INTO aoi_operators (name, created_at)
+                SELECT DISTINCT owner, NOW() FROM aoi_programs WHERE owner IS NOT NULL AND owner != ""
+            ');
+        }
     }
     seedTopology($pdo);
     topology($pdo, true);   // (re)load; also makes $pdo the database of helpers that take no handle

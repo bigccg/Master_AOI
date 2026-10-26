@@ -44,10 +44,7 @@ $pageTitle = 'โปรแกรม AOI | AOI Program Tracker - Precision SMT Hu
   <!-- 2. Command Bar & Filters -->
   <?php require __DIR__ . '/components/programs/command-bar.php'; ?>
 
-  <!-- 3. Quick Add Dock -->
-  <?php require __DIR__ . '/components/programs/quick-add.php'; ?>
-
-  <!-- 4. Data Table Workspace -->
+  <!-- 3. Data Table Workspace -->
   <div id="prog-view-table-wrapper">
     <?php require __DIR__ . '/components/programs/table.php'; ?>
   </div>

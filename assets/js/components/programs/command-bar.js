@@ -168,6 +168,9 @@ function resetAllProgFilters() {
 }
 
 function populateProgOwners(ownersList) {
+  if (Array.isArray(ownersList)) {
+    progState.owners = ownersList;
+  }
   const selOwner = document.getElementById('prog-filter-owner');
   if (!selOwner) return;
   const currentVal = progState.owner || selOwner.value || 'ALL';

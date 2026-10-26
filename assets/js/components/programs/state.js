@@ -14,6 +14,8 @@ const progState = {
   page: 1,
   pageSize: 50,
   currentUser: 'Thanapol',
+  owners: [],
+  operators: [], // dropdown options: [{ name, count }]
   rows: [],
   kpi: {
     total: 0,
@@ -86,6 +88,8 @@ function initProgState() {
 
   progState.density = getStoredItem('aoi_prog_density', 'standard');
   progState.currentUser = getStoredItem('aoi_prog_user', 'Thanapol');
+  progState.owners = Array.isArray(window.PROGRAM_OWNERS) ? [...window.PROGRAM_OWNERS] : [];
+  progState.operators = Array.isArray(window.PROGRAM_OPERATORS) ? [...window.PROGRAM_OPERATORS] : [];
 }
 
 // Sync state to browser URL and header Export button without reload

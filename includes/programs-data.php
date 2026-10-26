@@ -387,6 +387,10 @@ function updateProgramMeta(
         ];
     }
 
+    if ($hasOwner && $newOwner !== '') {
+        saveProgramOperator($pdo, $newOwner);
+    }
+
     // One audit row per field that actually changed, so each can be undone on its own
     // (a combined "owner,note" row could not be undone and lost the old owner value).
     $changes = [];
@@ -643,12 +647,82 @@ function fetchProgramKpis(PDO $pdo): array
 }
 
 /**
- * Fetch distinct owners for dropdown filters
+ * Fetch distinct owners for dropdown filters and assign dropdowns
  */
 function fetchProgramOwners(PDO $pdo): array
 {
-    $st = $pdo->query("SELECT DISTINCT owner FROM aoi_programs WHERE owner IS NOT NULL AND owner != '' ORDER BY owner ASC");
-    return $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    try {
+        $st = $pdo->query("
+            SELECT DISTINCT name FROM (
+                SELECT name FROM aoi_operators WHERE name IS NOT NULL AND name != ''
+                UNION
+                SELECT owner AS name FROM aoi_programs WHERE owner IS NOT NULL AND owner != ''
+            ) AS combined_owners ORDER BY name ASC
+        ");
+        return $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    } catch (\Throwable $e) {
+        $st = $pdo->query("SELECT DISTINCT owner FROM aoi_programs WHERE owner IS NOT NULL AND owner != '' ORDER BY owner ASC");
+        return $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+}
+
+/**
+ * Operator options for the assign dropdown: [{name, count}] where count = programs currently using that name.
+ * Only `aoi_operators` is read, so deleting an option removes it from the dropdown while rows that already
+ * carry the name keep it (the filter list above still shows it for as long as a row uses it).
+ */
+function fetchProgramOperatorOptions(PDO $pdo): array
+{
+    try {
+        $st = $pdo->query("
+            SELECT o.name AS name,
+                   (SELECT COUNT(*) FROM aoi_programs p WHERE p.owner = o.name) AS cnt
+            FROM aoi_operators o
+            WHERE o.name IS NOT NULL AND o.name != ''
+            ORDER BY o.name ASC
+        ");
+        return array_map(
+            static fn(array $r): array => ['name' => (string)$r['name'], 'count' => (int)$r['cnt']],
+            $st->fetchAll(PDO::FETCH_ASSOC)
+        );
+    } catch (\Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Remove an operator from the dropdown options. Existing programs keep their owner text untouched.
+ */
+function deleteProgramOperator(PDO $pdo, string $name): bool
+{
+    $name = trim($name);
+    if ($name === '') {
+        return false;
+    }
+    $st = $pdo->prepare('DELETE FROM aoi_operators WHERE name = :name');
+    $st->execute([':name' => $name]);
+    return $st->rowCount() > 0;
+}
+
+/**
+ * Save an operator permanently to `aoi_operators` table
+ */
+function saveProgramOperator(PDO $pdo, string $name): bool
+{
+    $name = trim($name);
+    if ($name === '' || mb_strlen($name) > 50) {
+        return false;
+    }
+    try {
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $sql = ($driver === 'sqlite')
+            ? 'INSERT OR IGNORE INTO aoi_operators (name, created_at) VALUES (:name, datetime("now"))'
+            : 'INSERT IGNORE INTO aoi_operators (name, created_at) VALUES (:name, NOW())';
+        $st = $pdo->prepare($sql);
+        return $st->execute([':name' => $name]);
+    } catch (\Throwable $e) {
+        return false;
+    }
 }
 
 /**

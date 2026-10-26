@@ -57,6 +57,7 @@ $filters = [
 
 $kpi    = fetchProgramKpis($pdo);
 $owners = fetchProgramOwners($pdo);
+$operators = fetchProgramOperatorOptions($pdo);
 $res    = fetchProgramList($pdo, $filters, $sort, $dir, $limit, $offset);
 
 $formattedRows = array_map('formatProgramRow', $res['rows']);
@@ -69,6 +70,7 @@ echo json_encode([
     'data'     => $formattedRows,
     'kpi'      => $kpi,
     'owners'   => $owners,
+    'operators' => $operators,
     'machines' => PROGRAM_MACHINES,
     'total'    => $total,
     'page'     => $page,

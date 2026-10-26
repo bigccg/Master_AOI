@@ -367,44 +367,7 @@ function initProgTableEvents() {
     const assignBtn = e.target.closest('button[data-action="assign"]');
     if (assignBtn) {
       const progId = parseInt(assignBtn.getAttribute('data-id'), 10);
-      const rowIdx = progState.rows.findIndex(r => r.id === progId);
-      if (rowIdx === -1) return;
-      const row = progState.rows[rowIdx];
-      const oldOwner = row.owner || '';
-
-      const newOwner = prompt(`ระบุชื่อผู้ทำ (Operator) สำหรับ ${row.product_model} (${row.side}) — เว้นว่างเพื่อล้างค่า:`, oldOwner || progState.currentUser || '');
-      if (newOwner !== null && newOwner.trim() !== oldOwner) {
-        const cleanOwner = newOwner.trim();
-        if (cleanOwner !== '') {
-          progState.currentUser = cleanOwner;
-          setStoredItem('aoi_prog_user', cleanOwner);
-        }
-        apiUpdateMeta(progId, { owner: cleanOwner }, row.version)
-          .then((res) => {
-            if (res.program) {
-              progState.rows[rowIdx] = res.program;
-              updateRowInDom(res.program);
-              flashRowInDom(progId);
-            }
-            if (Array.isArray(res.owners)) {
-              populateProgOwners(res.owners);
-            }
-            showProgToast(
-              'อัปเดตผู้ทำสำเร็จ',
-              `${row.product_model} (${row.side}) → ${cleanOwner || 'ยังไม่มอบหมาย'}`,
-              res.audit_id ? async () => {
-                const undoRes = await apiUndoAction(progId, res.audit_id);
-                if (undoRes.program) {
-                  progState.rows[rowIdx] = undoRes.program;
-                  updateRowInDom(undoRes.program);
-                  flashRowInDom(progId);
-                }
-                showProgToast('เลิกทำสำเร็จ', `คืนค่าผู้ทำของ ${row.product_model} เรียบร้อย`);
-              } : null
-            );
-          })
-          .catch(err => showProgErrorToast('อัปเดตผู้ทำไม่สำเร็จ', err.message));
-      }
+      openOperatorDropdown(assignBtn, progId);
       return;
     }
 
@@ -485,4 +448,441 @@ function initProgTableEvents() {
       }
     }
   });
+}
+
+// ──────────────────────────────────────────────
+// Searchable Operator Dropdown Popover (Glass Dynamic · HyperOS)
+//   - select zone  : the name (left)  -> assigns the operator
+//   - delete zone  : trash button (right, visually separated) -> opens a glass confirm popup first
+// ──────────────────────────────────────────────
+let activeOpPopoverEl = null;
+let opPopoverOutsideHandler = null;
+let opPopoverKeyHandler = null;
+let activeOpConfirmEl = null;
+
+function closeOperatorConfirm() {
+  if (activeOpConfirmEl) {
+    const el = activeOpConfirmEl;
+    activeOpConfirmEl = null;
+    if (el._keyHandler) document.removeEventListener('keydown', el._keyHandler, true);
+    el.classList.add('is-closing');
+    setTimeout(() => el.remove(), 160);
+  }
+}
+
+function closeOperatorDropdown() {
+  closeOperatorConfirm();
+  if (activeOpPopoverEl) {
+    activeOpPopoverEl.remove();
+    activeOpPopoverEl = null;
+  }
+  if (opPopoverOutsideHandler) {
+    document.removeEventListener('pointerdown', opPopoverOutsideHandler);
+    opPopoverOutsideHandler = null;
+  }
+  if (opPopoverKeyHandler) {
+    document.removeEventListener('keydown', opPopoverKeyHandler);
+    opPopoverKeyHandler = null;
+  }
+}
+
+/**
+ * Glass confirm popup for deleting an operator option. Resolves true only on explicit confirm.
+ * Cancel is focused by default so a stray Enter / Space never deletes.
+ */
+function confirmDeleteOperator(name, usageCount) {
+  closeOperatorConfirm();
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'prog-op-confirm-overlay';
+
+    const usageHtml = usageCount > 0
+      ? `<div class="prog-op-confirm-note is-info">
+           <i class="fa-solid fa-circle-info"></i>
+           <span>มี <strong>${usageCount}</strong> โปรแกรมที่ใช้ชื่อนี้อยู่ — ข้อมูลในตารางจะ<strong>ไม่ถูกเปลี่ยน</strong> ลบเฉพาะตัวเลือกใน Dropdown</span>
+         </div>`
+      : `<div class="prog-op-confirm-note">
+           <i class="fa-regular fa-circle-check"></i>
+           <span>ไม่มีโปรแกรมใช้ชื่อนี้อยู่</span>
+         </div>`;
+
+    overlay.innerHTML = `
+      <div class="prog-op-confirm" role="alertdialog" aria-modal="true" aria-labelledby="prog-op-confirm-title">
+        <div class="prog-op-confirm-icon"><i class="fa-solid fa-trash-can"></i></div>
+        <h3 id="prog-op-confirm-title" class="prog-op-confirm-title">ลบผู้ทำออกจากตัวเลือก?</h3>
+        <div class="prog-op-confirm-name"><i class="fa-regular fa-user"></i><span>${h(name)}</span></div>
+        ${usageHtml}
+        <div class="prog-op-confirm-actions">
+          <button type="button" class="prog-op-confirm-btn is-cancel" data-act="cancel">ยกเลิก</button>
+          <button type="button" class="prog-op-confirm-btn is-danger" data-act="ok">
+            <i class="fa-solid fa-trash-can"></i><span>ลบตัวเลือก</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeOpConfirmEl = overlay;
+
+    const finish = (val) => {
+      if (activeOpConfirmEl !== overlay) return;
+      closeOperatorConfirm();
+      resolve(val);
+    };
+
+    overlay.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (btn) {
+        finish(btn.getAttribute('data-act') === 'ok');
+      } else if (e.target === overlay) {
+        finish(false);
+      }
+    });
+
+    // Capture phase + stopPropagation so Esc / Tab only affect this popup (not the dropdown behind it)
+    overlay._keyHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(false);
+      } else if (e.key === 'Tab') {
+        const btns = [...overlay.querySelectorAll('button')];
+        const idx = btns.indexOf(document.activeElement);
+        e.preventDefault();
+        e.stopPropagation();
+        const next = e.shiftKey ? (idx <= 0 ? btns.length - 1 : idx - 1) : (idx + 1) % btns.length;
+        btns[next].focus();
+      }
+    };
+    document.addEventListener('keydown', overlay._keyHandler, true);
+
+    overlay.querySelector('[data-act="cancel"]')?.focus();
+  });
+}
+
+function openOperatorDropdown(anchorBtn, progId) {
+  closeOperatorDropdown();
+
+  const rowIdx = progState.rows.findIndex(r => r.id === progId);
+  if (rowIdx === -1) return;
+  const row = progState.rows[rowIdx];
+  const currentOwner = (row.owner || '').trim();
+
+  const popover = document.createElement('div');
+  popover.className = 'prog-op-popover';
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', 'เลือกหรือเพิ่มผู้ทำ');
+
+  popover.innerHTML = `
+    <div class="prog-op-head">
+      <div class="prog-op-title">
+        <span class="prog-op-title-main">
+          <span class="prog-op-title-icon"><i class="fa-solid fa-user-tag"></i></span>
+          <span>ระบุผู้ทำ <em>Operator</em></span>
+        </span>
+        <button type="button" class="prog-op-close" title="ปิด (Esc)" aria-label="ปิด">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="prog-op-subtitle">
+        <span class="prog-op-chip" title="${h(row.product_model)}">${h(row.product_model)}</span>
+        <span class="prog-op-chip is-side ${String(row.side || '').toUpperCase().startsWith('B') ? 'is-b' : ''}">${h(row.side)}</span>
+      </div>
+    </div>
+    <div class="prog-op-search-box">
+      <div class="prog-op-search-wrap">
+        <i class="fa-solid fa-magnifying-glass prog-op-search-icon"></i>
+        <input type="text"
+               id="prog-op-search-input"
+               class="prog-op-search-input"
+               placeholder="ค้นหา หรือพิมพ์ชื่อเพื่อเพิ่มใหม่…"
+               autocomplete="off"
+               spellcheck="false" />
+        <button type="button" id="prog-op-search-clear" class="prog-op-clear-btn" style="display: none;" title="ล้าง" tabindex="-1">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="prog-op-list" id="prog-op-options-list" role="listbox"></div>
+    <div class="prog-op-footer">
+      <span><i class="fa-regular fa-lightbulb"></i> เลือกจากรายการ หรือพิมพ์ชื่อใหม่</span>
+      <span class="prog-op-footer-keys"><kbd>↑↓</kbd><kbd>↵</kbd><kbd>Esc</kbd></span>
+    </div>
+  `;
+
+  document.body.appendChild(popover);
+  activeOpPopoverEl = popover;
+
+  // Dynamic positioning relative to anchor button
+  const rect = anchorBtn.getBoundingClientRect();
+  const popW = 300;
+  const estH = 380;
+  let top = rect.bottom + 6;
+  const left = Math.max(12, Math.min(rect.left, window.innerWidth - popW - 12));
+  if (top + estH > window.innerHeight && rect.top > estH) {
+    top = rect.top - estH - 6;
+  }
+  popover.style.top = `${Math.max(8, top)}px`;
+  popover.style.left = `${left}px`;
+
+  const searchInput = popover.querySelector('#prog-op-search-input');
+  const clearBtn = popover.querySelector('#prog-op-search-clear');
+  const listEl = popover.querySelector('#prog-op-options-list');
+  const closeBtn = popover.querySelector('.prog-op-close');
+
+  let highlightedIndex = -1;
+
+  const operatorOptions = () => (Array.isArray(progState.operators) ? progState.operators : []);
+
+  function renderList(query) {
+    const q = (query || '').trim();
+    const qLower = q.toLowerCase();
+    const options = operatorOptions();
+
+    const exactMatch = options.some(o => o.name.toLowerCase() === qLower);
+    const filtered = options.filter(o => o.name.toLowerCase().includes(qLower));
+
+    let html = '';
+
+    // Typed a name that does not exist yet -> offer to create it
+    if (q !== '' && !exactMatch) {
+      html += `
+        <div class="prog-op-create-row">
+          <button type="button" class="prog-op-add-option" data-action="create-and-assign" data-name="${h(q)}" title="เพิ่มเป็นตัวเลือกใหม่และระบุทันที">
+            <span class="prog-op-add-icon"><i class="fa-solid fa-plus"></i></span>
+            <span class="prog-op-add-label">เพิ่ม <strong>“${h(q)}”</strong> และระบุ</span>
+            <kbd class="prog-op-kbd">↵</kbd>
+          </button>
+          <button type="button" class="prog-op-save-only-btn" data-action="create-only" data-name="${h(q)}" title="บันทึกชื่อนี้เป็นตัวเลือกเท่านั้น (ยังไม่ระบุในแถวนี้)">
+            <i class="fa-solid fa-floppy-disk"></i><span>เก็บไว้</span>
+          </button>
+        </div>
+      `;
+    }
+
+    // Clear assignment
+    if (!q || 'ยังไม่มอบหมาย'.includes(q) || 'unassigned'.includes(qLower) || 'ล้าง'.includes(q)) {
+      const isUnassignedSelected = !currentOwner;
+      html += `
+        <div class="prog-op-row is-unassign">
+          <button type="button" class="prog-op-item is-unassign ${isUnassignedSelected ? 'is-selected' : ''}" data-value="">
+            <span class="prog-op-avatar is-none"><i class="fa-solid fa-user-slash"></i></span>
+            <span class="prog-op-name">ไม่ระบุ / ล้างค่า</span>
+            ${isUnassignedSelected ? '<i class="fa-solid fa-check prog-op-check"></i>' : ''}
+          </button>
+        </div>
+      `;
+    }
+
+    // Existing operators: [ select zone ] | [ delete zone ]
+    if (filtered.length > 0) {
+      html += `<div class="prog-op-section-label">ผู้ทำทั้งหมด · ${filtered.length}</div>`;
+      filtered.forEach(o => {
+        const isSel = (o.name === currentOwner);
+        const initial = (o.name.trim().charAt(0) || '?').toUpperCase();
+        let hash = 0;
+        for (const ch of o.name) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
+        const colorCls = `is-c${hash % 6}`;
+        html += `
+          <div class="prog-op-row ${isSel ? 'is-selected' : ''}">
+            <button type="button" class="prog-op-item ${isSel ? 'is-selected' : ''}" data-value="${h(o.name)}" role="option" aria-selected="${isSel}">
+              <span class="prog-op-avatar ${colorCls}">${h(initial)}</span>
+              <span class="prog-op-name">${h(o.name)}</span>
+              ${o.count > 0 ? `<span class="prog-op-count" title="ใช้งานอยู่ ${o.count} โปรแกรม">${o.count}</span>` : ''}
+              ${isSel ? '<i class="fa-solid fa-check prog-op-check"></i>' : ''}
+            </button>
+            <span class="prog-op-divider" aria-hidden="true"></span>
+            <button type="button" class="prog-op-del" data-action="delete-operator" data-name="${h(o.name)}" data-count="${o.count}"
+                    title="ลบ “${h(o.name)}” ออกจากตัวเลือก" aria-label="ลบ ${h(o.name)} ออกจากตัวเลือก" tabindex="-1">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+      });
+    } else if (q === '') {
+      html += `<div class="prog-op-empty">ยังไม่มีรายชื่อผู้ทำในระบบ<br><span>พิมพ์ชื่อด้านบนเพื่อเพิ่มรายการแรก</span></div>`;
+    }
+
+    listEl.innerHTML = html;
+    highlightedIndex = -1;
+  }
+
+  renderList('');
+  setTimeout(() => searchInput?.focus(), 40);
+
+  searchInput?.addEventListener('input', (e) => {
+    const val = e.target.value;
+    clearBtn.style.display = val ? 'inline-flex' : 'none';
+    renderList(val);
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    renderList('');
+    searchInput.focus();
+  });
+
+  closeBtn?.addEventListener('click', () => closeOperatorDropdown());
+
+  function syncOperatorLists(res, fallbackName) {
+    if (Array.isArray(res.owners)) {
+      progState.owners = res.owners;
+      populateProgOwners(res.owners);
+    }
+    if (Array.isArray(res.operators)) {
+      progState.operators = res.operators;
+    } else if (fallbackName && !operatorOptions().some(o => o.name.toLowerCase() === fallbackName.toLowerCase())) {
+      progState.operators = [...operatorOptions(), { name: fallbackName, count: 0 }]
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  async function handleAssign(cleanOwner, isNew = false) {
+    closeOperatorDropdown();
+
+    if (!isNew && cleanOwner === currentOwner) {
+      return;
+    }
+
+    if (cleanOwner !== '') {
+      progState.currentUser = cleanOwner;
+      setStoredItem('aoi_prog_user', cleanOwner);
+    }
+
+    try {
+      const res = await apiUpdateMeta(progId, { owner: cleanOwner }, row.version);
+      if (res.program) {
+        progState.rows[rowIdx] = res.program;
+        updateRowInDom(res.program);
+        flashRowInDom(progId);
+      }
+      syncOperatorLists(res, cleanOwner);
+
+      showProgToast(
+        cleanOwner ? (isNew ? 'เพิ่มและระบุผู้ทำสำเร็จ' : 'อัปเดตผู้ทำสำเร็จ') : 'ล้างค่าผู้ทำสำเร็จ',
+        `${row.product_model} (${row.side}) → ${cleanOwner || 'ยังไม่มอบหมาย'}`,
+        res.audit_id ? async () => {
+          const undoRes = await apiUndoAction(progId, res.audit_id);
+          if (undoRes.program) {
+            progState.rows[rowIdx] = undoRes.program;
+            updateRowInDom(undoRes.program);
+            flashRowInDom(progId);
+          }
+          showProgToast('เลิกทำสำเร็จ', `คืนค่าผู้ทำของ ${row.product_model} เรียบร้อย`);
+        } : null
+      );
+    } catch (err) {
+      showProgErrorToast('อัปเดตผู้ทำไม่สำเร็จ', err.message);
+    }
+  }
+
+  async function handleSaveOnly(newOwner) {
+    if (!newOwner) return;
+    try {
+      const res = await apiAddOperator(newOwner);
+      syncOperatorLists(res, newOwner);
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
+      renderList('');
+      searchInput.focus();
+      showProgToast('บันทึกตัวเลือกสำเร็จ', `เพิ่มผู้ทำ "${newOwner}" เข้าสู่ระบบเรียบร้อย`);
+    } catch (err) {
+      showProgErrorToast('เพิ่มผู้ทำไม่สำเร็จ', err.message);
+    }
+  }
+
+  async function handleDelete(name, count) {
+    const ok = await confirmDeleteOperator(name, count);
+    if (!ok) {
+      searchInput?.focus();
+      return;
+    }
+    try {
+      const res = await apiDeleteOperator(name);
+      syncOperatorLists(res, null);
+      renderList(searchInput.value);
+      searchInput.focus();
+      showProgToast('ลบตัวเลือกสำเร็จ', `ลบผู้ทำ "${name}" ออกจากรายการตัวเลือกแล้ว`);
+    } catch (err) {
+      showProgErrorToast('ลบผู้ทำไม่สำเร็จ', err.message);
+    }
+  }
+
+  listEl?.addEventListener('click', (e) => {
+    // Delete zone first: it is a separate button, so it can never trigger the select action
+    const delBtn = e.target.closest('button[data-action="delete-operator"]');
+    if (delBtn) {
+      e.stopPropagation();
+      handleDelete(delBtn.getAttribute('data-name'), parseInt(delBtn.getAttribute('data-count'), 10) || 0);
+      return;
+    }
+
+    const saveOnlyBtn = e.target.closest('button[data-action="create-only"]');
+    if (saveOnlyBtn) {
+      handleSaveOnly(saveOnlyBtn.getAttribute('data-name'));
+      return;
+    }
+
+    const addBtn = e.target.closest('button[data-action="create-and-assign"]');
+    if (addBtn) {
+      handleAssign(addBtn.getAttribute('data-name'), true);
+      return;
+    }
+
+    const item = e.target.closest('.prog-op-item');
+    if (item) {
+      handleAssign(item.getAttribute('data-value') || '', false);
+    }
+  });
+
+  // Keyboard navigation (arrow keys only visit select targets, never the delete buttons)
+  searchInput?.addEventListener('keydown', (e) => {
+    const items = listEl.querySelectorAll('.prog-op-add-option, .prog-op-item');
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (items.length === 0) return;
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      highlightedIndex = (highlightedIndex + step + items.length) % items.length;
+      items.forEach((it, idx) => it.classList.toggle('is-highlighted', idx === highlightedIndex));
+      items[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && items[highlightedIndex]) {
+        items[highlightedIndex].click();
+        return;
+      }
+      const addOption = listEl.querySelector('.prog-op-add-option');
+      if (addOption) {
+        addOption.click();
+        return;
+      }
+      const firstItem = listEl.querySelector('.prog-op-item:not(.is-unassign)') || listEl.querySelector('.prog-op-item');
+      firstItem?.click();
+    }
+  });
+
+  // Close on outside pointerdown (the confirm popup lives outside the dropdown, so ignore it)
+  opPopoverOutsideHandler = (e) => {
+    if (e.target.closest('.prog-op-confirm-overlay')) return;
+    if (!popover.contains(e.target) && !anchorBtn.contains(e.target)) {
+      closeOperatorDropdown();
+    }
+  };
+  setTimeout(() => {
+    if (activeOpPopoverEl === popover) document.addEventListener('pointerdown', opPopoverOutsideHandler);
+  }, 10);
+
+  opPopoverKeyHandler = (e) => {
+    if (e.key === 'Escape') {
+      closeOperatorDropdown();
+      anchorBtn?.focus();
+    }
+  };
+  document.addEventListener('keydown', opPopoverKeyHandler);
 }

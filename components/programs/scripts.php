@@ -14,6 +14,8 @@ declare(strict_types=1);
   window.PROGRAM_MACHINES = <?= json_encode(PROGRAM_MACHINES, JSON_UNESCAPED_UNICODE) ?>;
   window.PROGRAM_STAGE_STATUS = <?= json_encode(PROGRAM_STAGE_STATUS, JSON_UNESCAPED_UNICODE) ?>;
   window.PROGRAM_SIDES = <?= json_encode(PROGRAM_SIDES, JSON_UNESCAPED_UNICODE) ?>;
+  window.PROGRAM_OWNERS = <?= json_encode(isset($pdo) ? fetchProgramOwners($pdo) : [], JSON_UNESCAPED_UNICODE) ?>;
+  window.PROGRAM_OPERATORS = <?= json_encode(isset($pdo) ? fetchProgramOperatorOptions($pdo) : [], JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <?php foreach (PROGRAM_JS_FILES as $js): 
