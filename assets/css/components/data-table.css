@@ -40,6 +40,7 @@
     border-right: 1px solid rgba(255,255,255,.12);
     border-bottom: 2px solid #0f172a;
 }
+.aoi-th[data-col="zone"]      { background-color: #047857; border-bottom-color: #064e3b; } /* emerald: All Zones view */
 .aoi-th[data-col="code"]      { background-color: #1d4ed8; border-bottom-color: #1e3a8a; } /* blue */
 .aoi-th[data-col="shelf"]     { background-color: #0e7490; border-bottom-color: #164e63; } /* cyan */
 .aoi-th[data-col="product"]   { background-color: #4338ca; border-bottom-color: #312e81; } /* indigo */

@@ -26,6 +26,7 @@ const TOPOLOGY_LABEL_MAX           = 60;
 const TOPOLOGY_SHORT_MAX           = 30;
 const TOPOLOGY_ORDER_MAX           = 9999;
 const TOPOLOGY_RESERVED_SHEET_KEYS = ['ALL'];   // the All Size Magazine tab
+const TOPOLOGY_RESERVED_ZONE_KEYS  = ['ALL'];   // the All Zones view (?zone=ALL)
 
 /**
  * UX copy (What happened + Why + How to fix, Thai / English). {name} placeholders are filled by topologyMessage();
@@ -40,6 +41,7 @@ function topologyCopy(): array
         'key_format'          => 'รหัส "{key}" ใช้ไม่ได้ เนื่องจากใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข และขีดล่าง (_) 1–30 ตัว และต้องมีตัวอักษรอย่างน้อย 1 ตัว (ไม่มีช่องว่างหรือขีด -) กรุณาแก้ เช่น Plant2_SMT / Key "{key}" is not valid: use 1–30 English letters, digits or underscores with at least one letter (no spaces or dashes), e.g. Plant2_SMT.',
         'zone_key_taken'      => 'ใช้รหัสโซน "{key}" ไม่ได้ เนื่องจากมีโซน "{existing}" อยู่แล้ว (ระบบไม่แยกตัวพิมพ์เล็ก/ใหญ่) กรุณาใช้รหัสอื่น / Zone key "{key}" is taken by zone "{existing}" (keys ignore upper/lower case). Please choose another key.',
         'sheet_key_taken'     => 'ใช้รหัส Shelf "{key}" ไม่ได้ เนื่องจากมี Shelf "{existing}" ในโซน {zone} อยู่แล้ว (รหัส Shelf ต้องไม่ซ้ำทั้งระบบ และไม่แยกตัวพิมพ์เล็ก/ใหญ่) กรุณาใช้รหัสอื่น / Shelf key "{key}" is taken by shelf "{existing}" in zone {zone} (shelf keys are unique system-wide and ignore case). Please choose another key.',
+        'zone_key_reserved'   => 'ใช้รหัสโซน "{key}" ไม่ได้ เนื่องจากระบบสงวนคำนี้ไว้สำหรับตัวเลือก ทุกโซน (All Zones) กรุณาใช้รหัสอื่น / Zone key "{key}" is reserved for the All Zones view. Please choose another key.',
         'sheet_key_reserved'  => 'ใช้รหัส Shelf "{key}" ไม่ได้ เนื่องจากระบบสงวนคำนี้ไว้สำหรับแท็บ ทุกขนาด (All Size Magazine) กรุณาใช้รหัสอื่น / Shelf key "{key}" is reserved for the All Size Magazine tab. Please choose another key.',
         'prefix_required'     => 'กรุณากรอก Shelf prefix เนื่องจากใช้ขึ้นต้นรหัสชั้นวางทุกช่องของ Shelf นี้ (ตัวอักษรอังกฤษพิมพ์ใหญ่ 1–3 ตัว) เช่น AX → AX1, AX2 / Please enter a shelf prefix: every shelf of this sheet starts with it (1–3 capital letters), e.g. AX → AX1, AX2.',
         'prefix_format'       => 'Shelf prefix "{prefix}" ใช้ไม่ได้ เนื่องจากต้องเป็นตัวอักษรอังกฤษ 1–3 ตัวเท่านั้น (ตัวเลขต่อท้ายระบบเติมให้เอง) กรุณาแก้ เช่น AX → AX1, AX2 / Shelf prefix "{prefix}" is not valid: use 1–3 English letters only (the system adds the number), e.g. AX → AX1, AX2.',
@@ -240,6 +242,9 @@ function topologyKeyError(string $type, string $key): ?string
     }
     if (!preg_match('/' . TOPOLOGY_KEY_PATTERN . '/', $key)) {
         return topologyMessage('key_format', ['key' => $key]);
+    }
+    if ($type === 'zone' && in_array(strtoupper($key), TOPOLOGY_RESERVED_ZONE_KEYS, true)) {
+        return topologyMessage('zone_key_reserved', ['key' => $key]);
     }
     if ($type === 'sheet' && in_array(strtoupper($key), TOPOLOGY_RESERVED_SHEET_KEYS, true)) {
         return topologyMessage('sheet_key_reserved', ['key' => $key]);

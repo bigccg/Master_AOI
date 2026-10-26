@@ -13,8 +13,13 @@ const COLUMNS = [
     { id: 'magSlot',   label: 'Magazine / Slot' },
 ];
 
+// All Zones view: rows of several zones share one table, so a Zone column leads (row[9] = zone key from api/boards.php)
+const ZONE_COLUMN = { id: 'zone', label: 'Zone' };
+const showZoneColumn = () => isAllZonesJs(state.zone);
+const activeColumns = () => (showZoneColumn() ? [ZONE_COLUMN, ...COLUMNS] : COLUMNS);
+
 function rowHtml(row) {
-    const [code, shelf, product, side, boardType, status, pcs, magSlot, id] = row;
+    const [code, shelf, product, side, boardType, status, pcs, magSlot, id, zoneKey] = row;
     const cells = [
         cellText(code),
         cellShelf(shelf),
@@ -26,11 +31,15 @@ function rowHtml(row) {
         cellText(magSlot),
     ];
     const colIds = ['code','shelf','product','side','boardType','status','pcs','magSlot'];
-    return `<tr class="aoi-row" data-id="${h(id)}" tabindex="0">${cells.map((c, i) => `<td class="aoi-td" data-col="${colIds[i]}" title="${h(row[i] ?? '')}">${c}</td>`).join('')}</tr>`;
+    const tds = cells.map((c, i) => `<td class="aoi-td" data-col="${colIds[i]}" title="${h(row[i] ?? '')}">${c}</td>`);
+    if (showZoneColumn()) {
+        tds.unshift(`<td class="aoi-td" data-col="zone" title="${h(zoneMetaJs(zoneKey).label)}">${cellText(zoneMetaJs(zoneKey).short || zoneKey)}</td>`);
+    }
+    return `<tr class="aoi-row" data-id="${h(id)}" tabindex="0">${tds.join('')}</tr>`;
 }
 
 function stateRowHtml(inner) {
-    return `<tr><td colspan="${COLUMNS.length}" class="px-4 py-16 text-center text-xs text-slate-500">${inner}</td></tr>`;
+    return `<tr><td colspan="${activeColumns().length}" class="px-4 py-16 text-center text-xs text-slate-500">${inner}</td></tr>`;
 }
 
 function hasActiveFilters() {
@@ -79,7 +88,7 @@ function bodyHtml() {
     if (view.rows.length === 0) {
         const subText = hasActiveFilters()
             ? MSG.emptyFiltered
-            : (state.sheet === 'ALL' ? MSG.emptyAllSheets : MSG.emptyNone);
+            : (isAllZonesJs(state.zone) ? MSG.emptyAllZones : (state.sheet === 'ALL' ? MSG.emptyAllSheets : MSG.emptyNone));
         return stateRowHtml(`
             <div class="flex flex-col items-center gap-1">
                 <span class="text-sm font-medium text-slate-700">${h(MSG.empty)}</span>
@@ -91,7 +100,7 @@ function bodyHtml() {
 
 function renderTable() {
     if (!tableWrapper) return;
-    const head = COLUMNS
+    const head = activeColumns()
         .map(c => `<th scope="col" class="aoi-th" data-col="${c.id}">${h(c.label)}</th>`)
         .join('');
     const hasRows = view.status === 'ready' && view.rows.length > 0;

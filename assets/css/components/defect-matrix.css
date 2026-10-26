@@ -6,8 +6,16 @@
    - Sticky first 2 left columns (Number Code, Shelf) on horizontal scroll
    - Equal-width narrow mono Defect columns + row/column hover highlighting
    ========================================================================== */
-#defect-matrix-wrapper:empty { min-height: 120px; }
-#defect-matrix-wrapper[aria-busy="true"] .dm-table-scroll[data-has-rows="1"] { opacity: .55; }
+#defect-matrix-wrapper:empty,
+.dm-zone-wrapper:empty { min-height: 120px; }
+#defect-matrix-wrapper[aria-busy="true"] .dm-table-scroll[data-has-rows="1"],
+.dm-zone-wrapper[aria-busy="true"] .dm-table-scroll[data-has-rows="1"] { opacity: .55; }
+
+/* All Zones view (?zone=ALL): one section per zone, stacked, each styled like the single-zone matrix */
+#defect-matrix-zones .dm-zone-section { scroll-margin-top: 5rem; }
+@media print {
+    #defect-matrix-zones .dm-zone-section { break-inside: avoid-page; }
+}
 
 .dm-table-scroll {
     max-height: clamp(280px, 48vh, 480px);
@@ -47,6 +55,7 @@
 .dm-th:last-child { border-right: 0; }
 .dm-th[data-col="code"]    { background-color: #1d4ed8; border-bottom-color: #1e3a8a; }
 .dm-th[data-col="shelf"]   { background-color: #0e7490; border-bottom-color: #164e63; }
+.dm-th[data-col="zone"]    { background-color: #047857; border-bottom-color: #065f46; }
 .dm-th[data-col="product"] { background-color: #4338ca; border-bottom-color: #312e81; }
 .dm-th[data-col="status"]  { background-color: #d97706; border-bottom-color: #78350f; }
 .dm-th[data-defect-code] {

@@ -1,0 +1,413 @@
+/* ==========================================================================
+   GLASS HYPERMODERN — final skin layer (loaded LAST on every page)
+   --------------------------------------------------------------------------
+   Idea     : light, airy "liquid glass" — frosted panels floating over a slow
+              aurora, hairline highlights, soft layered depth.
+   Motion   : ONE easing family, no overshoot / no bounce.
+                --gh-ease     expo-out  (enter, hover, lift)
+                --gh-ease-io  smooth in-out (ambient loops)
+   Effects  : aurora backdrop · cursor light · glass sheen on hover ·
+              staggered fade-rise reveal · gentle ring on the active table.
+   Rules    : colours keep their meaning (G / D / status colours untouched);
+              only surfaces, depth, motion and shape are re-skinned.
+              Everything honours prefers-reduced-motion / -transparency.
+   Edit here: change the tokens in :root and the whole site follows.
+   ========================================================================== */
+
+/* ---------- 1. Tokens ---------- */
+:root {
+    /* motion */
+    --gh-ease:     cubic-bezier(.22, 1, .36, 1);
+    --gh-ease-io:  cubic-bezier(.65, 0, .35, 1);
+    --gh-fast:     .18s;
+    --gh-base:     .45s;
+    --gh-slow:     .8s;
+
+    /* glass */
+    --gh-glass:        rgba(255, 255, 255, .56);
+    --gh-glass-hi:     rgba(255, 255, 255, .72);
+    --gh-glass-lo:     rgba(255, 255, 255, .38);
+    --gh-stroke:       rgba(255, 255, 255, .78);   /* bright top-lit edge */
+    --gh-edge:         rgba(100, 116, 139, .20);   /* cool outer hairline */
+    --gh-blur:         20px;
+    --gh-sat:          1.7;
+    --gh-radius:       18px;
+    --gh-radius-sm:    12px;
+
+    /* accents (emerald → cyan → indigo, matching the existing brand) */
+    --gh-a: 16, 185, 129;
+    --gh-b: 34, 211, 238;
+    --gh-c: 99, 102, 241;
+
+    /* depth */
+    --gh-shadow:
+        0 1px 0 rgba(255, 255, 255, .9) inset,
+        0 0 0 1px rgba(255, 255, 255, .25) inset,
+        0 18px 40px -22px rgba(15, 23, 42, .28),
+        0 4px 12px -6px rgba(15, 23, 42, .10);
+    --gh-shadow-hover:
+        0 1px 0 rgba(255, 255, 255, .95) inset,
+        0 0 0 1px rgba(255, 255, 255, .35) inset,
+        0 26px 50px -24px rgba(15, 23, 42, .34),
+        0 8px 18px -8px rgba(15, 23, 42, .14);
+
+    /* re-point the legacy tokens so older components inherit the new feel */
+    --ease-spring: var(--gh-ease);
+    --ease-out:    var(--gh-ease);
+    --win-radius:  var(--gh-radius);
+
+    --prog-ease-spring:        var(--gh-ease);
+    --prog-ease-out:           var(--gh-ease);
+    --prog-duration-motion:    280ms;
+    --prog-canvas:             transparent;
+    --prog-surface-glass:      var(--gh-glass);
+    --prog-surface-glass-hover: var(--gh-glass-hi);
+    --prog-border-glass:       var(--gh-stroke);
+    --prog-glass-blur:         var(--gh-blur);
+    --prog-glass-highlight:    inset 0 1px 0 rgba(255, 255, 255, .9);
+    --prog-radius-card:        var(--gh-radius);
+    --prog-shadow-l2:          0 18px 40px -22px rgba(15, 23, 42, .28), 0 4px 12px -6px rgba(15, 23, 42, .10);
+}
+
+@property --gh-ring { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+/* ---------- 2. Keyframes (all ease-out / in-out, nothing overshoots) ---------- */
+@keyframes gh-aurora {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(-2.5%, 2%, 0) scale(1.05); }
+    100% { transform: translate3d(2.5%, -2%, 0) scale(1.02); }
+}
+@keyframes gh-rise    { from { opacity: 0; transform: translate3d(0, 16px, 0); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes gh-drop    { from { opacity: 0; transform: translate3d(0, -12px, 0); } to { opacity: 1; transform: none; } }
+@keyframes gh-fade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gh-row     { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: none; } }
+@keyframes gh-cell    { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes gh-ring    { to { --gh-ring: 360deg; } }
+@keyframes gh-breathe { 0%, 100% { box-shadow: 0 6px 14px -6px rgba(var(--gh-a), .45), 0 0 0 0 rgba(var(--gh-a), .28); }
+                        50%      { box-shadow: 0 6px 14px -6px rgba(var(--gh-a), .45), 0 0 0 8px rgba(var(--gh-a), 0); } }
+@keyframes gh-pane    { from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); filter: blur(4px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes gh-veil    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gh-toast   { from { opacity: 0; transform: translate3d(18px, 0, 0); } to { opacity: 1; transform: none; } }
+
+/* ---------- 3. Canvas: aurora backdrop ---------- */
+html { background: #e8eff7 !important; scroll-behavior: smooth; }
+body { background: transparent !important; position: relative; }
+
+body::before {                         /* drifting colour field */
+    content: ""; position: fixed; inset: -18%; z-index: -2; pointer-events: none;
+    background:
+        radial-gradient(38% 44% at 16% 18%, rgba(var(--gh-a), .38), transparent 70%),
+        radial-gradient(34% 42% at 84% 12%, rgba(56, 189, 248, .38), transparent 70%),
+        radial-gradient(40% 46% at 74% 88%, rgba(var(--gh-c), .30), transparent 70%),
+        radial-gradient(34% 40% at 10% 84%, rgba(45, 212, 191, .28), transparent 70%),
+        radial-gradient(28% 30% at 50% 50%, rgba(255, 255, 255, .55), transparent 75%),
+        linear-gradient(180deg, #f3f7fc 0%, #e6eef7 100%);
+    animation: gh-aurora 42s var(--gh-ease-io) infinite alternate;
+    will-change: transform;
+}
+body::after {                          /* fine dot grid + cursor light */
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+        radial-gradient(520px circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, .55), transparent 70%),
+        radial-gradient(rgba(15, 23, 42, .07) 1px, transparent 1.3px) 0 0 / 22px 22px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, .35) 75%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, .35) 75%, transparent 100%);
+}
+
+::selection { background: rgba(var(--gh-a), .28); color: inherit; }
+
+/* ---------- 4. Header: floating glass bar ---------- */
+html body > header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .56)) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(var(--gh-sat));
+            backdrop-filter: blur(24px) saturate(var(--gh-sat));
+    border-bottom: 1px solid var(--gh-stroke) !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 10px 30px -18px rgba(15, 23, 42, .28) !important;
+    animation: gh-drop var(--gh-slow) var(--gh-ease) both;
+    transition: box-shadow var(--gh-base) var(--gh-ease), background var(--gh-base) var(--gh-ease);
+}
+html body > header::after {            /* living hairline under the bar */
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(var(--gh-a), .55), rgba(var(--gh-b), .55), rgba(var(--gh-c), .45), transparent);
+    opacity: .55; transition: opacity var(--gh-base) var(--gh-ease);
+}
+html body > header.is-scrolled { box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 16px 34px -16px rgba(15, 23, 42, .34) !important; }
+html body > header.is-scrolled::after { opacity: 1; }
+
+html body > header .border-l { border-color: rgba(100, 116, 139, .2) !important; }
+html body > header img[alt*="Logo"] { filter: drop-shadow(0 4px 8px rgba(var(--gh-a), .30)); transition: transform var(--gh-slow) var(--gh-ease); }
+html body > header img[alt*="Logo"]:hover { transform: rotate(-6deg) scale(1.05); }
+
+/* nav = glass segmented control */
+html body > header nav:not(#sheet-tabs) {
+    background: rgba(148, 163, 184, .16) !important;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08), 0 1px 0 rgba(255, 255, 255, .7);
+    border-radius: 12px !important;
+}
+html body > header nav:not(#sheet-tabs) a { border-radius: 9px !important; transition: background-color var(--gh-base) var(--gh-ease), color var(--gh-base) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease), transform var(--gh-base) var(--gh-ease) !important; }
+html body > header nav:not(#sheet-tabs) a:hover { transform: none; }
+html body > header nav:not(#sheet-tabs) a.bg-white {
+    background: linear-gradient(180deg, #fff, rgba(255, 255, 255, .82)) !important;
+    box-shadow: 0 6px 14px -6px rgba(var(--gh-a), .45), 0 1px 0 #fff inset, 0 0 0 1px rgba(var(--gh-a), .16) !important;
+    animation: gh-fade .6s var(--gh-ease) both !important;
+}
+
+/* zone / shelf strip under the header */
+html body > header #sheet-tabs {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .05)) !important;
+    border-top: 1px solid rgba(100, 116, 139, .14) !important;
+}
+html body > header #sheet-tabs .border-r { border-color: rgba(100, 116, 139, .2) !important; }
+html body > header #sheet-tabs select {
+    background-color: rgba(255, 255, 255, .66) !important;
+    border: 1px solid rgba(255, 255, 255, .9) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 0 #fff inset, 0 6px 14px -9px rgba(15, 23, 42, .35);
+}
+
+/* pills / badges in the header */
+html body > header #header-zone-badge { background: rgba(var(--gh-a), .10) !important; border-color: rgba(var(--gh-a), .30) !important; }
+
+/* ---------- 5. Glass surfaces (cards, panels, tables) ---------- */
+html body main > section.grid > div,
+html body main > #filters,
+html body main > div.bg-white,
+html body main > section#defect-matrix,
+html body main > section#rack-map,
+html body #prog-view-table-wrapper > div,
+html body #prog-stage-guide {
+    position: relative;
+    background: linear-gradient(180deg, var(--gh-glass-hi), var(--gh-glass)) !important;
+    -webkit-backdrop-filter: blur(var(--gh-blur)) saturate(var(--gh-sat));
+            backdrop-filter: blur(var(--gh-blur)) saturate(var(--gh-sat));
+    border: 1px solid var(--gh-stroke) !important;
+    border-top-width: 1px !important;
+    border-radius: var(--gh-radius) !important;
+    box-shadow: var(--gh-shadow) !important;
+    animation: gh-rise var(--gh-slow) var(--gh-ease) both;
+    transition: transform var(--gh-base) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease), background var(--gh-base) var(--gh-ease), border-color var(--gh-base) var(--gh-ease);
+}
+html body main > section#defect-matrix,
+html body main > section#rack-map { border-top: 1px solid var(--gh-stroke) !important; }
+
+/* cursor-following light inside every glass card */
+html body main > section.grid > div::after,
+html body main > #filters::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; z-index: 0;
+    background: radial-gradient(240px circle at var(--lx, 50%) var(--ly, 50%), rgba(255, 255, 255, .85), rgba(var(--gh-b), .10) 45%, transparent 70%);
+    transition: opacity var(--gh-base) var(--gh-ease);
+}
+html body main > section.grid > div:hover::after,
+html body main > #filters:hover::after { opacity: 1; }
+html body main > section.grid > div > * { position: relative; z-index: 1; }
+
+/* stagger the first paint */
+html body main > section.grid > div:nth-child(1) { animation-delay: .04s; }
+html body main > section.grid > div:nth-child(2) { animation-delay: .09s; }
+html body main > section.grid > div:nth-child(3) { animation-delay: .14s; }
+html body main > section.grid > div:nth-child(4) { animation-delay: .19s; }
+html body main > section.grid > div:nth-child(5) { animation-delay: .24s; }
+html body main > #filters, html body #prog-stage-guide { animation-delay: .28s; }
+html body main > div.bg-white, html body #prog-view-table-wrapper > div { animation-delay: .34s; }
+html body main > section#defect-matrix, html body main > section#rack-map { animation-delay: .1s; }
+
+/* KPI cards: calm lift, no tilt, no bounce */
+html body main > section.grid > div { padding: .7rem .95rem !important; }
+html body main > section.grid > div:hover { transform: translate3d(0, -3px, 0); box-shadow: var(--gh-shadow-hover) !important; }
+html body main > section.grid > div > div:last-child {
+    border-radius: 12px !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 6px 12px -6px rgba(15, 23, 42, .25);
+    transition: transform var(--gh-slow) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease) !important;
+}
+html body main > section.grid > div:hover > div:last-child { transform: scale(1.06) !important; box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 10px 18px -8px rgba(15, 23, 42, .3); }
+html body main > section.grid > div p.text-2xl { letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html body main > section.grid > div .bg-blue-600 { background-image: linear-gradient(90deg, rgb(var(--gh-c)), rgb(var(--gh-b))) !important; border-radius: 999px; }
+
+/* tinted icon chips become frosted */
+html body main > section.grid > div .bg-blue-50    { background: rgba(59, 130, 246, .12) !important; }
+html body main > section.grid > div .bg-emerald-50 { background: rgba(16, 185, 129, .13) !important; }
+html body main > section.grid > div .bg-red-50     { background: rgba(239, 68, 68, .11) !important; }
+html body main > section.grid > div .bg-amber-50   { background: rgba(245, 158, 11, .13) !important; }
+html body main > section.grid > div .bg-slate-100  { background: rgba(100, 116, 139, .13) !important; }
+
+/* the table card: slow, soft ring — present but never loud */
+html body main > div.bg-white::before, html body #prog-view-table-wrapper > div::before {
+    content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    border-radius: inherit; padding: 1.5px;
+    background: conic-gradient(from var(--gh-ring), transparent 0 70%, rgba(var(--gh-a), .85) 84%, rgba(var(--gh-c), .8) 95%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: gh-ring 16s linear infinite;
+    opacity: .55;
+}
+html body main > div.bg-white::before { animation-name: gh-ring; }
+
+/* ---------- 6. Section headings inside panels ---------- */
+html body main > section#defect-matrix > div:first-child,
+html body main > section#rack-map > div:first-child { border-bottom-width: 1px !important; border-color: rgba(100, 116, 139, .22) !important; }
+html body main > section#defect-matrix #defect-matrix-wrapper,
+html body main > section#defect-matrix #defect-matrix-legend,
+html body main > section#rack-map .bg-white {
+    background: rgba(255, 255, 255, .55) !important;
+    border-color: rgba(255, 255, 255, .8) !important;
+    border-radius: var(--gh-radius-sm) !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 8px 18px -12px rgba(15, 23, 42, .22) !important;
+}
+html body main > section#defect-matrix span.bg-white,
+html body main > section#rack-map span.bg-white { background: rgba(255, 255, 255, .7) !important; border-radius: 999px !important; }
+
+/* ---------- 7. Tables ---------- */
+.aoi-th {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, 0) 70%);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, .12);
+    letter-spacing: .06em;
+}
+.aoi-td { border-bottom: 1px solid rgba(100, 116, 139, .16) !important; border-right: 1px solid rgba(100, 116, 139, .10) !important; }
+.aoi-td:last-child { border-right: 0 !important; }
+.aoi-tbody tr:last-child .aoi-td { border-bottom: 0 !important; }
+html body #prog-view-table-wrapper .aoi-td { background-color: rgba(255, 255, 255, .34); }
+html body #prog-view-table-wrapper .prog-td-sticky-product,
+html body #prog-view-table-wrapper .prog-td-sticky-check { background-color: rgba(246, 250, 253, .92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+html body #prog-view-table-wrapper .aoi-row:hover .aoi-td { background-color: rgba(var(--gh-a), .08); }
+html body #prog-view-table-wrapper .aoi-row:hover .prog-td-sticky-product { background-color: rgba(238, 249, 245, .96); }
+html body #prog-view-table-wrapper .aoi-row.is-overdue .aoi-td { background-color: rgba(254, 226, 226, .38); }
+html body #prog-view-table-wrapper .aoi-row.is-overdue:hover .aoi-td { background-color: rgba(254, 202, 202, .55); }
+html body #prog-view-table-wrapper .aoi-row.is-selected .aoi-td { background-color: rgba(var(--gh-a), .14); }
+
+.aoi-tbody .aoi-row { transition: background-color var(--gh-fast) var(--gh-ease) !important; animation: gh-row .6s var(--gh-ease) both !important; }
+.aoi-tbody .aoi-row:hover { background-color: rgba(var(--gh-a), .07) !important; }
+.aoi-tbody .aoi-row:hover .aoi-td:first-child { box-shadow: inset 3px 0 0 rgb(var(--gh-a)) !important; }
+.aoi-tbody .aoi-row:focus-visible { outline: 2px solid rgba(var(--gh-a), .8) !important; background-color: rgba(var(--gh-a), .10) !important; }
+.aoi-td a:hover, .aoi-td button:hover { transform: translateY(-1px) scale(1.06) !important; }
+.aoi-row:hover td span.rounded-md, .aoi-row:hover td span.rounded-full { transform: none !important; }
+
+/* pagination footer */
+html body #pagination-footer { background: rgba(255, 255, 255, .42) !important; border-top: 1px solid rgba(100, 116, 139, .16) !important; }
+html body #pagination-footer button, html body .prog-page-btn { transition: background-color var(--gh-fast) var(--gh-ease), color var(--gh-fast) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease) !important; }
+html body #pagination-footer button.bg-emerald-600, html body .prog-page-btn.is-active {
+    background-image: linear-gradient(135deg, rgb(var(--gh-a)), #0d9488) !important;
+    box-shadow: 0 6px 14px -6px rgba(var(--gh-a), .6);
+}
+
+/* badges breathe lightly instead of popping */
+.aoi-td span.rounded-md, .aoi-td span.rounded-full { transition: transform var(--gh-base) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease) !important; }
+.badge-glow-good, .badge-glow-defect { box-shadow: 0 0 0 1px rgba(255, 255, 255, .6) inset; }
+
+/* ---------- 8. Buttons, inputs, selects ---------- */
+html body button, html body a.inline-flex, html body #filters a {
+    transition: transform var(--gh-base) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease), background-color var(--gh-fast) var(--gh-ease), border-color var(--gh-fast) var(--gh-ease), color var(--gh-fast) var(--gh-ease), opacity var(--gh-fast) ease;
+}
+html body button:hover:not(:disabled), html body a.inline-flex:hover { transform: translate3d(0, -1px, 0); }
+html body button:active:not(:disabled), html body a.inline-flex:active { transform: translate3d(0, 0, 0) scale(.985); transition-duration: .08s; }
+
+/* neutral buttons → frosted */
+html body > header a.bg-white, html body > header button.bg-white,
+html body main a.bg-white.inline-flex, html body main button.bg-white {
+    background: rgba(255, 255, 255, .62) !important;
+    border: 1px solid rgba(255, 255, 255, .85) !important;
+    box-shadow: 0 1px 0 #fff inset, 0 6px 14px -8px rgba(15, 23, 42, .3) !important;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+html body > header a.bg-white:hover, html body > header button.bg-white:hover { background: rgba(255, 255, 255, .92) !important; box-shadow: 0 1px 0 #fff inset, 0 10px 20px -10px rgba(15, 23, 42, .38) !important; }
+
+/* primary action: luminous emerald glass */
+html body .bg-emerald-600.text-white, html body button.bg-emerald-600 {
+    background-image: linear-gradient(135deg, rgb(var(--gh-a)) 0%, #0d9488 100%) !important;
+    background-color: #059669 !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 8px 18px -8px rgba(var(--gh-a), .7) !important;
+    position: relative; overflow: hidden;
+}
+html body .bg-emerald-600.text-white::after, html body button.bg-emerald-600::after {   /* slow sheen */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .38) 50%, transparent 70%);
+    transform: translateX(-120%); transition: transform .9s var(--gh-ease);
+}
+html body .bg-emerald-600.text-white:hover::after, html body button.bg-emerald-600:hover::after { transform: translateX(120%); }
+html body .bg-emerald-600.text-white:hover:not(:disabled), html body button.bg-emerald-600:hover:not(:disabled) { box-shadow: 0 1px 0 rgba(255, 255, 255, .4) inset, 0 14px 24px -10px rgba(var(--gh-a), .8) !important; }
+
+/* text fields & selects */
+html body #filters input[type="text"], html body #filters select,
+html body .gm-window .gm-input, html body .gm-window select, html body .gm-window textarea {
+    background-color: rgba(255, 255, 255, .6);
+    border-color: rgba(255, 255, 255, .85);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .06) inset, 0 1px 0 #fff;
+    transition: box-shadow var(--gh-base) var(--gh-ease), border-color var(--gh-base) var(--gh-ease), background-color var(--gh-base) var(--gh-ease), transform var(--gh-base) var(--gh-ease);
+}
+html body #filters input[type="text"]:focus { transform: none; box-shadow: 0 0 0 4px rgba(var(--gh-a), .16), 0 10px 22px -12px rgba(var(--gh-a), .55); background-color: #fff; }
+
+/* ---------- 9. Popups / modals ---------- */
+.gm-overlay {
+    background: radial-gradient(70% 70% at 50% 40%, rgba(30, 41, 59, .30), rgba(15, 23, 42, .55)) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(1.3); backdrop-filter: blur(10px) saturate(1.3);
+    animation: gh-veil .35s var(--gh-ease) both !important;
+}
+.gm-window { animation: gh-pane .55s var(--gh-ease) both !important; border-radius: 24px !important; }
+.gm-surface {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .70)) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(var(--gh-sat)); backdrop-filter: blur(28px) saturate(var(--gh-sat));
+    border: 1px solid rgba(255, 255, 255, .9) !important;
+    box-shadow: 0 1px 0 #fff inset, 0 40px 80px -30px rgba(15, 23, 42, .5), 0 12px 30px -14px rgba(15, 23, 42, .25) !important;
+}
+.gm-window.is-edit .gm-surface, .gm-window.is-danger .gm-surface { background: linear-gradient(180deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .70)) !important; }
+.gm-head { background: linear-gradient(180deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, .2)) !important; border-bottom: 1px solid rgba(100, 116, 139, .14) !important; }
+.gm-badge { box-shadow: 0 1px 0 rgba(255, 255, 255, .45) inset, 0 10px 18px -8px rgba(var(--gm-a), .7) !important; }
+.gm-close:hover { transform: rotate(90deg) !important; }
+.gm-close:active { transform: rotate(90deg) scale(.94) !important; }
+.gm-overlay.gm-closing { animation: gh-veil .22s var(--gh-ease) reverse both !important; }
+.gm-overlay.gm-closing .gm-window, .gm-overlay.gm-closing .gm-stage { animation: gh-pane .22s var(--gh-ease) reverse both !important; }
+
+/* topology manager + admin sign-in share the glass popup base */
+#topology-manager .gm-surface, .tm-window { border-radius: inherit; }
+
+/* ---------- 10. Toasts / flash ---------- */
+#flash-container > div, main > div.rounded-md, .prog-toast {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .88), rgba(255, 255, 255, .72)) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(var(--gh-sat)); backdrop-filter: blur(18px) saturate(var(--gh-sat));
+    border: 1px solid rgba(255, 255, 255, .9) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 0 #fff inset, 0 18px 36px -16px rgba(15, 23, 42, .4) !important;
+    animation: gh-toast .55s var(--gh-ease) both !important;
+}
+
+/* ---------- 11. Rack map cells ---------- */
+html body main > section#rack-map .grid > a, html body main > section#rack-map .grid > div {
+    border-radius: 10px; animation: gh-cell .5s var(--gh-ease) both;
+}
+html body main > section#rack-map .grid > a { transition: transform var(--gh-base) var(--gh-ease), box-shadow var(--gh-base) var(--gh-ease) !important; }
+html body main > section#rack-map .grid > a:hover { transform: translate3d(0, -2px, 0) scale(1.06) !important; box-shadow: 0 12px 20px -10px rgba(15, 23, 42, .4) !important; }
+
+/* ---------- 12. Scrollbars ---------- */
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .35); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, .55); background-clip: padding-box; border: 2px solid transparent; }
+* { scrollbar-width: thin; scrollbar-color: rgba(100, 116, 139, .4) transparent; }
+
+/* ---------- 13. Focus ---------- */
+:focus-visible { outline: 2px solid rgba(var(--gh-a), .75); outline-offset: 2px; border-radius: 8px; }
+
+/* ---------- 14. Fallbacks ---------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    html body main > section.grid > div, html body main > #filters, html body main > div.bg-white,
+    html body main > section#defect-matrix, html body main > section#rack-map,
+    html body #prog-view-table-wrapper > div, html body #prog-stage-guide, .gm-surface { background: rgba(255, 255, 255, .94) !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+    html body main > section.grid > div, html body main > #filters, html body main > div.bg-white,
+    html body main > section#defect-matrix, html body main > section#rack-map,
+    html body #prog-view-table-wrapper > div, html body #prog-stage-guide, html body > header {
+        -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(255, 255, 255, .95) !important;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    body::before, html body main > div.bg-white::before, html body #prog-view-table-wrapper > div::before { animation: none !important; }
+    *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
+}
+@media (max-width: 768px) {            /* lighter blur = smoother on phones */
+    :root { --gh-blur: 14px; --gh-radius: 16px; }
+    body::before { animation-duration: 70s; }
+}
+@media print {
+    html, body { background: #fff !important; }
+    body::before, body::after { display: none !important; }
+    * { animation: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+}

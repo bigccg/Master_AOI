@@ -7,17 +7,21 @@ function syncShelfViewMode() {
     const hasSheets   = zoneHasSheetsJs(state.zone);
     const isAllSheets = state.sheet === 'ALL';
 
+    const allZones      = isAllZonesJs(state.zone);
     const rackSection   = document.getElementById('rack-map');
     const matrixSection = document.getElementById('defect-matrix');
+    const zonesSection  = document.getElementById('defect-matrix-zones');
 
     if (rackSection)   rackSection.classList.toggle('hidden', !hasSheets || isAllSheets);
+    // Defect Matrix: shown for both single zone and All Zones when All Sheets is selected
     if (matrixSection) matrixSection.classList.toggle('hidden', !hasSheets || !isAllSheets);
+    if (zonesSection)  zonesSection.classList.add('hidden');
     if (hasSheets && isAllSheets) requestAnimationFrame(syncMatrixStickyOffsets);
 
     // Update Defect Matrix header title with current zone
     const matrixTitle = document.getElementById('defect-matrix-title');
     if (matrixTitle) {
-        matrixTitle.textContent = `Defect Matrix: All Size Magazines — โซน ${state.zone} (ตารางข้อบกพร่องทุก Shelf ในโซน)`;
+        matrixTitle.textContent = matrixTitleText(state.zone);
     }
 
     // Update header zone badge
@@ -49,6 +53,15 @@ function renderZoneTabs(zone = state.zone, activeSheet = state.sheet, tabCounts 
     if (allKeys.length === 0) {
         sel.disabled = true;
         sel.innerHTML = '<option value="ALL" id="tab-ALL">ไม่มี Shelf ในโซนนี้ / No shelves</option>';
+        sel.value = 'ALL';
+        return;
+    }
+
+    // All Zones: shelves belong to different zones, so there is no shelf to pick; the view is All Size Magazine of every zone
+    if (isAllZonesJs(zone)) {
+        sel.disabled = true;
+        const total = tabCounts.ALL ?? currentSheetData?.tab_counts?.ALL ?? 0;
+        sel.innerHTML = `<option value="ALL" id="tab-ALL" selected>ทุกขนาด (All Size Magazine) (${total})</option>`;
         sel.value = 'ALL';
         return;
     }
@@ -87,6 +100,10 @@ window.renderSheetSelect = renderZoneTabs;
 function renderSheetTabNotes(zone = state.zone, activeSheet = state.sheet, tabCounts = {}) {
     const box = document.getElementById('sheet-tabs-notes');
     if (!box) return;
+    if (isAllZonesJs(zone)) {   // All Zones: no per-zone / per-shelf notes
+        box.innerHTML = '';
+        return;
+    }
     const pill = (icon, text, title, extra = '') => `
         <span role="status" title="${h(title)}" class="px-3 py-1 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
           <i class="fa-solid ${icon}" aria-hidden="true"></i><span>${h(text)}</span>${extra}
@@ -114,7 +131,8 @@ function renderZoneSelect() {
     const sel = document.getElementById('zone-select');
     if (!sel) return;
     const t = topo();
-    sel.innerHTML = t.zoneOrder
+    const allZonesOpt = `<option value="${ALL_ZONES_KEY}"${isAllZonesJs(state.zone) ? ' selected' : ''}>${h(zoneOptionLabelJs(ALL_ZONES_KEY))}</option>`;
+    sel.innerHTML = allZonesOpt + t.zoneOrder
         .filter(k => t.zones[k].active || k === state.zone)
         .map(k => `<option value="${h(k)}"${k === state.zone ? ' selected' : ''}>${h(zoneOptionLabelJs(k))}</option>`)
         .join('');
@@ -125,6 +143,10 @@ window.renderZoneSelect = renderZoneSelect;
 function renderTabCounts(tabCounts) {
     const sel = document.getElementById('sheet-select');
     if (!sel) return;
+    if (isAllZonesJs(state.zone)) {
+        renderZoneTabs(state.zone, 'ALL', tabCounts || {});
+        return;
+    }
     const allKeys   = getZoneSheetKeysJs(state.zone, true);
     const sheetKeys = getZoneSheetKeysJs(state.zone);
     if (allKeys.length === 0) {

@@ -11,24 +11,31 @@ require_once __DIR__ . '/../config/database.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$zone              = normalizeZone(qs('zone', DEFAULT_ZONE));
-$currentZoneSheets = zoneSheets($zone);              // enabled sheets = the sheet tabs
-$zoneSheetKeys     = array_keys(zoneSheets($zone, true));   // + disabled ones: their records still count and open
+$zone              = normalizeZoneView(qs('zone', DEFAULT_ZONE));   // ALL = the "All Zones" view
+$isAllZones        = isAllZones($zone);
+$pdo               = db();
+$allZonesKpi       = $isAllZones ? allZonesKpi($pdo) : null;
+if ($isAllZones) {
+    $currentZoneSheets = [];
+    $zoneSheetKeys     = $allZonesKpi['sheetKeys'];
+} else {
+    $currentZoneSheets = zoneSheets($zone);              // enabled sheets = the sheet tabs
+    $zoneSheetKeys     = array_keys(zoneSheets($zone, true));   // + disabled ones: their records still count and open
+}
 $hasZoneSheets     = !empty($zoneSheetKeys);
 
 // Validate sheet within the selected zone; if not in zone (or deleted), fallback to 'ALL' of that zone
-$sheet       = resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
+$sheet       = $isAllZones ? 'ALL' : resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
 $isAllSheets = ($sheet === 'ALL');
-$modalSheet  = $isAllSheets ? defaultSheetForZone($zone) : $sheet;
+$modalSheet  = $isAllZones ? '' : ($isAllSheets ? defaultSheetForZone($zone) : $sheet);   // All Zones: no rack, nothing to add to
 
-$pdo = db();
 $sp  = $isAllSheets ? 'ALL' : ($sheet !== '' ? shelfPrefix($sheet) : '');
 
 // ──────────────────────────────────────────────
 // Tab counts (scoped strictly to the selected Zone): every sheet incl. disabled ones, + ALL
 // ──────────────────────────────────────────────
 $tabCounts = array_fill_keys($zoneSheetKeys, 0);
-if ($hasZoneSheets) {
+if ($hasZoneSheets && !$isAllZones) {
     $tcSt = $pdo->prepare('SELECT sheet, COUNT(*) c FROM boards WHERE zone = ? GROUP BY sheet');
     $tcSt->execute([$zone]);
     foreach ($tcSt as $r) {
@@ -37,7 +44,7 @@ if ($hasZoneSheets) {
         }
     }
 }
-$tabCounts['ALL'] = array_sum($tabCounts);
+$tabCounts['ALL'] = $isAllZones ? $allZonesKpi['total'] : array_sum($tabCounts);
 
 // Build zone_sheets array for dynamic tab rendering on the frontend
 $zoneSheetsList = [];
@@ -63,6 +70,16 @@ if (!$hasZoneSheets) {
     $util           = 0;
     $maxShelf       = 0;
     $shelfRangeText = 'ยังไม่มีชีตในโซนนี้ / No sheets in this zone';
+} elseif ($isAllZones) {
+    $cnt            = $allZonesKpi['cnt'];
+    $total          = $allZonesKpi['total'];
+    $pctG           = $allZonesKpi['pctG'];
+    $magCount       = $allZonesKpi['magCount'];
+    $capacity       = $allZonesKpi['capacity'];
+    $usedShelves    = $allZonesKpi['usedShelves'];
+    $util           = $allZonesKpi['util'];
+    $maxShelf       = $allZonesKpi['maxShelf'];
+    $shelfRangeText = $allZonesKpi['shelfRangeText'];
 } elseif ($isAllSheets) {
     $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE zone = ? GROUP BY status');
     $st->execute([$zone]);
@@ -220,6 +237,7 @@ echo json_encode([
     'data' => [
         'zone'         => $zone,
         'zone_label'   => zoneLabel($zone),
+        'all_zones'    => $isAllZones,
         'has_sheets'   => $hasZoneSheets,
         'zone_sheets'  => $zoneSheetsList,
         'sheet'        => $sheet,
@@ -237,6 +255,7 @@ echo json_encode([
             'shelf_range' => $shelfRangeText,
         ],
         'tab_counts' => $tabCounts,
+        'zone_counts' => $isAllZones ? $allZonesKpi['zoneCounts'] : (object)[],
         'rack' => [
             'mag_count'    => $modalMagCount,
             'is_max'       => $isMax,

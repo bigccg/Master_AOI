@@ -7,6 +7,10 @@ const EMPTY_TOPOLOGY = { defaultZone: '', zoneOrder: [], zones: {}, sheets: {} }
 const topo = () => window.TOPOLOGY || EMPTY_TOPOLOGY;
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
+// "ทุกโซน / All Zones": a view-only pseudo zone (?zone=ALL), same value as ALL_ZONES in config/database.php
+const ALL_ZONES_KEY = 'ALL';
+const isAllZonesJs = (z) => z === ALL_ZONES_KEY;
+
 const state = {
     zone: topo().defaultZone,
     sheet: 'ALL',
@@ -24,6 +28,8 @@ const state = {
 
 const view = { status: 'loading', rows: [], total: 0 };
 const matrixView = { status: 'loading', rows: [], total: 0 };
+// All Zones view: one matrix per zone ([{ zone, label, total, data: rows }], zone order)
+const matrixZonesView = { status: 'loading', groups: [] };
 
 let tableWrapper  = null;
 let pagerFooter   = null;
@@ -38,11 +44,26 @@ function defaultZoneJs() {
 
 function normalizeZoneJs(z) {
     const key = String(z || '').trim();
+    if (isAllZonesJs(key)) return key;
     return hasOwn(topo().zones, key) ? key : defaultZoneJs();
+}
+
+// Zones listed by the All Zones view, in zone order: enabled zones that have at least one sheet (same as allZonesWithSheets() in PHP)
+function allZonesWithSheetsJs() {
+    const t = topo();
+    return t.zoneOrder.filter(k => t.zones[k] && t.zones[k].active && t.zones[k].sheets.length > 0);
 }
 
 function zoneMetaJs(z) {
     const key = normalizeZoneJs(z);
+    if (isAllZonesJs(key)) {
+        const t = topo();
+        const zones = allZonesWithSheetsJs();
+        return {
+            label: 'ทุกโซน / All Zones', short: 'All Zones', active: true,
+            sheets: zones.flatMap(k => t.zones[k].sheets),
+        };
+    }
     return topo().zones[key] || { label: key, short: key, active: false, sheets: [] };
 }
 
@@ -65,12 +86,13 @@ function defaultSheetForZoneJs(z = state.zone) {
 }
 
 function resolveSheetInZoneJs(z, sh) {
-    if (!sh || sh === 'ALL') return 'ALL';
+    if (!sh || sh === 'ALL' || isAllZonesJs(z)) return 'ALL';
     return getZoneSheetKeysJs(z, true).includes(sh) ? sh : 'ALL';
 }
 
 // Same order and messages as insertBlockedReason() in PHP; '' = a new record may be added
 function insertBlockedReasonJs(z = state.zone, sh = state.sheet) {
+    if (isAllZonesJs(z)) return ALL_ZONES_INSERT_MSG;
     const zone = zoneMetaJs(z);
     if (getZoneSheetKeysJs(z, true).length === 0) return EMPTY_ZONE_INSERT_MSG;
     if (!zone.active) return INACTIVE_ZONE_INSERT_MSG;
@@ -82,6 +104,7 @@ function insertBlockedReasonJs(z = state.zone, sh = state.sheet) {
 
 // Zone selector text, same as zoneOptionLabel() in PHP
 function zoneOptionLabelJs(z) {
+    if (isAllZonesJs(z)) return `ทุกโซน / All Zones (${allZonesWithSheetsJs().length} โซน)`;
     const zone = topo().zones[z];
     if (!zone) return String(z);
     const enabled = getZoneSheetKeysJs(z).length;

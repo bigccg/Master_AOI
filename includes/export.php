@@ -10,8 +10,13 @@ declare(strict_types=1);
 // ──────────────────────────────────────────────
 
 if (isset($_GET['export'])) {
-    $where  = ['zone = :zone'];
-    $params = [':zone' => $zone];
+    if ($isAllZones) {
+        [$zoneSql, $params] = zoneInClause($viewZones);   // every zone of the All Zones view
+        $where = [$zoneSql];
+    } else {
+        $where  = ['zone = :zone'];
+        $params = [':zone' => $zone];
+    }
 
     if (!$hasZoneSheets) {
         $where[] = '1 = 0';
@@ -58,10 +63,14 @@ if (isset($_GET['export'])) {
     header('Content-Disposition: attachment; filename="aoi_' . $zone . '_' . $sheet . '_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF"); // BOM for Thai Excel
-    fputcsv($out, ['Number Code', 'Shelf', 'Product Model', 'Side', 'Board Type', 'Status', 'PCS P/D', 'Magazine / Slot', 'Created At']);
+    $csvHead = ['Number Code', 'Shelf', 'Product Model', 'Side', 'Board Type', 'Status', 'PCS P/D', 'Magazine / Slot', 'Created At'];
+    if ($isAllZones) {
+        array_unshift($csvHead, 'Zone');   // rows of several zones: say which one each belongs to
+    }
+    fputcsv($out, $csvHead);
     while ($r = $st->fetch()) {
         $magSlotText = magazineSlotDisplay($r);
-        fputcsv($out, [
+        $csvRow = [
             $r['code'],
             $r['shelf'],
             $r['product'],
@@ -71,7 +80,11 @@ if (isset($_GET['export'])) {
             $r['pcs_status'],
             $magSlotText,
             $r['created_at'],
-        ]);
+        ];
+        if ($isAllZones) {
+            array_unshift($csvRow, $r['zone']);
+        }
+        fputcsv($out, $csvRow);
     }
     fclose($out);
     exit;

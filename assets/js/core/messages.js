@@ -10,11 +10,15 @@ const INACTIVE_ZONE_INSERT_MSG = 'ไม่สามารถเพิ่มข�
 const NO_ACTIVE_SHEET_INSERT_MSG = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจาก Shelf ทั้งหมดในโซนนี้ถูกปิดใช้งาน กรุณาสลับไปโซนที่มี Shelf เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งาน Shelf / Cannot add a record because every shelf in this zone is disabled. Switch to a zone with an active shelf, or ask an administrator to enable one.';
 const INACTIVE_SHEET_INSERT_MSG = 'ไม่สามารถเพิ่มข้อมูลใน Shelf นี้ได้ เนื่องจาก Shelf ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ตามปกติ กรุณาเลือก Shelf อื่นที่เปิดใช้งานจากแท็บด้านบน / Cannot add a record to this shelf because an administrator disabled it. Existing records can still be viewed, edited and exported. Please pick an active shelf tab above.';
 
+// Same text as ALL_ZONES_INSERT_ERROR in config/database.php
+const ALL_ZONES_INSERT_MSG = 'ไม่สามารถเพิ่มข้อมูลในมุมมองทุกโซนได้ เนื่องจากต้องระบุโซนและ Shelf ปลายทาง กรุณาเลือกโซนและ Shelf ด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Zones because a target zone and shelf are required. Please select a zone and a shelf first.';
+
 const MSG = {
     loading:             'กำลังโหลดข้อมูล... / Loading data...',
     empty:               'ไม่พบข้อมูลบอร์ด / No Board Records Found',
     emptyFiltered:       'ไม่พบบอร์ดที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก กรุณาเปลี่ยนคำค้นหาหรือกดปุ่มล้างตัวกรอง / No boards match the active search or filters. Try another keyword or clear filters.',
     emptyNone:           'ยังไม่มีข้อมูลบอร์ดใน Shelf นี้ กดปุ่ม "+ เพิ่มบอร์ด / Add Board" ด้านบนเพื่อบันทึกรายการแรก / No boards recorded in this shelf yet. Click "+ Add Board" above to create the first record.',
+    emptyAllZones:       'ยังไม่มีข้อมูลบอร์ดในทุกโซน กรุณาเลือกโซนและ Shelf ด้านบนแล้วกด "+ เพิ่มบอร์ด / Add Board" เพื่อเริ่มบันทึก / No boards recorded in any zone yet. Select a zone and a shelf above and click "+ Add Board".',
     emptyAllSheets:      'ยังไม่มีข้อมูลบอร์ดในโซนนี้ กรุณาเลือกแท็บ Shelf ด้านบนแล้วกด "+ เพิ่มบอร์ด / Add Board" เพื่อเริ่มบันทึก / No boards recorded in this zone yet. Select a shelf tab above and click "+ Add Board".',
     emptyZoneTitle:      (zone) => `โซน ${zone} ยังไม่มี Shelf ในระบบ / No Shelves Configured in ${zone} Zone`,
     emptyZoneDesc:       (zone, defaultLabel, defaultShort) => `ยังไม่สามารถดูตารางหรือเพิ่มข้อมูลบอร์ดในโซน ${zone} ได้ เนื่องจากยังไม่ได้ตั้งค่ารายการ Shelf และชั้นวางสำหรับโซนนี้ กรุณาสลับไปโซน "${defaultLabel}" เพื่อใช้งาน / Cannot view or add records in ${zone} because no shelves are configured for this zone yet. Switch to "${defaultShort}" to continue.`,

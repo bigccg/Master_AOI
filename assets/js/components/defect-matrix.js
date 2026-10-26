@@ -28,7 +28,17 @@ function buildMatrixApiUrl() {
 }
 
 function setMatrixBusy(on) {
-    matrixWrapper?.setAttribute('aria-busy', on ? 'true' : 'false');
+    const v = on ? 'true' : 'false';
+    matrixWrapper?.setAttribute('aria-busy', v);
+    document.querySelectorAll('#defect-matrix-zones [data-dm-wrapper]').forEach(w => w.setAttribute('aria-busy', v));
+}
+
+// Section / zone heading, same text for the single-zone matrix and for every zone of the All Zones view
+function matrixTitleText(zoneKey) {
+    if (isAllZonesJs(zoneKey)) {
+        return 'Defect Matrix: All Size Magazines — รวมทุกโซน (ตารางข้อบกพร่องทุก Shelf ทุกโซน)';
+    }
+    return `Defect Matrix: All Size Magazines — โซน ${zoneKey} (ตารางข้อบกพร่องทุก Shelf ในโซน)`;
 }
 
 async function loadDefectMatrix() {
@@ -37,6 +47,7 @@ async function loadDefectMatrix() {
         matrixInflight?.abort();
         return;
     }
+    const view = matrixView;
 
     const seq = ++matrixReqSeq;
     matrixInflight?.abort();
@@ -83,23 +94,19 @@ async function loadDefectMatrix() {
 }
 window.loadDefectMatrix = loadDefectMatrix;
 
-function renderDefectMatrix() {
-    if (!matrixWrapper) {
-        matrixWrapper = document.getElementById('defect-matrix-wrapper');
-    }
-    if (!matrixWrapper) return;
-
+/**
+ * The scrolling matrix table for one set of rows (loading / error / empty / ready), shared by the single-zone matrix
+ * and by every zone section of the All Zones view.
+ */
+function matrixTableHtml(status, rows) {
     const defectEntries = getDefectEntries();
-    const totalCols = 4 + defectEntries.length + 1; // Code, Shelf, Product, G+D + 13 defects + Other
-
-    const counterEl = document.getElementById('defect-matrix-counter');
-    if (counterEl && matrixView.status === 'ready') {
-        counterEl.textContent = `${matrixView.rows.length} rows`;
-    }
+    const isAllZones = isAllZonesJs(state.zone);
+    const totalCols = (isAllZones ? 5 : 4) + defectEntries.length + 1; // Code, Shelf, (Zone), Product, G+D + 13 defects + Other
 
     const headHtml = [
         `<th scope="col" class="dm-th dm-sticky-col-1" data-col="code" title="Number Code">Number Code</th>`,
         `<th scope="col" class="dm-th dm-sticky-col-2" data-col="shelf" title="Shelf">Shelf</th>`,
+        ...(isAllZones ? [`<th scope="col" class="dm-th" data-col="zone" title="Zone">Zone</th>`] : []),
         `<th scope="col" class="dm-th" data-col="product" title="Product Model">Product Model</th>`,
         `<th scope="col" class="dm-th" data-col="status" title="Board Classification (G+D)">G+D</th>`,
         ...defectEntries.map(([code, label]) =>
@@ -112,7 +119,7 @@ function renderDefectMatrix() {
     defectEntries.forEach(([code]) => { counts[code] = 0; });
 
     let tbodyInner = '';
-    if (matrixView.status === 'loading') {
+    if (status === 'loading') {
         tbodyInner = `<tr><td colspan="${totalCols}" class="px-4 py-14 text-center text-xs text-slate-500">
             <div class="flex flex-col items-center gap-2" role="status">
                 <svg class="h-5 w-5 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -122,7 +129,7 @@ function renderDefectMatrix() {
                 <span>${h(MSG.loading)}</span>
             </div>
         </td></tr>`;
-    } else if (matrixView.status === 'error') {
+    } else if (status === 'error') {
         tbodyInner = `<tr><td colspan="${totalCols}" class="px-4 py-14 text-center text-xs text-slate-500">
             <div class="flex flex-col items-center gap-2" role="alert">
                 <span class="text-sm font-medium text-red-700">${h(MSG.error)}</span>
@@ -133,7 +140,7 @@ function renderDefectMatrix() {
                 </button>
             </div>
         </td></tr>`;
-    } else if (matrixView.rows.length === 0) {
+    } else if (rows.length === 0) {
         const subMsg = state.status === 'G'
             ? MSG.matrixEmptyStatusG
             : (hasActiveFilters() ? MSG.matrixEmptyFiltered : MSG.matrixEmptyNone);
@@ -144,7 +151,7 @@ function renderDefectMatrix() {
             </div>
         </td></tr>`;
     } else {
-        tbodyInner = matrixView.rows.map(r => {
+        tbodyInner = rows.map(r => {
             const codeSet = new Set((Array.isArray(r.defects) ? r.defects : []).map(Number));
             const otherText = String(r.other_text ?? '').trim();
             const hasOther = Boolean(r.other || otherText !== '');
@@ -180,9 +187,14 @@ function renderDefectMatrix() {
                     `</td>`;
             }
 
+            const zoneCell = isAllZones
+                ? `<td class="dm-td" data-col="zone" title="${h(zoneMetaJs(r.zone).label)}"><span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">${h(zoneMetaJs(r.zone).short || r.zone)}</span></td>`
+                : '';
+
             return `<tr class="dm-row" data-id="${h(r.id)}" data-defects="${h(rowDefectKeys.join(','))}" tabindex="0">` +
                 `<td class="dm-td dm-sticky-col-1" data-col="code" title="${h(r.code)}">${cellText(r.code)}</td>` +
-                `<td class="dm-td dm-sticky-col-2" data-col="shelf" title="${h(r.shelf)}">${cellShelf(r.shelf)}</td>` +
+                `<td class="dm-td dm-sticky-col-2" data-col="shelf" title="${h(r.shelf)}${isAllZones ? ` (${r.zone})` : ''}">${cellShelf(r.shelf)}</td>` +
+                zoneCell +
                 `<td class="dm-td" data-col="product" title="${h(r.product)}">${cellText(r.product)}</td>` +
                 `<td class="dm-td" data-col="status" title="${h(r.status === 'GD' ? 'G+D' : r.status)}">${cellStatus(r.status)}</td>` +
                 defectCells +
@@ -198,8 +210,8 @@ function renderDefectMatrix() {
     const cOther = counts.OTHER || 0;
     const tfootOtherCell = `<td class="dm-tfoot-td font-mono ${cOther > 0 ? 'is-nonzero' : 'is-zero'}" data-col="defect-other" data-defect-code="OTHER" title="${h(`Other: ${cOther}`)}">${cOther}</td>`;
 
-    const hasRows = matrixView.status === 'ready' && matrixView.rows.length > 0;
-    matrixWrapper.innerHTML = `
+    const hasRows = status === 'ready' && rows.length > 0;
+    return `
         <div class="dm-table-scroll" data-has-rows="${hasRows ? '1' : '0'}">
             <table class="dm-table">
                 <caption class="sr-only">Defect Matrix All Sheets</caption>
@@ -208,7 +220,8 @@ function renderDefectMatrix() {
                 <tfoot>
                     <tr>
                         <td class="dm-tfoot-td dm-sticky-col-1 font-mono text-slate-800" title="Total (รวมจำนวนบอร์ด)">Total</td>
-                        <td class="dm-tfoot-td dm-sticky-col-2 font-mono text-blue-700">${matrixView.rows.length}</td>
+                        <td class="dm-tfoot-td dm-sticky-col-2 font-mono text-blue-700">${rows.length}</td>
+                        ${isAllZones ? '<td class="dm-tfoot-td text-center text-[11px] text-slate-400 font-mono">-</td>' : ''}
                         <td class="dm-tfoot-td text-right pr-2 text-[11px] font-semibold text-slate-600" title="รวมจำนวนบอร์ดต่อรหัส Defect">รวม Defect:</td>
                         <td class="dm-tfoot-td text-center text-[11px] font-semibold text-slate-500">-</td>
                         ${tfootDefectCells}
@@ -217,40 +230,74 @@ function renderDefectMatrix() {
                 </tfoot>
             </table>
         </div>`;
+}
 
+function renderDefectMatrix() {
+    if (!matrixWrapper) {
+        matrixWrapper = document.getElementById('defect-matrix-wrapper');
+    }
+    if (!matrixWrapper) return;
+
+    const counterEl = document.getElementById('defect-matrix-counter');
+    if (counterEl && matrixView.status === 'ready') {
+        counterEl.textContent = `${matrixView.rows.length} rows`;
+    }
+
+    const titleEl = document.getElementById('defect-matrix-title');
+    if (titleEl) {
+        titleEl.textContent = matrixTitleText(state.zone);
+    }
+
+    matrixWrapper.innerHTML = matrixTableHtml(matrixView.status, matrixView.rows);
     syncMatrixStickyOffsets();
 }
 
+function renderDefectMatrixZones() {
+    renderDefectMatrix();
+}
+
 function syncMatrixStickyOffsets() {
-    if (!matrixWrapper) return;
-    const table = matrixWrapper.querySelector('.dm-table');
-    const col1Th = matrixWrapper.querySelector('thead .dm-sticky-col-1');
-    if (table && col1Th) {
-        const w = col1Th.getBoundingClientRect().width;
-        if (w > 0) {
-            table.style.setProperty('--dm-col1-w', `${Math.round(w)}px`);
+    document.querySelectorAll('[data-dm-wrapper]').forEach(wrap => {
+        const table = wrap.querySelector('.dm-table');
+        const col1Th = wrap.querySelector('thead .dm-sticky-col-1');
+        if (table && col1Th) {
+            const w = col1Th.getBoundingClientRect().width;
+            if (w > 0) {
+                table.style.setProperty('--dm-col1-w', `${Math.round(w)}px`);
+            }
         }
-    }
+    });
 }
 window.addEventListener('resize', syncMatrixStickyOffsets);
 
-function clearMatrixHighlights() {
-    if (!matrixWrapper) return;
-    matrixWrapper.querySelectorAll('.is-col-active, .is-col-cursor').forEach(el => {
+// Every matrix wrapper inside a listener root: the single #defect-matrix-wrapper, or each zone of #defect-matrix-zones
+function matrixWrappersIn(root) {
+    if (root.matches?.('[data-dm-wrapper]')) return [root];
+    return Array.from(root.querySelectorAll('[data-dm-wrapper]'));
+}
+
+// Legend chips that belong to a wrapper: the same section's legend
+function matrixLegendOf(wrap) {
+    return wrap.closest('section')?.querySelector('.dm-legend') ?? null;
+}
+
+function clearMatrixHighlights(wrap) {
+    if (!wrap) return;
+    wrap.querySelectorAll('.is-col-active, .is-col-cursor').forEach(el => {
         el.classList.remove('is-col-active', 'is-col-cursor');
     });
-    document.querySelectorAll('#defect-matrix-legend .dm-legend-item.is-legend-active').forEach(el => {
+    matrixLegendOf(wrap)?.querySelectorAll('.dm-legend-item.is-legend-active').forEach(el => {
         el.classList.remove('is-legend-active');
     });
 }
 
-function highlightMatrixRowAndCol(tr, td) {
-    if (!matrixWrapper) return;
+function highlightMatrixRowAndCol(wrap, tr, td) {
+    if (!wrap) return;
     const defectSet = new Set((tr?.dataset.defects || '').split(',').filter(Boolean));
     const cursorCol = td?.dataset.col || '';
     const cursorDefect = td?.dataset.defectCode || '';
 
-    matrixWrapper.querySelectorAll('thead .dm-th').forEach(th => {
+    wrap.querySelectorAll('thead .dm-th').forEach(th => {
         const dCode = th.dataset.defectCode || '';
         const isDefectMatch = Boolean(dCode && (defectSet.has(dCode) || dCode === cursorDefect));
         const isCursorMatch = Boolean(cursorCol && th.dataset.col === cursorCol);
@@ -258,20 +305,24 @@ function highlightMatrixRowAndCol(tr, td) {
         th.classList.toggle('is-col-cursor', isCursorMatch && !isDefectMatch);
     });
 
-    matrixWrapper.querySelectorAll('tfoot .dm-tfoot-td[data-defect-code]').forEach(ft => {
+    wrap.querySelectorAll('tfoot .dm-tfoot-td[data-defect-code]').forEach(ft => {
         const dCode = ft.dataset.defectCode || '';
         ft.classList.toggle('is-col-active', Boolean(dCode && (defectSet.has(dCode) || dCode === cursorDefect)));
     });
 
-    document.querySelectorAll('#defect-matrix-legend .dm-legend-item[data-legend-code]').forEach(chip => {
+    matrixLegendOf(wrap)?.querySelectorAll('.dm-legend-item[data-legend-code]').forEach(chip => {
         const lCode = chip.dataset.legendCode || '';
         chip.classList.toggle('is-legend-active', Boolean(lCode && (defectSet.has(lCode) || lCode === cursorDefect)));
     });
 }
 
-// Listeners: row click / keyboard opens Edit, Retry, row + column highlight
-function setupDefectMatrixEvents() {
-    matrixWrapper?.addEventListener('click', (e) => {
+// Listeners (one set per root, so a zone section built later by JS needs none of its own):
+// row click / keyboard opens Edit, Retry, row + column highlight
+function bindDefectMatrixRoot(root) {
+    if (!root) return;
+    const wrapOf = (el) => el.closest?.('[data-dm-wrapper]') ?? null;
+
+    root.addEventListener('click', (e) => {
         const retryBtn = e.target.closest('button[data-action="retry-matrix"]');
         if (retryBtn) {
             loadDefectMatrix();
@@ -284,7 +335,7 @@ function setupDefectMatrixEvents() {
         openEditModal(tr.dataset.id);
     });
 
-    matrixWrapper?.addEventListener('keydown', (e) => {
+    root.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         if (e.target.closest('button, a, input, select, textarea')) return;
         const tr = e.target.closest('tr.dm-row[data-id]');
@@ -294,28 +345,32 @@ function setupDefectMatrixEvents() {
         openEditModal(tr.dataset.id);
     });
 
-    matrixWrapper?.addEventListener('pointerover', (e) => {
+    root.addEventListener('pointerover', (e) => {
+        matrixWrappersIn(root).forEach(clearMatrixHighlights);
         const tr = e.target.closest('tr.dm-row[data-id]');
-        if (!tr) {
-            clearMatrixHighlights();
-            return;
-        }
+        if (!tr) return;
         const td = e.target.closest('td.dm-td');
-        highlightMatrixRowAndCol(tr, td);
+        highlightMatrixRowAndCol(wrapOf(tr), tr, td);
     });
 
-    matrixWrapper?.addEventListener('pointerleave', () => {
-        clearMatrixHighlights();
+    root.addEventListener('pointerleave', () => {
+        matrixWrappersIn(root).forEach(clearMatrixHighlights);
     });
 
-    matrixWrapper?.addEventListener('focusin', (e) => {
+    root.addEventListener('focusin', (e) => {
         const tr = e.target.closest('tr.dm-row[data-id]');
-        if (tr) highlightMatrixRowAndCol(tr, null);
+        if (tr) highlightMatrixRowAndCol(wrapOf(tr), tr, null);
     });
 
-    matrixWrapper?.addEventListener('focusout', (e) => {
-        if (!matrixWrapper.contains(e.relatedTarget)) {
-            clearMatrixHighlights();
+    root.addEventListener('focusout', (e) => {
+        const wrap = wrapOf(e.target);
+        if (wrap && !wrap.contains(e.relatedTarget)) {
+            clearMatrixHighlights(wrap);
         }
     });
+}
+
+function setupDefectMatrixEvents() {
+    bindDefectMatrixRoot(matrixWrapper);
+    bindDefectMatrixRoot(document.getElementById('defect-matrix-zones'));
 }

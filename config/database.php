@@ -35,6 +35,10 @@ const MAX_ALL_ROWS   = 5000;  // Hard safety cap when limit=all
 // Default + protected zone: links without a valid ?zone= open it, and it can never be disabled or deleted.
 const DEFAULT_ZONE   = 'General';
 
+// View-only pseudo zone "ทุกโซน / All Zones": ?zone=ALL lists every enabled zone that has shelves.
+// It is never stored in boards.zone and never accepted by normalizeZone() (saving always needs a real zone).
+const ALL_ZONES      = 'ALL';
+
 // ──────────────────────────────────────────────
 // DEPRECATED: first-run seed of the Zone & Sheet tables
 // ──────────────────────────────────────────────
@@ -106,6 +110,7 @@ const EMPTY_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข�
 const INACTIVE_ZONE_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจากโซนนี้ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดูและส่งออกได้ตามปกติ กรุณาสลับไปโซนอื่นที่เปิดใช้งาน / Cannot add a record because an administrator disabled this zone. Existing records can still be viewed and exported. Please switch to an active zone.';
 const NO_ACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลได้ เนื่องจาก Shelf ทั้งหมดในโซนนี้ถูกปิดใช้งาน กรุณาสลับไปโซนที่มี Shelf เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งาน Shelf / Cannot add a record because every shelf in this zone is disabled. Switch to a zone with an active shelf, or ask an administrator to enable one.';
 const INACTIVE_SHEET_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลใน Shelf นี้ได้ เนื่องจาก Shelf ถูกปิดใช้งานโดยผู้ดูแลระบบ ข้อมูลเดิมยังดู แก้ไข และส่งออกได้ตามปกติ กรุณาเลือก Shelf อื่นที่เปิดใช้งานจากแท็บด้านบน / Cannot add a record to this shelf because an administrator disabled it. Existing records can still be viewed, edited and exported. Please pick an active shelf tab above.';
+const ALL_ZONES_INSERT_ERROR = 'ไม่สามารถเพิ่มข้อมูลในมุมมองทุกโซนได้ เนื่องจากต้องระบุโซนและ Shelf ปลายทาง กรุณาเลือกโซนและ Shelf ด้านบนก่อนกดเพิ่มข้อมูล / Cannot add a record from All Zones because a target zone and shelf are required. Please select a zone and a shelf first.';
 const INACTIVE_SHEET_MAGAZINE_ERROR = 'เพิ่ม Magazine ไม่ได้ เนื่องจาก Shelf นี้ถูกปิดใช้งานโดยผู้ดูแลระบบ กรุณาเลือก Shelf ที่เปิดใช้งาน หรือติดต่อผู้ดูแลระบบให้เปิดใช้งาน Shelf ก่อน / Cannot add a Magazine because an administrator disabled this shelf. Pick an active shelf, or ask an administrator to enable it first.';
 const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
 const CODE_LOCK_BUSY_ERROR = 'ยังไม่ได้บันทึกรายการนี้ เนื่องจากระบบกำลังออก Number Code ให้ผู้ใช้งานอื่นอยู่ กรุณากดบันทึกอีกครั้ง / This record was not saved because the system is issuing a Number Code to another user. Please click Save again.';
@@ -244,6 +249,128 @@ function normalizeZone(?string $zone): string
     return isset(topology()['zones'][$zone]) ? $zone : DEFAULT_ZONE;
 }
 
+/** Is $zone the "All Zones" view (?zone=ALL)? */
+function isAllZones(?string $zone): bool
+{
+    return $zone === ALL_ZONES;
+}
+
+/** Zone of a page / API request: ALL_ZONES, or a real zone validated like normalizeZone() */
+function normalizeZoneView(?string $zone): string
+{
+    return isAllZones(trim((string)$zone)) ? ALL_ZONES : normalizeZone($zone);
+}
+
+/**
+ * Zones listed by the All Zones view, in zone order: enabled zones that have at least one sheet
+ * (disabled sheets count: their records still show). Disabled zones are hidden from the selector, so they stay out too.
+ * @return string[]
+ */
+function allZonesWithSheets(): array
+{
+    $out = [];
+    foreach (topology()['zones'] as $key => $z) {
+        if ($z['is_active'] && !empty($z['sheets'])) {
+            $out[] = (string)$key;
+        }
+    }
+    return $out;
+}
+
+/** Zones a view covers: every zone of the All Zones view, or just $zone */
+function viewZones(string $zone): array
+{
+    return isAllZones($zone) ? allZonesWithSheets() : [$zone];
+}
+
+/**
+ * SQL for "zone is one of $zones": ['zone IN (:zp0, :zp1)', [':zp0' => 'General', ...]].
+ * No zones -> '1 = 0' (matches nothing).
+ */
+function zoneInClause(array $zones, string $column = 'zone', string $prefix = ':zp'): array
+{
+    if (!$zones) {
+        return ['1 = 0', []];
+    }
+    $names  = [];
+    $params = [];
+    foreach (array_values($zones) as $i => $z) {
+        $names[]                 = $prefix . $i;
+        $params[$prefix . $i]    = (string)$z;
+    }
+    return [$column . ' IN (' . implode(', ', $names) . ')', $params];
+}
+
+/**
+ * KPI numbers of the All Zones view (every zone from allZonesWithSheets(), all their sheets).
+ * Same keys as the per-zone KPI block in includes/page-data.php / api/sheet_data.php.
+ */
+function allZonesKpi(PDO $pdo): array
+{
+    $zones = allZonesWithSheets();
+    $cnt   = ['G' => 0, 'D' => 0, 'GD' => 0];
+    $out   = [
+        'zones' => $zones, 'cnt' => $cnt, 'total' => 0, 'pctG' => 0, 'magCount' => 0,
+        'capacity' => 0, 'usedShelves' => 0, 'util' => 0, 'maxShelf' => 0,
+        'shelfRangeText' => 'ยังไม่มี Shelf ในโซนนี้ / No shelves in this zone',
+        'sheetKeys' => [], 'zoneCounts' => array_fill_keys($zones, 0),
+    ];
+    if (!$zones) {
+        return $out;
+    }
+
+    [$zSql, $zParams] = zoneInClause($zones);
+    $st = $pdo->prepare("SELECT status, COUNT(*) c FROM boards WHERE $zSql GROUP BY status");
+    $st->execute($zParams);
+    foreach ($st as $r) {
+        if (isset($cnt[$r['status']])) {
+            $cnt[$r['status']] = (int)$r['c'];
+        }
+    }
+    $st = $pdo->prepare("SELECT zone, COUNT(*) c FROM boards WHERE $zSql GROUP BY zone");
+    $st->execute($zParams);
+    foreach ($st as $r) {
+        if (isset($out['zoneCounts'][$r['zone']])) {
+            $out['zoneCounts'][$r['zone']] = (int)$r['c'];
+        }
+    }
+
+    $magCount = 1;
+    $capacity = 0;
+    $used     = 0;
+    $prefixes = [];
+    foreach ($zones as $z) {
+        foreach (array_keys(zoneSheets($z, true)) as $shKey) {
+            $out['sheetKeys'][] = $shKey;
+            $prefixes[]         = shelfPrefix((string)$shKey);
+            $shMag = magazineCount($pdo, (string)$shKey);
+            $magCount = max($magCount, $shMag);
+            $shCap    = $shMag * MAGAZINE_SIZE;
+            $capacity += $shCap;
+            $uSt = $pdo->prepare('SELECT COUNT(DISTINCT shelf_no) FROM boards WHERE zone = ? AND sheet = ? AND shelf_no BETWEEN 1 AND ?');
+            $uSt->execute([$z, $shKey, $shCap]);
+            $used += (int)$uSt->fetchColumn();
+        }
+    }
+    $maxSt = $pdo->prepare("SELECT COALESCE(MAX(shelf_no), 0) FROM boards WHERE $zSql");
+    $maxSt->execute($zParams);
+
+    $total = array_sum($out['zoneCounts']);
+    $capacity = max(1, $capacity);
+    $out['cnt']            = $cnt;
+    $out['total']          = $total;
+    $out['pctG']           = $total ? (int)round($cnt['G'] / $total * 100) : 0;
+    $out['magCount']       = $magCount;
+    $out['capacity']       = $capacity;
+    $out['usedShelves']    = $used;
+    $out['util']           = min(100, (int)round($used / $capacity * 100));
+    $out['maxShelf']       = (int)$maxSt->fetchColumn();
+    $out['shelfRangeText'] = $total
+        ? 'All Zones (' . count($zones) . ') · All Sheets (' . implode(', ', array_values(array_unique($prefixes))) . ')'
+        : 'No boards yet';
+    return $out;
+}
+
 /**
  * Sheets of $zone in tab order: [sheetKey => [label, dotClass], ...].
  * Enabled sheets only (tabs, Add Board, Magazine); $includeDisabled adds the disabled ones (direct links, All Size totals).
@@ -311,6 +438,9 @@ function zoneIsActive(string $zone): bool
 /** Zone display label, e.g. "ทั่วไป / General" */
 function zoneLabel(string $zone): string
 {
+    if (isAllZones($zone)) {
+        return 'ทุกโซน / All Zones';
+    }
     return topology()['zones'][$zone]['label'] ?? $zone;
 }
 
@@ -350,6 +480,9 @@ function zoneOptionLabel(string $zone): string
  */
 function insertBlockedReason(string $zone, string $sheet): string
 {
+    if (isAllZones($zone)) {
+        return ALL_ZONES_INSERT_ERROR;
+    }
     $zone = normalizeZone($zone);
     if (!zoneHasSheets($zone, true)) {
         return EMPTY_ZONE_INSERT_ERROR;
@@ -554,9 +687,14 @@ function periodOptions($a, $b = 'ALL', $c = null): array
         $zone  = (string)$a;
         $sheet = (string)$b;
     }
-    $where  = ['zone = :zone'];
-    $params = [':zone' => $zone];
-    if ($sheet !== 'ALL') {
+    if (isAllZones($zone)) {
+        [$zoneSql, $params] = zoneInClause(allZonesWithSheets());
+        $where = [$zoneSql];
+    } else {
+        $where  = ['zone = :zone'];
+        $params = [':zone' => $zone];
+    }
+    if ($sheet !== 'ALL' && !isAllZones($zone)) {
         $where[]          = 'sheet = :sheet';
         $params[':sheet'] = $sheet;
     }

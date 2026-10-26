@@ -18,9 +18,11 @@ if (!headers_sent()) {
 // Request parameters
 // ──────────────────────────────────────────────
 
-$zone          = normalizeZone(qs('zone', DEFAULT_ZONE));
-$hasZoneSheets = zoneHasSheets($zone, true);   // disabled sheets still show their records
-$sheet         = resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
+$zone          = normalizeZoneView(qs('zone', DEFAULT_ZONE));   // ALL = every zone that has shelves
+$isAllZones    = isAllZones($zone);
+$viewZones     = viewZones($zone);
+$hasZoneSheets = $isAllZones ? !empty($viewZones) : zoneHasSheets($zone, true);   // disabled sheets still show their records
+$sheet         = $isAllZones ? 'ALL' : resolveSheetInZone($zone, qs('sheet', 'ALL'), 'ALL');
 
 $rawLimit = qs('limit', (string)PER_PAGE);
 $isAll    = strtolower($rawLimit) === 'all';
@@ -61,8 +63,8 @@ $allowedSort = [
     'created_at' => 'created_at',
     'id'         => 'id',
 ];
-// When viewing All Sheets (sheet = ALL) within the selected zone, order chronologically
-// from oldest (top) to newest (bottom), independent of sheet, Number Code, or shelf_no.
+// When viewing All Sheets (sheet = ALL) within the selected zone or across All Zones,
+// order chronologically from oldest (top) to newest (bottom), independent of zone, sheet, or shelf_no.
 if ($sheet === 'ALL') {
     $orderBy = 'created_at ASC, id ASC';
 } else {
@@ -73,8 +75,13 @@ if ($sheet === 'ALL') {
 // Build WHERE clause (always scoped to $zone)
 // ──────────────────────────────────────────────
 
-$where  = ['zone = :zone'];
-$params = [':zone' => $zone];
+if ($isAllZones) {
+    [$zoneSql, $params] = zoneInClause($viewZones);
+    $where = [$zoneSql];
+} else {
+    $where  = ['zone = :zone'];
+    $params = [':zone' => $zone];
+}
 
 if (!$hasZoneSheets) {
     $where[] = '1 = 0';
@@ -153,9 +160,10 @@ if ($isMatrix) {
     $rows = $st->fetchAll();
 
     $matrixData = [];
+    $byZone     = array_fill_keys($viewZones, []);   // All Zones: one group per zone, in zone order
     foreach ($rows as $r) {
         $parsed = parseDefects($r['defects'] ?? '');
-        $matrixData[] = [
+        $matrixRow = [
             'id'         => (int)$r['id'],
             'zone'       => (string)($r['zone'] ?? $zone),
             'sheet'      => (string)$r['sheet'],
@@ -168,6 +176,20 @@ if ($isMatrix) {
             'other'      => $parsed['other'],
             'other_text' => $parsed['other_text'],
         ];
+        $matrixData[] = $matrixRow;
+        if (isset($byZone[$matrixRow['zone']])) {
+            $byZone[$matrixRow['zone']][] = $matrixRow;
+        }
+    }
+
+    $groups = [];
+    foreach ($byZone as $zKey => $zRows) {
+        $groups[] = [
+            'zone'  => (string)$zKey,
+            'label' => zoneLabel((string)$zKey),
+            'total' => count($zRows),
+            'data'  => $zRows,
+        ];
     }
 
     echo json_encode([
@@ -175,6 +197,7 @@ if ($isMatrix) {
         'zone'           => $zone,
         'sheet'          => $sheet,
         'has_sheets'     => $hasZoneSheets,
+        'groups'         => $groups,
         'data'           => $matrixData,
         'total'          => count($matrixData),
         'defect_labels'  => DEFECT_LABELS,
@@ -259,6 +282,7 @@ foreach ($rows as $r) {
         $r['pcs_status'],                     // OTHER
         $magSlotText,                         // Magazine / Slot
         (string)$r['id'],                     // Actions cell: carries the row id
+        (string)$r['zone'],                   // Zone (shown as a column in the All Zones view)
     ];
 }
 

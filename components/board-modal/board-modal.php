@@ -23,7 +23,7 @@
       <form id="board-form" onsubmit="handleBoardFormSubmit(event)" class="gm-form" autocomplete="off">
         <input type="hidden" name="csrf" value="<?= h(csrf()) ?>"/>
         <input type="hidden" name="action" value="save"/>
-        <input type="hidden" name="zone" id="modal-zone" value="<?= h($zone) ?>"/>
+        <input type="hidden" name="zone" id="modal-zone" value="<?= h($isAllZones ? ($editRow['zone'] ?? DEFAULT_ZONE) : $zone) ?>"/>
         <input type="hidden" name="id" id="modal-id" value="0"/>
         <input type="hidden" name="code" id="modal-code" value="<?= h($nextCode) ?>"/>
         <input type="hidden" name="defects" id="defects-input" value=""/>

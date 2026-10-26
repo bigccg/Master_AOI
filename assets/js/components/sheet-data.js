@@ -17,7 +17,7 @@ async function refreshSheetData(targetSheet = state.sheet) {
         renderKpi(json.data.kpi, json.data.shelf_prefix, json.data.has_sheets);
         renderTabCounts(json.data.tab_counts);
         renderShelfFilterOptions(json.data.mag_options);
-        if (json.data.has_sheets) {
+        if (json.data.has_sheets && !json.data.all_zones) {   // All Zones: no rack map, nothing to add to
             renderRackMap(json.data.rack, json.data.shelf_prefix);
             updateModalFreeShelves(json.data.free_by_mag, json.data.free_shelves, json.data.rack.capacity, json.data.shelf_prefix, json.data.rack.is_max);
         }

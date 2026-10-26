@@ -21,7 +21,8 @@ if (!$editRow && isset($_GET['edit'])) {
 
 // Every sheet of the zone, disabled ones included: they have no tab but still belong to All Size Magazine
 $sheetCounts = array_fill_keys($zoneSheetKeys, 0);
-if ($hasZoneSheets) {
+$allZonesKpi = $isAllZones ? allZonesKpi($pdo) : null;
+if ($hasZoneSheets && !$isAllZones) {
     $tcSt = $pdo->prepare('SELECT sheet, COUNT(*) c FROM boards WHERE zone = ? GROUP BY sheet');
     $tcSt->execute([$zone]);
     foreach ($tcSt as $r) {
@@ -31,7 +32,7 @@ if ($hasZoneSheets) {
     }
 }
 $tabCounts      = array_intersect_key($sheetCounts, $currentZoneSheets);
-$allSheetsCount = array_sum($sheetCounts);
+$allSheetsCount = $isAllZones ? $allZonesKpi['total'] : array_sum($sheetCounts);
 
 $cnt = ['G' => 0, 'D' => 0, 'GD' => 0];
 if (!$hasZoneSheets) {
@@ -43,6 +44,16 @@ if (!$hasZoneSheets) {
     $util           = 0;
     $maxShelf       = 0;
     $shelfRangeText = 'ยังไม่มี Shelf ในโซนนี้ / No shelves in this zone';
+} elseif ($isAllZones) {
+    $cnt            = $allZonesKpi['cnt'];
+    $total          = $allZonesKpi['total'];
+    $pctG           = $allZonesKpi['pctG'];
+    $magCount       = $allZonesKpi['magCount'];
+    $capacity       = $allZonesKpi['capacity'];
+    $usedShelves    = $allZonesKpi['usedShelves'];
+    $util           = $allZonesKpi['util'];
+    $maxShelf       = $allZonesKpi['maxShelf'];
+    $shelfRangeText = $allZonesKpi['shelfRangeText'];
 } elseif ($isAllSheets) {
     $st = $pdo->prepare('SELECT status, COUNT(*) c FROM boards WHERE zone = ? GROUP BY status');
     $st->execute([$zone]);
