@@ -26,6 +26,7 @@ const CSS_FILES = [
     'components/board-modal/defect-panel.css',
     'components/glass-popup/responsive.css',
     'components/topology-manager.css',      // after the glass popup: manager + admin.php build on it
+    'components/export-station.css',
 ];
 
 const JS_FILES = [
@@ -51,6 +52,7 @@ const JS_FILES = [
     'components/board-modal/island-morph.js',
     'components/popups/delete-confirm.js',
     'components/popups/rack-insert-confirm.js',
+    'components/export-station.js',
     'core/events.js',
     'main.js',
 ];

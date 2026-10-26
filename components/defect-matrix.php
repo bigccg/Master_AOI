@@ -20,6 +20,10 @@ $matrixTitle = $isAllZones
         <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-400"></span> Mixed (G+D)</span>
         <span class="flex items-center gap-1"><i class="fa-solid fa-circle-check text-red-600"></i> มี Defect</span>
         <span class="flex items-center gap-1"><i class="fa-solid fa-comment-dots text-rose-600"></i> Other (ชี้ดูรายละเอียด)</span>
+        <button type="button" onclick="openExportStation('matrix')" class="es-trigger-btn no-print inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] cursor-pointer">
+          <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i>
+          <span>Export Excel (Defect Matrix)</span>
+        </button>
       </div>
     </div>
 

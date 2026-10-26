@@ -65,6 +65,8 @@ require __DIR__ . '/includes/export.php';
 
 <?php require __DIR__ . '/components/board-modal/board-modal.php'; ?>
 
+<?php require __DIR__ . '/components/export-station.php'; ?>
+
 <?php if ($isAdmin): ?>
 <?php require __DIR__ . '/components/topology-manager.php'; ?>
 <?php require __DIR__ . '/components/popups/topology-confirm.php'; ?>

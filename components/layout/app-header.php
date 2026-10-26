@@ -73,8 +73,8 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
         <div class="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 border-l border-slate-200 shrink-0 flex-nowrap">
           <?php if ($currentPage === 'master'): ?>
             <!-- Master Board Page Actions -->
-            <a href="<?= h(url(['zone' => $currentZone, 'sheet' => $currentSheet, 'export' => 1])) ?>" id="export-btn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="ส่งออกไฟล์ CSV ของโซนและ Shelf ที่เลือก / Export CSV for current zone & shelf">
-              <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>ส่งออก CSV</span>
+            <a href="<?= h(url(['zone' => $currentZone, 'sheet' => $currentSheet, 'export' => 1])) ?>" id="export-btn" aria-haspopup="dialog" aria-controls="export-station" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="เปิด Export Station เพื่อกรองและส่งออกไฟล์ Excel (.xlsx) จัดระเบียบตาราง / Open Export Station">
+              <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>Export Station</span>
             </a>
             <button type="button" id="new-entry-btn" onclick="openAddModal()" <?= $addBtnDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"' ?> title="<?= h($addBtnTitle) ?>" class="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 whitespace-nowrap shrink-0">
               <i class="fa-solid fa-plus" aria-hidden="true"></i><span>เพิ่มบอร์ด / Add Board</span>
