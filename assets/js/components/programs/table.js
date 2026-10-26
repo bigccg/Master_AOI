@@ -1,7 +1,7 @@
 /**
  * AOI Program Tracker - Table Rendering & Event Delegation
  * 9 Columns: Product Model (sticky), Side, Machine, 4-Stage Pipeline,
- * Master Samples (live D / G+D from index.php), Shelf, Operator, Updated, Note / Reason
+ * Master Samples (live D / G+D from index.php), Shelf, Technician, Updated, Remark
  */
 
 function renderSingleRowHtml(r) {
@@ -31,32 +31,33 @@ function renderSingleRowHtml(r) {
   const stepperHtml = renderProgStepperHtml(r);
 
   // Master Samples: Live Link from index.php (ONLY D and G+D; never Bare or G)
+  // ONE single pill that says directly what is on the Master Board:
+  //   Defect | Good+Defect | Defect + G+D | — (none). Counts & shelves are in the tooltip.
   const countD = parseInt(r.master_d, 10) || 0;
   const countGd = parseInt(r.master_gd, 10) || 0;
   const dShelves = String(r.master_d_shelves || '').trim();
   const gdShelves = String(r.master_gd_shelves || '').trim();
   const noDefectBoards = (countD === 0 && countGd === 0);
 
-  const dTip = countD > 0
-    ? `Defect ${countD} แผ่น${dShelves ? ' · ' + dShelves : ''}`
-    : (noDefectBoards ? 'ไม่มีแผ่น Defect ใน Master Board' : 'ไม่มีแผ่น Defect (D)');
+  const tipParts = [];
+  if (countD > 0) tipParts.push(`Defect ${countD} แผ่น${dShelves ? ' · ' + dShelves : ''}`);
+  if (countGd > 0) tipParts.push(`Good+Defect ${countGd} แผ่น${gdShelves ? ' · ' + gdShelves : ''}`);
+  const masterTip = noDefectBoards ? 'ไม่มีแผ่น Defect ใน Master Board' : tipParts.join('\n');
 
-  const gdTip = countGd > 0
-    ? `Good+Defect ${countGd} แผ่น${gdShelves ? ' · ' + gdShelves : ''}`
-    : (noDefectBoards ? 'ไม่มีแผ่น Defect ใน Master Board' : 'ไม่มีแผ่น G+D');
-
-  const dChipHtml = countD > 0
-    ? `<span class="prog-master-chip is-active-d" title="${h(dTip)}">D</span>`
-    : `<span class="prog-master-chip is-empty" title="${h(dTip)}">—</span>`;
-
-  const gdChipHtml = countGd > 0
-    ? `<span class="prog-master-chip is-active-gd" title="${h(gdTip)}">G+D</span>`
-    : `<span class="prog-master-chip is-empty" title="${h(gdTip)}">—</span>`;
+  let masterChipHtml;
+  if (countD > 0 && countGd > 0) {
+    masterChipHtml = `<span class="prog-master-chip is-active-both" title="${h(masterTip)}">Defect + G+D</span>`;
+  } else if (countD > 0) {
+    masterChipHtml = `<span class="prog-master-chip is-active-d" title="${h(masterTip)}">Defect</span>`;
+  } else if (countGd > 0) {
+    masterChipHtml = `<span class="prog-master-chip is-active-gd" title="${h(masterTip)}">Good+Defect</span>`;
+  } else {
+    masterChipHtml = `<span class="prog-master-chip is-empty" title="${h(masterTip)}">—</span>`;
+  }
 
   const masterHtml = `
-    <div class="prog-master-group ${noDefectBoards ? 'is-no-defect' : ''}" ${noDefectBoards ? 'title="ไม่มีแผ่น Defect ใน Master Board"' : ''}>
-      ${dChipHtml}
-      ${gdChipHtml}
+    <div class="prog-master-group ${noDefectBoards ? 'is-no-defect' : ''}">
+      ${masterChipHtml}
     </div>
   `;
 
@@ -77,7 +78,7 @@ function renderSingleRowHtml(r) {
     }
   }
 
-  // Operator cell (clickable to assign or update operator)
+  // Technician cell (clickable to assign or update technician)
   const owner = String(r.owner || '').trim();
   let ownerHtml = `
     <button type="button" class="prog-assign-btn is-empty" data-action="assign" data-id="${r.id}" title="คลิกเพื่อระบุผู้ทำ">
@@ -95,17 +96,19 @@ function renderSingleRowHtml(r) {
   }
 
   // Updated date & Overdue badge
-  let updatedHtml = `<span class="prog-updated-text">${h(r.updated_rel || '-')}</span>`;
+  // Always shown as a calendar date (DD/MM/YYYY); hover shows the exact time
+  const updatedTitle = r.updated_at ? formatProgramDateTime(r.updated_at) : '';
+  let updatedHtml = `<span class="prog-updated-text" title="${h(updatedTitle)}">${h(r.updated_rel || '-')}</span>`;
   if (isOverdue) {
     updatedHtml = `
       <div class="inline-flex items-center justify-center gap-1.5">
-        <span class="prog-updated-text is-muted">${h(r.updated_rel || '-')}</span>
+        <span class="prog-updated-text is-muted" title="${h(updatedTitle)}">${h(r.updated_rel || '-')}</span>
         <span class="prog-overdue-badge" title="ค้างเกินกำหนด ${r.overdue_days} วัน">ค้าง ${r.overdue_days} วัน</span>
       </div>
     `;
   }
 
-  // Note / Reason cell (clickable to edit note; shows "ไม่มีแผ่น Defect ใน Master Board" if board was removed/absent and no note set)
+  // Remark cell (clickable to edit note; shows "ไม่มีแผ่น Defect ใน Master Board" if board was removed/absent and no note set)
   const note = String(r.note || '').trim();
   const waitReason = String(r.wait_reason || '').trim();
   let noteInnerHtml = '<span class="prog-cell-empty">—</span>';
@@ -359,7 +362,7 @@ function initProgTableEvents() {
       }
 
       const nextVal = getNextStageStatus(currVal);
-      applyProgStageUpdate(progId, stageNum, nextVal);
+      requestProgStageChange(progId, stageNum, nextVal);
       return;
     }
 
@@ -419,7 +422,7 @@ function initProgTableEvents() {
     }
   });
 
-  // Stepper cell keyboard accessibility (Space, Enter, ContextMenu, 0, 1, 2, 9)
+  // Stepper cell keyboard accessibility (Space, Enter, ContextMenu, 0, 2)
   tbody?.addEventListener('keydown', (e) => {
     const stepCell = e.target.closest('.prog-step-cell');
     if (stepCell) {
@@ -437,13 +440,14 @@ function initProgTableEvents() {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         const nextVal = getNextStageStatus(currVal);
-        applyProgStageUpdate(progId, stageNum, nextVal);
+        requestProgStageChange(progId, stageNum, nextVal);
         return;
       }
 
-      if (['0', '1', '2', '9'].includes(e.key)) {
+      // 0 = Not started, 2 = Complete (1 / 9 no longer offered)
+      if (['0', '2'].includes(e.key)) {
         e.preventDefault();
-        applyProgStageUpdate(progId, stageNum, parseInt(e.key, 10));
+        requestProgStageChange(progId, stageNum, parseInt(e.key, 10));
         return;
       }
     }
@@ -579,7 +583,7 @@ function openOperatorDropdown(anchorBtn, progId) {
       <div class="prog-op-title">
         <span class="prog-op-title-main">
           <span class="prog-op-title-icon"><i class="fa-solid fa-user-tag"></i></span>
-          <span>ระบุผู้ทำ <em>Operator</em></span>
+          <span>ระบุผู้ทำ <em>Technician</em></span>
         </span>
         <button type="button" class="prog-op-close" title="ปิด (Esc)" aria-label="ปิด">
           <i class="fa-solid fa-xmark"></i>

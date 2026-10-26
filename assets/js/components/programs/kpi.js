@@ -32,42 +32,15 @@ function renderProgKpis() {
     `;
     elBreakdown.setAttribute('title', `OMRON ${kpi.omron ?? 0} · YAMAHA ${kpi.yamaha ?? 0} · TRI ${kpi.tri ?? 0}`);
   }
-
-  // Update active state of KPI cards
-  document.querySelectorAll('.prog-kpi-card').forEach(card => {
-    const filter = card.getAttribute('data-kpi-filter');
-    const isActive = (progState.status === filter);
-    card.classList.toggle('is-active', isActive);
-    card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-  });
 }
 
 function initProgKpis() {
+  // KPI cards are display-only (no click-to-filter). Keep the cursor spotlight hover effect.
   document.querySelectorAll('.prog-kpi-card').forEach(card => {
-    // Cursor spotlight (same effect as the index.php KPI cards)
     card.addEventListener('pointermove', e => {
       const r = card.getBoundingClientRect();
       card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
       card.style.setProperty('--my', (e.clientY - r.top) + 'px');
-    });
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
-    });
-    card.addEventListener('click', () => {
-      const targetFilter = card.getAttribute('data-kpi-filter');
-      if (progState.status === targetFilter && targetFilter !== 'ALL') {
-        // Toggle off if already active
-        progState.status = 'ALL';
-      } else {
-        progState.status = targetFilter;
-      }
-      progState.page = 1;
-
-      // Sync select dropdown
-      const selStatus = document.getElementById('prog-filter-status');
-      if (selStatus) selStatus.value = progState.status;
-
-      loadProgramsData();
     });
   });
 }

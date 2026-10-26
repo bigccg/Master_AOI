@@ -5,9 +5,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   initProgState();
   initProgKpis();
+  initProgStageGuide();
   initProgCommandBar();
   initProgTableEvents();
-  initTableSortingEvents();
   initProgKeyboardShortcuts();
 
   loadProgramsData();
@@ -29,48 +29,10 @@ function initProgKeyboardShortcuts() {
           const progId = parseInt(cell.getAttribute('data-prog-id'), 10);
           const currVal = parseInt(cell.getAttribute('data-status-val'), 10) || 0;
           const nextVal = getNextStageStatus(currVal);
-          applyProgStageUpdate(progId, stageNum, nextVal);
+          requestProgStageChange(progId, stageNum, nextVal);
         }
       }
       return;
     }
-  });
-}
-
-function syncTableSortHeaders() {
-  document.querySelectorAll('#prog-table .aoi-th.is-sortable').forEach(th => {
-    const col = th.getAttribute('data-sort');
-    const ico = th.querySelector('.prog-th-sort-icon');
-    if (col === progState.sort) {
-      th.setAttribute('aria-sort', progState.dir === 'asc' ? 'ascending' : 'descending');
-      if (ico) {
-        ico.className = `fa-solid fa-sort-${progState.dir === 'asc' ? 'up' : 'down'} prog-th-sort-icon text-white text-[10px]`;
-      }
-    } else {
-      th.setAttribute('aria-sort', 'none');
-      if (ico) {
-        ico.className = 'fa-solid fa-sort prog-th-sort-icon opacity-60 text-[10px]';
-      }
-    }
-  });
-}
-
-function initTableSortingEvents() {
-  syncTableSortHeaders();
-
-  document.querySelectorAll('#prog-table .aoi-th.is-sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.getAttribute('data-sort');
-      if (!col) return;
-      if (progState.sort === col) {
-        progState.dir = (progState.dir === 'asc') ? 'desc' : 'asc';
-      } else {
-        progState.sort = col;
-        progState.dir = 'asc';
-      }
-      progState.page = 1;
-      syncTableSortHeaders();
-      loadProgramsData();
-    });
   });
 }

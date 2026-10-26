@@ -44,6 +44,9 @@ $pageTitle = 'โปรแกรม AOI | AOI Program Tracker - Precision SMT Hu
   <!-- 2. Command Bar & Filters -->
   <?php require __DIR__ . '/components/programs/command-bar.php'; ?>
 
+  <!-- 2.5 Stage Guide (how to read the 4-stage pipeline) -->
+  <?php require __DIR__ . '/components/programs/stage-guide.php'; ?>
+
   <!-- 3. Data Table Workspace -->
   <div id="prog-view-table-wrapper">
     <?php require __DIR__ . '/components/programs/table.php'; ?>

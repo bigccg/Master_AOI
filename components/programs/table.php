@@ -1,8 +1,8 @@
 <?php
 /**
  * Data Table Component for AOI Programs
- * 9 columns: Product Model (sticky), Side (sortable), Machine, 4-Stage Pipeline,
- * Master Samples (D / G+D live from index.php), Shelf, Operator, Updated, Note / Reason
+ * 9 columns: Product Model (sticky), Side, Machine, 4-Stage Pipeline,
+ * Master Samples (D / G+D live from index.php), Shelf, Technician, Updated, Remark
  */
 
 declare(strict_types=1);
@@ -15,32 +15,31 @@ declare(strict_types=1);
       <thead>
         <tr>
           <!-- 1. Product Model Column (Sticky) -->
-          <th scope="col" class="aoi-th prog-th prog-th-sticky-product is-sortable" data-col="product" data-sort="product_model" aria-sort="none">
-            <div class="inline-flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>Product Model</span>
-              <i class="fa-solid fa-sort prog-th-sort-icon opacity-60 text-[10px]" aria-hidden="true"></i>
-            </div>
+          <th scope="col" class="aoi-th prog-th prog-th-sticky-product" data-col="product">
+            <span>Product Model</span>
           </th>
 
-          <!-- 2. Side Column (Sortable, non-sticky) -->
-          <th scope="col" class="aoi-th prog-th is-sortable" data-col="side" data-sort="side" aria-sort="none">
-            <div class="inline-flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>Side</span>
-              <i class="fa-solid fa-sort prog-th-sort-icon opacity-60 text-[10px]" aria-hidden="true"></i>
-            </div>
+          <!-- 2. Side Column -->
+          <th scope="col" class="aoi-th prog-th" data-col="side">
+            <span>Side</span>
           </th>
 
           <!-- 3. Machine Type Column -->
-          <th scope="col" class="aoi-th prog-th is-sortable" data-col="machine" data-sort="machine_type" aria-sort="none">
-            <div class="inline-flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>Machine</span>
-              <i class="fa-solid fa-sort prog-th-sort-icon opacity-60 text-[10px]" aria-hidden="true"></i>
-            </div>
+          <th scope="col" class="aoi-th prog-th" data-col="machine">
+            <span>Machine</span>
           </th>
 
           <!-- 4. 4-Stage Progress Stepper Column -->
-          <th scope="col" class="aoi-th prog-th" data-col="stepper">
-            <span>4-Stage Pipeline</span>
+          <!-- Header doubles as a legend: numbered stage names sit directly above the 4 capsules -->
+          <th scope="col" class="aoi-th prog-th prog-th-pipeline" data-col="stepper">
+            <span class="prog-pipe-title">4-Stage Pipeline</span>
+            <span class="prog-pipe-labels">
+              <?php foreach (PROGRAM_STAGES as $stageNum => $stage): ?>
+                <span class="prog-pipe-label" title="<?= h('ขั้น ' . $stageNum . ' · ' . $stage['label'] . ' — ' . $stage['th']) ?>">
+                  <b><?= (int)$stageNum ?></b><em><?= h($stage['short']) ?></em>
+                </span>
+              <?php endforeach; ?>
+            </span>
           </th>
 
           <!-- 5. Master Board Status Column (Live D / G+D from index.php) -->
@@ -53,25 +52,19 @@ declare(strict_types=1);
             <span>Shelf</span>
           </th>
 
-          <!-- 7. Operator Column -->
-          <th scope="col" class="aoi-th prog-th is-sortable" data-col="owner" data-sort="owner" aria-sort="none">
-            <div class="inline-flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>Operator</span>
-              <i class="fa-solid fa-sort prog-th-sort-icon opacity-60 text-[10px]" aria-hidden="true"></i>
-            </div>
+          <!-- 7. Technician Column -->
+          <th scope="col" class="aoi-th prog-th" data-col="owner">
+            <span>Technician</span>
           </th>
 
           <!-- 8. Updated At Column -->
-          <th scope="col" class="aoi-th prog-th is-sortable" data-col="updated" data-sort="updated_at" aria-sort="descending">
-            <div class="inline-flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>Updated</span>
-              <i class="fa-solid fa-sort-down prog-th-sort-icon text-white text-[10px]" aria-hidden="true"></i>
-            </div>
+          <th scope="col" class="aoi-th prog-th" data-col="updated">
+            <span>Updated</span>
           </th>
 
-          <!-- 9. Note Column -->
+          <!-- 9. Remark Column -->
           <th scope="col" class="aoi-th prog-th" data-col="note">
-            <span>Note / Reason</span>
+            <span>Remark</span>
           </th>
         </tr>
       </thead>

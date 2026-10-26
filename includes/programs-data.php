@@ -8,27 +8,15 @@ declare(strict_types=1);
 const PROGRAM_CREATE_FORBIDDEN_ERROR = 'ไม่สามารถสร้างโปรแกรมใหม่จากหน้านี้ได้ เนื่องจากรายการโปรแกรมต้องเชื่อมโยงจากบอร์ด Defect (D / G+D) ในหน้า Master Board เท่านั้น กรุณาเพิ่มข้อมูลบอร์ดที่หน้า Master Board / Creating programs directly from this page is disabled. Programs are synced automatically from Defect (D / G+D) boards on the Master Board.';
 
 /**
- * Format relative date (Rule: <= 7 days = relative, > 7 days = YYYY-MM-DD)
+ * Format the "Updated" value as a plain calendar date: DD/MM/YYYY (Asia/Bangkok).
+ * The exact time is added client-side as a hover tooltip.
  */
 function formatProgramDate(?string $dtStr): string
 {
     if (!$dtStr) return '-';
     try {
         $dt = new DateTime($dtStr, new DateTimeZone('Asia/Bangkok'));
-        $now = new DateTime('now', new DateTimeZone('Asia/Bangkok'));
-        $diff = $now->diff($dt);
-        $days = (int)$diff->days;
-
-        if ($days === 0 && $dt->format('Y-m-d') === $now->format('Y-m-d')) {
-            return 'วันนี้ ' . $dt->format('H:i');
-        }
-        if ($days === 1 || ($days === 0 && $dt->format('Y-m-d') !== $now->format('Y-m-d'))) {
-            return 'เมื่อวานนี้';
-        }
-        if ($days <= 7) {
-            return "{$days} วันที่แล้ว";
-        }
-        return $dt->format('Y-m-d');
+        return $dt->format('d/m/Y');
     } catch (Throwable) {
         return (string)$dtStr;
     }

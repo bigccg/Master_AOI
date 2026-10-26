@@ -4,31 +4,31 @@
 
 let activeContextMenuEl = null;
 
+function parseProgramDate(dtStr) {
+  if (!dtStr) return null;
+  const d = new Date(String(dtStr).replace(' ', 'T'));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** DD/MM/YYYY */
 function formatProgramDate(dtStr) {
   if (!dtStr) return '—';
-  try {
-    const d = new Date(dtStr.replace(' ', 'T'));
-    if (isNaN(d.getTime())) return String(dtStr);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const pad = n => String(n).padStart(2, '0');
-    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    if (diffDays === 0 && d.getDate() === now.getDate()) {
-      return `วันนี้ ${timeStr}`;
-    }
-    if (diffDays <= 1) {
-      return `เมื่อวาน ${timeStr}`;
-    }
-    if (diffDays < 7) {
-      return `${diffDays} วันที่แล้ว`;
-    }
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  } catch (e) {
-    return String(dtStr);
-  }
+  const d = parseProgramDate(dtStr);
+  if (!d) return String(dtStr);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** DD/MM/YYYY HH:mm น. (used in tooltips) */
+function formatProgramDateTime(dtStr) {
+  if (!dtStr) return '—';
+  const d = parseProgramDate(dtStr);
+  if (!d) return String(dtStr);
+  const pad = n => String(n).padStart(2, '0');
+  return `${formatProgramDate(dtStr)} ${pad(d.getHours())}:${pad(d.getMinutes())} น.`;
 }
 window.formatProgramDate = formatProgramDate;
+window.formatProgramDateTime = formatProgramDateTime;
 
 function renderProgStepperHtml(row) {
   const s1 = parseInt(row.stage_1, 10) || 0;
@@ -56,7 +56,7 @@ function renderProgStepperHtml(row) {
   const cellsHtml = stages.map((stg, idx) => {
     let stateCls = 'is-idle';
     let iconHtml = '';
-    let statusShort = 'ยังไม่เริ่ม';
+    let statusShort = 'ยังไม่ได้ทำ';
 
     if (stg.val === 2) {
       stateCls = 'is-complete';
@@ -71,7 +71,7 @@ function renderProgStepperHtml(row) {
       iconHtml = '<span class="prog-step-na-label">N/A</span>';
       statusShort = 'ไม่ต้องทำ (N/A)';
     } else {
-      iconHtml = '<i class="fa-regular fa-circle prog-step-icon is-muted" aria-hidden="true"></i>';
+      iconHtml = `<span class="prog-step-num" aria-hidden="true">${stg.num}</span>`;
     }
 
     const isNext = (stg.num === nextStepNum);
@@ -94,7 +94,7 @@ function renderProgStepperHtml(row) {
     }
 
     const byStr = stg.by ? `โดย ${h(stg.by)}` : 'ยังไม่ระบุผู้ทำ';
-    const atStr = stg.at ? formatProgramDate(stg.at) : 'ยังไม่บันทึกเวลา';
+    const atStr = stg.at ? formatProgramDateTime(stg.at) : 'ยังไม่บันทึกเวลา';
     const tooltipText = `ขั้น ${stg.num} · ${h(stg.name)} · ${statusShort} · ${byStr} · ${h(atStr)}`;
 
     return `
@@ -116,18 +116,20 @@ function renderProgStepperHtml(row) {
   return `<div class="prog-stepper-track">${cellsHtml}</div>`;
 }
 
+/**
+ * Pipeline now has two user-selectable states: Not started (0) <-> Complete (2).
+ * Legacy values (1 = in progress, 9 = N/A) may still exist in old rows; they are shown as-is
+ * but any click moves them to Complete.
+ */
 function getNextStageStatus(curr) {
-  if (curr === 0) return 1; // Not started -> In Progress
-  if (curr === 1) return 2; // In Progress -> Complete
-  if (curr === 2) return 0; // Complete -> Reset
-  return 0; // N/A -> Reset
+  return curr === 2 ? 0 : 2;
 }
 
 function getStageStatusLabel(val) {
   if (val === 2) return 'เสร็จสมบูรณ์';
   if (val === 1) return 'กำลังทำ';
   if (val === 9) return 'ไม่ต้องทำ (N/A)';
-  return 'ยังไม่เริ่ม';
+  return 'ยังไม่ได้ทำ';
 }
 
 /**
@@ -238,7 +240,7 @@ function openProgContextMenu(stepCell, x, y) {
   const winW = window.innerWidth;
   const winH = window.innerHeight;
   const menuW = 190;
-  const menuH = 195;
+  const menuH = 125;
   const posX = Math.min(x, winW - menuW - 10);
   const posY = Math.min(y, winH - menuH - 10);
 
@@ -249,19 +251,11 @@ function openProgContextMenu(stepCell, x, y) {
     <div class="prog-step-context-header">ขั้น ${stageNum} · ${h(sName)}</div>
     <button type="button" class="prog-step-context-item ${currVal === 0 ? 'is-active' : ''}" data-val="0" role="menuitem">
       <i class="fa-regular fa-circle prog-ctx-icon is-idle" aria-hidden="true"></i>
-      <span>ตั้งเป็น ยังไม่เริ่ม</span>
-    </button>
-    <button type="button" class="prog-step-context-item ${currVal === 1 ? 'is-active' : ''}" data-val="1" role="menuitem">
-      <i class="fa-solid fa-circle-half-stroke prog-ctx-icon is-wip" aria-hidden="true"></i>
-      <span>ตั้งเป็น กำลังทำ</span>
+      <span>ตั้งเป็น ยังไม่ได้ทำ</span>
     </button>
     <button type="button" class="prog-step-context-item ${currVal === 2 ? 'is-active' : ''}" data-val="2" role="menuitem">
       <i class="fa-solid fa-check prog-ctx-icon is-done" aria-hidden="true"></i>
       <span>ตั้งเป็น เสร็จสมบูรณ์</span>
-    </button>
-    <button type="button" class="prog-step-context-item ${currVal === 9 ? 'is-active' : ''}" data-val="9" role="menuitem">
-      <i class="fa-solid fa-slash prog-ctx-icon is-na" aria-hidden="true"></i>
-      <span>ตั้งเป็น ไม่ต้องทำ (N/A)</span>
     </button>
   `;
 
@@ -274,7 +268,7 @@ function openProgContextMenu(stepCell, x, y) {
       const val = parseInt(btn.getAttribute('data-val'), 10);
       closeProgContextMenu();
       if (val !== currVal) {
-        applyProgStageUpdate(progId, stageNum, val);
+        requestProgStageChange(progId, stageNum, val);
       }
     });
   });
@@ -291,3 +285,178 @@ document.addEventListener('keydown', (e) => {
     closeProgContextMenu();
   }
 });
+
+
+/**
+ * Stage Guide: collapsible strip above the table. Open by default so first-time visitors
+ * see it immediately; once someone collapses it the choice is remembered in this browser.
+ */
+function initProgStageGuide() {
+  const root = document.getElementById('prog-stage-guide');
+  const btn = document.getElementById('prog-guide-toggle');
+  const hint = document.getElementById('prog-guide-hint');
+  if (!root || !btn) return;
+
+  const KEY = 'aoiProgGuideCollapsed';
+  const apply = (collapsed) => {
+    root.classList.toggle('is-collapsed', collapsed);
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (hint) hint.textContent = collapsed ? 'แสดง' : 'ซ่อน';
+  };
+
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(KEY) === '1'; } catch (e) { /* storage blocked */ }
+  apply(collapsed);
+
+  btn.addEventListener('click', () => {
+    collapsed = !root.classList.contains('is-collapsed');
+    apply(collapsed);
+    try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
+  });
+}
+
+
+// ──────────────────────────────────────────────
+// Stage change confirmation — Glass Dynamic popup
+// Every status change goes through requestProgStageChange(); nothing is saved until the user confirms.
+// ──────────────────────────────────────────────
+let activeStageConfirmEl = null;
+
+function closeStageConfirm() {
+  if (!activeStageConfirmEl) return;
+  const el = activeStageConfirmEl;
+  activeStageConfirmEl = null;
+  if (el._keyHandler) document.removeEventListener('keydown', el._keyHandler, true);
+  el.classList.add('is-closing');
+  setTimeout(() => el.remove(), 220);
+}
+
+function stageChipHtml(val, num) {
+  if (val === 2) return '<span class="prog-sc-chip is-complete"><i class="fa-solid fa-check"></i></span>';
+  if (val === 1) return '<span class="prog-sc-chip is-progress"><i class="fa-solid fa-circle-half-stroke"></i></span>';
+  if (val === 9) return '<span class="prog-sc-chip is-na">N/A</span>';
+  return `<span class="prog-sc-chip is-idle">${num}</span>`;
+}
+
+/** Resolves true only when the user explicitly confirms. */
+function confirmProgStageChange(row, stageNum, fromVal, toVal) {
+  closeStageConfirm();
+
+  return new Promise((resolve) => {
+    const meta = (window.PROGRAM_STAGES && window.PROGRAM_STAGES[stageNum]) || {};
+    const stageLabel = meta.label || `ขั้นที่ ${stageNum}`;
+    const stageDesc = meta.th || '';
+    const toComplete = (toVal === 2);
+
+    const sideRaw = String(row.side || 'F-Side').trim();
+    const isF = sideRaw.toUpperCase().startsWith('F');
+    const mach = String(row.machine_type || '');
+    const machLabel = (mach.includes('3D') || mach.includes('YAMAHA')) ? '3D' : (mach.includes('TRI') ? 'TRI' : '2D');
+
+    // Warn when completing a stage while an earlier one is still not done
+    const skipped = [];
+    if (toComplete) {
+      for (let n = 1; n < stageNum; n++) {
+        const v = parseInt(row[`stage_${n}`], 10) || 0;
+        if (v === 0 || v === 1) skipped.push(n);
+      }
+    }
+    const noteHtml = skipped.length
+      ? `<div class="prog-sc-note is-warn"><i class="fa-solid fa-triangle-exclamation"></i><span>ขั้น ${skipped.join(', ')} ยังไม่เสร็จ — ยืนยันว่าจะทำขั้น ${stageNum} ข้ามลำดับ?</span></div>`
+      : (toComplete
+          ? ''
+          : '<div class="prog-sc-note"><i class="fa-solid fa-rotate-left"></i><span>ระบบจะล้างชื่อผู้ทำและเวลาของขั้นนี้ (กดเลิกทำได้ภายหลัง)</span></div>');
+
+    const user = (progState.currentUser || '').trim();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'prog-sc-overlay';
+    overlay.innerHTML = `
+      <div class="prog-sc ${toComplete ? 'is-to-complete' : 'is-to-idle'}" role="alertdialog" aria-modal="true" aria-labelledby="prog-sc-title">
+        <span class="prog-sc-aurora" aria-hidden="true"></span>
+
+        <div class="prog-sc-morph" aria-hidden="true">
+          ${stageChipHtml(fromVal, stageNum)}
+          <span class="prog-sc-flow"><i></i><i></i><i></i></span>
+          <span class="prog-sc-target">${stageChipHtml(toVal, stageNum)}</span>
+        </div>
+
+        <h3 id="prog-sc-title" class="prog-sc-title">${toComplete ? 'ยืนยันว่าขั้นนี้เสร็จสมบูรณ์?' : 'ย้อนกลับเป็น “ยังไม่ได้ทำ”?'}</h3>
+
+        <div class="prog-sc-card">
+          <div class="prog-sc-card-row">
+            <strong class="prog-sc-product">${h(row.product_model)}</strong>
+            <span class="prog-side-badge ${isF ? 'is-f' : 'is-b'}">${isF ? 'F' : 'B'}</span>
+            <span class="prog-mach-badge ${machLabel === '3D' ? 'is-yamaha' : (machLabel === 'TRI' ? 'is-tri' : 'is-omron')}">${machLabel}</span>
+          </div>
+          <div class="prog-sc-card-stage">
+            <span class="prog-sc-stage-num">${stageNum}</span>
+            <div><b>${h(stageLabel)}</b>${stageDesc ? `<small>${h(stageDesc)}</small>` : ''}</div>
+          </div>
+          <div class="prog-sc-card-change">
+            <span>${h(getStageStatusLabel(fromVal))}</span>
+            <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
+            <span class="is-to">${toComplete ? 'เสร็จสมบูรณ์' : 'ยังไม่ได้ทำ'}</span>
+          </div>
+        </div>
+
+        ${noteHtml}
+
+        <div class="prog-sc-actions">
+          <button type="button" class="prog-sc-btn is-cancel" data-act="cancel">ยกเลิก <kbd>Esc</kbd></button>
+          <button type="button" class="prog-sc-btn is-ok" data-act="ok">
+            <i class="fa-solid ${toComplete ? 'fa-check' : 'fa-rotate-left'}" aria-hidden="true"></i>
+            <span>${toComplete ? 'ยืนยัน เสร็จแล้ว' : 'ยืนยัน ย้อนกลับ'}</span>
+            <span class="prog-sc-sheen" aria-hidden="true"></span>
+          </button>
+        </div>
+        ${user ? `<div class="prog-sc-by"><i class="fa-regular fa-user"></i> บันทึกในชื่อ ${h(user)}</div>` : ''}
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeStageConfirmEl = overlay;
+
+    const finish = (val) => {
+      if (activeStageConfirmEl !== overlay) return;
+      closeStageConfirm();
+      resolve(val);
+    };
+
+    overlay.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (btn) finish(btn.getAttribute('data-act') === 'ok');
+      else if (e.target === overlay) finish(false);
+    });
+
+    // Capture phase so Esc / Tab / Enter only affect this popup
+    overlay._keyHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        finish(false);
+      } else if (e.key === 'Tab') {
+        const btns = [...overlay.querySelectorAll('button')];
+        const idx = btns.indexOf(document.activeElement);
+        e.preventDefault(); e.stopPropagation();
+        const next = e.shiftKey ? (idx <= 0 ? btns.length - 1 : idx - 1) : (idx + 1) % btns.length;
+        btns[next].focus();
+      }
+    };
+    document.addEventListener('keydown', overlay._keyHandler, true);
+
+    // Confirm is focused: Enter confirms, Esc cancels
+    overlay.querySelector('[data-act="ok"]')?.focus();
+  });
+}
+
+/** Single entry point for every status change (click, menu, keyboard). */
+async function requestProgStageChange(progId, stageNum, nextVal) {
+  if (activeStageConfirmEl) return;
+  const row = progState.rows.find(r => r.id === progId);
+  if (!row) return;
+  const fromVal = parseInt(row[`stage_${stageNum}`], 10) || 0;
+  if (fromVal === nextVal) return;
+
+  const ok = await confirmProgStageChange(row, stageNum, fromVal, nextVal);
+  if (ok) applyProgStageUpdate(progId, stageNum, nextVal);
+}

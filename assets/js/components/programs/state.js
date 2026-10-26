@@ -79,8 +79,9 @@ function initProgState() {
   progState.owner = url.searchParams.get('owner') || 'ALL';
   progState.status = url.searchParams.get('status') || 'ALL';
   progState.stage = url.searchParams.get('stage') || 'ALL';
-  progState.sort = url.searchParams.get('sort') || 'updated_at';
-  progState.dir = (url.searchParams.get('dir') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+  // Column sorting was removed: the list is always newest-update first (ignore ?sort= / ?dir= in old links)
+  progState.sort = 'updated_at';
+  progState.dir = 'desc';
   progState.page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
 
   const rawLimit = url.searchParams.get('limit') || '50';

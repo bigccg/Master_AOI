@@ -1,6 +1,6 @@
 <?php
 /**
- * 5 Clickable KPI Summary Cards for AOI Programs
+ * 5 KPI Summary Cards (display only — no click-to-filter) for AOI Programs
  * Styled to match index.php KPI cards aesthetics and visual order.
  */
 
@@ -13,7 +13,7 @@ $kpiData = isset($pdo) ? fetchProgramKpis($pdo) : [
 <!-- 1. KPI SUMMARY CARDS — same markup/classes as components/kpi-cards.php (index.php) -->
 <section class="grid grid-cols-2 md:grid-cols-5 gap-3.5" aria-label="สรุปภาพรวมสถานะโปรแกรม">
   <!-- Card 1: Total Programs -->
-  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between <?= ($statusF === 'ALL') ? 'is-active' : '' ?>" data-kpi-filter="ALL" role="button" tabindex="0" aria-pressed="<?= ($statusF === 'ALL') ? 'true' : 'false' ?>">
+  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
     <div>
       <p class="text-xs font-medium text-slate-500">Total Programs (ทั้งหมด)</p>
       <p class="text-2xl font-bold text-slate-900 mt-1 font-mono" id="kpi-num-total"><?= $kpiData['total'] ?></p>
@@ -27,7 +27,7 @@ $kpiData = isset($pdo) ? fetchProgramKpis($pdo) : [
   </div>
 
   <!-- Card 2: Complete -->
-  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between <?= ($statusF === 'complete') ? 'is-active' : '' ?>" data-kpi-filter="complete" role="button" tabindex="0" aria-pressed="<?= ($statusF === 'complete') ? 'true' : 'false' ?>">
+  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
     <div>
       <div class="flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
@@ -42,7 +42,7 @@ $kpiData = isset($pdo) ? fetchProgramKpis($pdo) : [
   </div>
 
   <!-- Card 3: Wait Master -->
-  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between <?= ($statusF === 'wait_master') ? 'is-active' : '' ?>" data-kpi-filter="wait_master" role="button" tabindex="0" aria-pressed="<?= ($statusF === 'wait_master') ? 'true' : 'false' ?>">
+  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
     <div>
       <div class="flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
@@ -57,7 +57,7 @@ $kpiData = isset($pdo) ? fetchProgramKpis($pdo) : [
   </div>
 
   <!-- Card 4: Queued -->
-  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between <?= ($statusF === 'queued') ? 'is-active' : '' ?>" data-kpi-filter="queued" role="button" tabindex="0" aria-pressed="<?= ($statusF === 'queued') ? 'true' : 'false' ?>">
+  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
     <div>
       <div class="flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
@@ -72,7 +72,7 @@ $kpiData = isset($pdo) ? fetchProgramKpis($pdo) : [
   </div>
 
   <!-- Card 5: Overdue -->
-  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between col-span-2 md:col-span-1 <?= ($statusF === 'overdue') ? 'is-active' : '' ?>" data-kpi-filter="overdue" role="button" tabindex="0" aria-pressed="<?= ($statusF === 'overdue') ? 'true' : 'false' ?>">
+  <div class="prog-kpi-card bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between col-span-2 md:col-span-1">
     <div>
       <div class="flex items-center gap-1.5">
         <span class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
