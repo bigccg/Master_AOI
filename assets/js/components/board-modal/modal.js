@@ -53,26 +53,8 @@ function gmSyncDefectChip() {
 }
 window.gmSyncDefectChip = gmSyncDefectChip;
 
-// cursor spotlight + ripple + live progress (wired once)
+// Lightweight event initialization (no mouse-tracking or heavy repaints)
 (function gmInit() {
-    document.querySelectorAll('.gm-window').forEach(win => {
-        win.addEventListener('pointermove', e => {
-            const r = win.getBoundingClientRect();
-            win.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-            win.style.setProperty('--my', (e.clientY - r.top) + 'px');
-        });
-    });
-    document.addEventListener('pointerdown', e => {
-        const btn = e.target.closest?.('.gm-btn');
-        if (!btn || btn.disabled) return;
-        const r = btn.getBoundingClientRect();
-        const d = Math.max(r.width, r.height) * 2;
-        const rip = document.createElement('span');
-        rip.className = 'gm-ripple';
-        rip.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
-        btn.appendChild(rip);
-        setTimeout(() => rip.remove(), 650);
-    });
     const form = document.getElementById('board-form');
     form?.addEventListener('input', gmSyncProgress);
     form?.addEventListener('change', (e) => {
