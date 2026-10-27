@@ -142,6 +142,25 @@ const IMPORT_EMPTY_ROWS_ERROR = IMPORT_EMPTY_DATA_ERROR;
 const IMPORT_TEMPLATE_EXPIRED_ERROR = 'แม่แบบนี้หมดอายุ เนื่องจากมีการบันทึกข้อมูลใหม่ในระบบแล้ว ทำให้รหัส Number Code เริ่มต้นในไฟล์ไม่ตรงกับลำดับปัจจุบันของระบบ กรุณาดาวน์โหลดแม่แบบใหม่แล้วนำข้อมูลไปวาง / This template has expired because new records were saved in the system. Please download a new template so Number Codes stay consecutive.';
 const IMPORT_SELECT_ZONE_SHEET_ERROR = 'ไม่สามารถสร้างหรือนำเข้าแม่แบบในมุมมองรวม (All Zones / All Size Magazine) ได้ เนื่องจากแม่แบบต้องผูกกับโซนและชีตปลายทางที่ชัดเจน กรุณาเลือกโซนและชีตที่เปิดใช้งานก่อน / Cannot generate or import a template for All Zones / All Sheets. Please select an active Zone and Sheet first.';
 
+// Data Backup & Restore (Data Time-Machine) configuration
+const BACKUP_SCHEMA_VERSION           = '1';
+const BACKUP_DEFAULT_RETENTION_MONTHS = 12;       // default months to retain monthly_auto snapshots
+const BACKUP_MIN_RETENTION_MONTHS     = 1;        // minimum configurable retention months
+const BACKUP_MAX_RETENTION_MONTHS     = 60;       // maximum configurable retention months (5 years)
+const BACKUP_RETENTION_OPTIONS        = [1, 3, 6, 12, 18, 24, 36, 60];
+const BACKUP_MAX_PRE_RESTORE_KEEP     = 10;       // max pre_restore safety snapshots kept
+const BACKUP_MAX_UPLOAD_BYTES         = 10485760; // 10 MB max uploaded .json backup file size
+
+const BACKUP_CSRF_ERROR = 'ดำเนินการไม่สำเร็จ เนื่องจากเซสชันหมดอายุหรือโทเค็นความปลอดภัย (CSRF) ไม่ถูกต้อง กรุณารีเฟรชหน้าเว็บแล้วลองใหม่อีกครั้ง / Action refused because the security token (CSRF) is missing or invalid. Please refresh the page and try again.';
+const BACKUP_METHOD_ERROR = 'ไม่อนุญาตให้เรียกด้วยเมธอดนี้ เนื่องจากคำสั่งแก้ไขต้องส่งแบบ POST เท่านั้น กรุณาดำเนินการผ่านหน้าต่างระบบสำรองข้อมูล / Method not allowed (POST required). Please submit from the Data Backup Manager.';
+const BACKUP_NOT_FOUND_ERROR = 'ไม่พบจุดสำรองข้อมูล (Snapshot) ที่ระบุ อาจถูกลบไปแล้วหรือรหัสไม่ถูกต้อง กรุณารีเฟรชรายการแล้วเลือกใหม่ / Snapshot not found. It may have been deleted; please refresh the list and try again.';
+const BACKUP_INVALID_RETENTION_ERROR = 'ตั้งค่าจำนวนเดือนที่เก็บ Auto Backup ไม่สำเร็จ เนื่องจากค่าต้องอยู่ระหว่าง 1 ถึง 60 เดือน กรุณาเลือกจำนวนเดือนที่ถูกต้อง / Invalid retention period. Please choose between 1 and 60 months.';
+const BACKUP_UPLOAD_EMPTY_ERROR = 'ไม่สามารถนำเข้าไฟล์สำรองข้อมูลได้ เนื่องจากยังไม่ได้เลือกไฟล์ (.json) หรือไฟล์ว่างเปล่า กรุณาเลือกไฟล์สำรองข้อมูลที่ดาวน์โหลดจากระบบ / No backup file uploaded or the file is empty. Please select a valid AOI backup (.json) file.';
+const BACKUP_UPLOAD_TOO_LARGE_ERROR = 'ไม่สามารถนำเข้าไฟล์สำรองข้อมูลได้ เนื่องจากไฟล์มีขนาดใหญ่เกินกำหนด (สูงสุดไม่เกิน 10 MB) กรุณาใช้ไฟล์สำรองข้อมูลมาตรฐานจากระบบ / Backup file exceeds the 10 MB size limit.';
+const BACKUP_UPLOAD_INVALID_JSON_ERROR = 'ไม่สามารถนำเข้าไฟล์สำรองข้อมูลได้ เนื่องจากโครงสร้างไฟล์ JSON ไม่ถูกต้องหรือไม่ใช่ไฟล์สำรองข้อมูลของระบบ AOI กรุณาใช้ไฟล์ .json ที่ดาวน์โหลดจากระบบนี้เท่านั้น / Invalid backup file format. Only genuine AOI Data Snapshot (.json) files exported from this system are accepted.';
+const BACKUP_CHECKSUM_MISMATCH_ERROR = 'ไม่สามารถนำเข้าหรือกู้คืนข้อมูลได้ เนื่องจากลายเซ็นดิจิทัล (Checksum / HMAC) ของไฟล์ไม่ตรงกับข้อมูลภายใน ไฟล์อาจถูกแก้ไขหรือเสียหาย กรุณาใช้ไฟล์สำรองข้อมูลต้นฉบับที่ไม่ถูกดัดแปลง / Snapshot integrity check failed (checksum/signature mismatch). The backup data may have been modified or corrupted.';
+const BACKUP_LOCK_BUSY_ERROR = 'ไม่สามารถกู้คืนข้อมูลได้ในขณะนี้ เนื่องจากระบบกำลังบันทึกหรือนำเข้าข้อมูลจากผู้ใช้อื่นอยู่ กรุณารอสักครู่แล้วกดกู้คืนใหม่อีกครั้ง / System is currently busy with another write or import operation. Please wait a moment and try restoring again.';
+
 // Status styling map: status => [container classes, text class, label text]
 const STATUS_STYLE = [
     'G'  => ['border-emerald-300 bg-emerald-50', 'text-emerald-700', 'G'],

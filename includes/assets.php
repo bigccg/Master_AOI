@@ -26,6 +26,7 @@ const CSS_FILES = [
     'components/board-modal/defect-panel.css',
     'components/glass-popup/responsive.css',
     'components/topology-manager.css',      // after the glass popup: manager + admin.php build on it
+    'components/backup-manager.css',        // monthly data backup & time-machine (administrators)
     'components/export-station.css',
     'components/import-station.css',
 ];
@@ -59,10 +60,11 @@ const JS_FILES = [
     'main.js',
 ];
 
-// Zone & Sheet manager: only sent to a signed-in administrator, inserted before main.js (components/layout/scripts.php)
+// Zone & Sheet manager & Data Backup/Restore: only sent to a signed-in administrator, inserted before main.js (components/layout/scripts.php)
 const ADMIN_JS_FILES = [
     'components/popups/topology-confirm.js',
     'components/topology-manager.js',
+    'components/backup-manager.js',
 ];
 
 // ──────────────────────────────────────────────

@@ -49,6 +49,16 @@ $page       = max(1, (int)qs('page', '1'));
 
 $pdo = db();
 
-// Administrator (Zone & Sheet manager only; everything else stays open to every user)
+// Ensure current month's automatic data snapshot exists once the database has board records
+try {
+    if ((bool)$pdo->query('SELECT 1 FROM boards LIMIT 1')->fetchColumn()) {
+        require_once __DIR__ . '/backup-manager.php';
+        ensureMonthlyAutoSnapshot($pdo);
+    }
+} catch (Throwable $_) {
+    // Non-fatal: never block normal page rendering
+}
+
+// Administrator (Zone & Sheet manager & Data Backup/Restore; everything else stays open to every user)
 $isAdmin         = isAdmin();
 $adminConfigured = adminConfigured();

@@ -96,6 +96,9 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
             $admCfg = isset($adminConfigured) ? $adminConfigured : (function_exists('adminConfigured') ? adminConfigured() : false);
           ?>
           <?php if ($isAdm): ?>
+            <button type="button" id="bm-open-btn" onclick="typeof openBackupManager === 'function' ? openBackupManager() : (window.location='index.php?backup=1')" aria-haspopup="dialog" aria-controls="backup-manager" title="สำรองข้อมูลรายเดือน เปรียบเทียบความต่าง (Diff) และย้อนข้อมูลกลับ (Restore) / Monthly Data Backup &amp; Time-Machine" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
+              <i class="fa-solid fa-clock-rotate-left text-indigo-600" aria-hidden="true"></i><span>สำรอง/ย้อนข้อมูล</span>
+            </button>
             <button type="button" id="tm-open-btn" onclick="typeof openTopologyManager === 'function' ? openTopologyManager() : (window.location='index.php?manage=1')" aria-haspopup="dialog" aria-controls="topology-manager" title="เพิ่ม แก้ไข หรือปิดใช้งานโซนและ Shelf / Add, edit or disable zones and shelves" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
               <i class="fa-solid fa-sitemap text-emerald-600" aria-hidden="true"></i><span>จัดการโซนและ Shelf</span>
             </button>

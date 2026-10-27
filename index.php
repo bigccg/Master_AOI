@@ -72,6 +72,7 @@ require __DIR__ . '/includes/export.php';
 <?php if ($isAdmin): ?>
 <?php require __DIR__ . '/components/topology-manager.php'; ?>
 <?php require __DIR__ . '/components/popups/topology-confirm.php'; ?>
+<?php require __DIR__ . '/components/backup-manager.php'; ?>
 <?php endif; ?>
 
 <?php require __DIR__ . '/components/layout/scripts.php'; ?>
