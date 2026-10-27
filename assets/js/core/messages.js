@@ -33,4 +33,7 @@ const MSG = {
     confirmDel:          (code) => `ยืนยันการลบรายการ ${code} ?\nการลบนี้ไม่สามารถย้อนกลับได้ / Delete record ${code}? This action cannot be undone.`,
     deleteFailed:        'ลบรายการไม่สำเร็จ เนื่องจากเกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองอีกครั้ง / Failed to delete record. Please try again.',
     networkError:        'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบเครือข่ายแล้วลองอีกครั้ง / Network error. Please check your connection and retry.',
+    importExpired:       'แม่แบบนี้หมดอายุ เนื่องจากมีการบันทึกข้อมูลใหม่ในระบบแล้ว กรุณาดาวน์โหลดแม่แบบใหม่แล้วนำข้อมูลไปวาง / This template has expired because new records were saved in the system. Please download a new template.',
+    importSelectSheet:   'ไม่สามารถสร้างแม่แบบในมุมมองรวมได้ กรุณาเลือกโซนและชีตปลายทางก่อน / Please select an active target Zone and Sheet first.',
+    importFileInvalid:   'ไม่สามารถอ่านไฟล์ได้ กรุณาเลือกไฟล์แม่แบบ Excel (.xlsx) ที่ดาวน์โหลดจากระบบขนาดไม่เกิน 2 MB / Please select a valid .xlsx template file (max 2 MB).',
 };

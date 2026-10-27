@@ -76,6 +76,9 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
             <a href="<?= h(url(['zone' => $currentZone, 'sheet' => $currentSheet, 'export' => 1])) ?>" id="export-btn" aria-haspopup="dialog" aria-controls="export-station" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="เปิด Export Station เพื่อกรองและส่งออกไฟล์ Excel (.xlsx) จัดระเบียบตาราง / Open Export Station">
               <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>Export Station</span>
             </a>
+            <button type="button" id="import-station-btn" onclick="openImportStation(1, this)" aria-haspopup="dialog" aria-controls="import-station" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0" title="ดาวน์โหลดแม่แบบ Excel พร้อม Number Code ต่อเนื่อง และนำเข้าข้อมูลบอร์ด (Import Excel) / Open Excel Import Station">
+              <i class="fa-solid fa-file-import text-cyan-600" aria-hidden="true"></i><span>Import Excel</span>
+            </button>
             <button type="button" id="new-entry-btn" onclick="openAddModal()" <?= $addBtnDisabled ? 'disabled aria-disabled="true"' : 'aria-disabled="false"' ?> title="<?= h($addBtnTitle) ?>" class="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600 whitespace-nowrap shrink-0">
               <i class="fa-solid fa-plus" aria-hidden="true"></i><span>เพิ่มบอร์ด / Add Board</span>
             </button>

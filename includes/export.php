@@ -10,6 +10,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/xlsx-writer.php';
 
+if ((isset($_GET['action']) && $_GET['action'] === 'import_template') || isset($_GET['import_template'])) {
+    require __DIR__ . '/../api/import_template.php';
+    exit;
+}
+
 /**
  * Build SQL WHERE clause, bind parameters, and human-readable summary from Export Station parameters.
  */

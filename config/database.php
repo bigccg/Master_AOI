@@ -115,6 +115,33 @@ const INACTIVE_SHEET_MAGAZINE_ERROR = 'เพิ่ม Magazine ไม่ได�
 const CODE_MAX_RUN_ERROR = 'ออกรหัส Number Code ใหม่ไม่ได้ เนื่องจากรหัสรันรวมของระบบในเดือนนี้ครบ ' . CODE_MAX_RUN . ' รายการแล้ว กรุณารอขึ้นเดือนใหม่ (รีเซ็ตเป็น 001 อัตโนมัติ) หรือติดต่อผู้ดูแลระบบ / Cannot generate a new Number Code because the system-wide monthly limit (' . CODE_MAX_RUN . ') has been reached. Please wait for the next month or contact an administrator.';
 const CODE_LOCK_BUSY_ERROR = 'ยังไม่ได้บันทึกรายการนี้ เนื่องจากระบบกำลังออก Number Code ให้ผู้ใช้งานอื่นอยู่ กรุณากดบันทึกอีกครั้ง / This record was not saved because the system is issuing a Number Code to another user. Please click Save again.';
 
+// Excel Batch Import Limits & UX Copy (What happened + Why + How to fix, Thai / English)
+const IMPORT_TEMPLATE_VERSION       = '1.0';
+const IMPORT_DATA_SHEET_TITLE       = 'AOI_Import_Template';
+const IMPORT_GUIDE_SHEET_TITLE      = 'วิธีใช้ (Guide)';
+const IMPORT_META_SHEET_TITLE       = '_meta';
+const IMPORT_MAX_FILE_BYTES         = 2097152;   // 2 MB max uploaded .xlsx file size
+const IMPORT_MAX_UNCOMPRESSED_BYTES = 10485760;  // 10 MB max total uncompressed XML inside .xlsx (zip-bomb guard)
+const IMPORT_MAX_ZIP_ENTRIES        = 100;       // max entries inside .xlsx archive
+const IMPORT_MAX_ROWS               = 999;       // max rows allowed per import template
+const IMPORT_DEFAULT_ROWS           = 50;        // default template row count
+const IMPORT_ROW_OPTIONS            = [25, 50, 100, 200];
+
+const IMPORT_CSRF_ERROR = 'ดำเนินการไม่สำเร็จ เนื่องจากเซสชันหมดอายุหรือโทเค็นความปลอดภัย (CSRF) ไม่ถูกต้อง กรุณารีเฟรชหน้าเว็บแล้วลองใหม่อีกครั้ง / Action refused because the security token (CSRF) is missing or invalid. Please refresh the page and try again.';
+const IMPORT_METHOD_ERROR = 'ไม่อนุญาตให้เรียกด้วยเมธอดนี้ เนื่องจากระบบรองรับเฉพาะคำขอแบบ POST เท่านั้น กรุณาส่งข้อมูลผ่านหน้าต่าง Import Station / Method not allowed (POST required). Please submit from the Import Station window.';
+const IMPORT_NO_FILE_ERROR = 'ไม่สามารถตรวจสอบไฟล์ได้ เนื่องจากยังไม่ได้เลือกไฟล์ Excel (.xlsx) กรุณาลากไฟล์มาวางหรือคลิกเลือกไฟล์แม่แบบก่อน / No file uploaded. Please select an Excel (.xlsx) template file first.';
+const IMPORT_FILE_TOO_LARGE_ERROR = 'ไม่สามารถอ่านไฟล์ได้ เนื่องจากไฟล์มีขนาดใหญ่เกินกำหนด (สูงสุดไม่เกิน 2 MB) กรุณาใช้ไฟล์แม่แบบจากระบบที่มีเฉพาะข้อมูลบอร์ด / File exceeds the 2 MB size limit. Please upload a standard AOI Import Template file.';
+const IMPORT_FILE_TYPE_ERROR = 'ไม่สามารถอ่านไฟล์ได้ เนื่องจากไฟล์ที่อัปโหลดไม่ใช่ไฟล์ Excel (.xlsx) ที่ถูกต้อง กรุณาดาวน์โหลดแม่แบบ .xlsx จากระบบแล้วบันทึกเป็นนามสกุล .xlsx เท่านั้น / Invalid file format: only genuine Excel (.xlsx) files are accepted. Please download the .xlsx template from this system.';
+const IMPORT_INVALID_FILE_ERROR = IMPORT_FILE_TYPE_ERROR;
+const IMPORT_XML_SECURITY_ERROR = 'ไม่สามารถอ่านไฟล์ได้ เนื่องจากพบโครงสร้าง XML ที่ไม่ปลอดภัยหรือผิดมาตรฐาน (เช่น DOCTYPE / ENTITY หรือไฟล์บีบอัดขนาดผิดปกติ) กรุณาดาวน์โหลดแม่แบบใหม่จากระบบ / File rejected due to unsafe or malformed XML structure (DOCTYPE/ENTITY or zip-bomb detected). Please download a fresh template from the system.';
+const IMPORT_NOT_TEMPLATE_ERROR = 'ไม่สามารถนำเข้าไฟล์นี้ได้ เนื่องจากไฟล์ไม่ใช่แม่แบบ Import ของระบบ AOI (ไม่พบชีตข้อมูล _meta หรือคอลัมน์หัวตารางไม่ตรง) กรุณาดาวน์โหลดแม่แบบจากปุ่ม "ดาวน์โหลดแม่แบบ Excel" แล้วกรอกข้อมูลในไฟล์นั้น / Cannot import this file because it is not a valid AOI Import Template (missing _meta sheet or header columns). Please download a template from this system.';
+const IMPORT_META_TAMPERED_ERROR = 'ไม่สามารถนำเข้าไฟล์นี้ได้ เนื่องจากข้อมูล Metadata (_meta) ของแม่แบบถูกแก้ไขหรือไม่สมบูรณ์ กรุณาดาวน์โหลดแม่แบบใหม่จากระบบโดยไม่แก้ไขชีตซ่อน / Cannot import this file because the template metadata (_meta) is invalid or was modified. Please download a fresh template without altering hidden sheets.';
+const IMPORT_TAMPERED_META_ERROR = IMPORT_META_TAMPERED_ERROR;
+const IMPORT_EMPTY_DATA_ERROR = 'ไม่พบข้อมูลบอร์ดใหม่ในไฟล์ เนื่องจากทุกแถวในแม่แบบยังว่างอยู่ กรุณากรอกข้อมูลอย่างน้อย 1 แถว (เริ่มจากแถวแรกสุด) แล้วอัปโหลดอีกครั้ง / No board records found in the file because all template rows are blank. Please fill in at least 1 row starting from the first row and upload again.';
+const IMPORT_EMPTY_ROWS_ERROR = IMPORT_EMPTY_DATA_ERROR;
+const IMPORT_TEMPLATE_EXPIRED_ERROR = 'แม่แบบนี้หมดอายุ เนื่องจากมีการบันทึกข้อมูลใหม่ในระบบแล้ว ทำให้รหัส Number Code เริ่มต้นในไฟล์ไม่ตรงกับลำดับปัจจุบันของระบบ กรุณาดาวน์โหลดแม่แบบใหม่แล้วนำข้อมูลไปวาง / This template has expired because new records were saved in the system. Please download a new template so Number Codes stay consecutive.';
+const IMPORT_SELECT_ZONE_SHEET_ERROR = 'ไม่สามารถสร้างหรือนำเข้าแม่แบบในมุมมองรวม (All Zones / All Size Magazine) ได้ เนื่องจากแม่แบบต้องผูกกับโซนและชีตปลายทางที่ชัดเจน กรุณาเลือกโซนและชีตที่เปิดใช้งานก่อน / Cannot generate or import a template for All Zones / All Sheets. Please select an active Zone and Sheet first.';
+
 // Status styling map: status => [container classes, text class, label text]
 const STATUS_STYLE = [
     'G'  => ['border-emerald-300 bg-emerald-50', 'text-emerald-700', 'G'],
@@ -792,11 +819,12 @@ function shelfPrefix(string $sheet): string
     return topology()['sheets'][$sheet]['prefix'] ?? '';
 }
 
-/** Shelf number from a shelf slot of this sheet (AX12 => 12), or null if the slot is not valid for the sheet */
+/** Shelf number from a shelf slot of this sheet (AX12 => 12), case-insensitive & trimmed, or null if not valid */
 function parseShelf(string $sheet, string $shelf): ?int
 {
     if (!sheetExists($sheet)) return null;
-    if (!preg_match('/^' . preg_quote(shelfPrefix($sheet), '/') . '(\d{1,3})$/', $shelf, $m)) return null;
+    $shelf = strtoupper(trim($shelf));
+    if (!preg_match('/^' . preg_quote(strtoupper(shelfPrefix($sheet)), '/') . '(\d{1,4})$/', $shelf, $m)) return null;
     return (int)$m[1] >= 1 ? (int)$m[1] : null;
 }
 
@@ -830,6 +858,374 @@ function nextNumberCode(PDO $pdo, ?DateTimeInterface $at = null): string
 }
 
 /**
+ * Detailed monthly sequence status for template generation and import validation.
+ * @return array{
+ *   prefix: string,
+ *   month_prefix: string,
+ *   year_month: string,
+ *   next_num: int,
+ *   next_run: int,
+ *   remaining: int,
+ *   remaining_in_month: int,
+ *   next_code: ?string
+ * }
+ */
+function nextNumberCodeInfo(PDO $pdo, ?DateTimeInterface $at = null): array
+{
+    $at ??= new DateTimeImmutable('now', new DateTimeZone(CODE_TZ));
+    $ym          = $at->format('y') . '-' . $at->format('m');
+    $monthPrefix = sprintf('%s-%s', CODE_PREFIX, $ym);
+    $prefix      = $monthPrefix . '-';
+
+    $st = $pdo->prepare('SELECT MAX(CAST(SUBSTRING(code, ?) AS UNSIGNED)) FROM boards WHERE code LIKE ?');
+    $st->execute([strlen($prefix) + 1, $prefix . '___']);
+    $nextNum   = (int)$st->fetchColumn() + 1;
+    $remaining = max(0, CODE_MAX_RUN - $nextNum + 1);
+    $nextCode  = $remaining > 0 ? ($prefix . str_pad((string)$nextNum, 3, '0', STR_PAD_LEFT)) : null;
+
+    return [
+        'prefix'             => $prefix,
+        'month_prefix'       => $monthPrefix,
+        'year_month'         => $ym,
+        'next_num'           => $nextNum,
+        'next_run'           => $nextNum,
+        'remaining'          => $remaining,
+        'remaining_in_month' => $remaining,
+        'next_code'          => $nextCode,
+    ];
+}
+
+/**
+ * Acquire system-wide advisory lock for Number Code generation / Import commit.
+ * On SQLite (single-file/in-memory), transactions already serialize writes so returns true.
+ */
+function acquireNumberCodeLock(PDO $pdo, int $timeoutSec = 5): bool
+{
+    $driver = (string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver !== 'mysql') {
+        return true;
+    }
+    $sec    = max(0, $timeoutSec);
+    $lockSt = $pdo->query("SELECT GET_LOCK('aoi_board_number_code', {$sec})");
+    return $lockSt !== false && ((int)$lockSt->fetchColumn() === 1);
+}
+
+/**
+ * Release system-wide advisory lock for Number Code generation / Import commit.
+ */
+function releaseNumberCodeLock(PDO $pdo): void
+{
+    $driver = (string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver !== 'mysql') {
+        return;
+    }
+    try {
+        $pdo->query("DO RELEASE_LOCK('aoi_board_number_code')");
+    } catch (Throwable $_) {
+        // Ignore release errors on disconnect
+    }
+}
+
+/**
+ * Validate and normalize a raw Defects string against DEFECT_LABELS and OTHER / OTHER:<detail>.
+ *
+ * @return array{valid: bool, normalized: string, codes: int[], other: bool, other_text: string, invalid: string[]}
+ */
+function validateAndNormalizeDefects(?string $raw): array
+{
+    $raw = trim((string)$raw);
+    if ($raw === '') {
+        return ['valid' => true, 'normalized' => '', 'codes' => [], 'other' => false, 'other_text' => '', 'invalid' => []];
+    }
+
+    $codes     = [];
+    $hasOther  = false;
+    $otherText = '';
+    $invalid   = [];
+
+    // Extract trailing OTHER:<detail> first in case <detail> contains commas
+    if (preg_match('/(?:^|,)\s*OTHER\s*:(.*)$/is', $raw, $m, PREG_OFFSET_CAPTURE)) {
+        $hasOther  = true;
+        $otherText = trim($m[1][0]);
+        $raw       = substr($raw, 0, (int)$m[0][1]);
+    }
+
+    foreach (explode(',', $raw) as $part) {
+        $part = trim($part);
+        if ($part === '') continue;
+
+        if (strcasecmp($part, 'OTHER') === 0) {
+            $hasOther = true;
+        } elseif (stripos($part, 'OTHER:') === 0) {
+            $hasOther  = true;
+            $otherText = trim(substr($part, 6));
+        } elseif (ctype_digit($part)) {
+            $code = (int)$part;
+            if (isset(DEFECT_LABELS[$code])) {
+                if (!in_array($code, $codes, true)) {
+                    $codes[] = $code;
+                }
+            } else {
+                $invalid[] = $part;
+            }
+        } else {
+            $invalid[] = $part;
+        }
+    }
+
+    $parts = array_map('strval', $codes);
+    if ($hasOther) {
+        $parts[] = $otherText !== '' ? ('OTHER:' . $otherText) : 'OTHER';
+    }
+    $normalized = implode(',', $parts);
+    $valid      = empty($invalid) && ($normalized !== '');
+
+    return [
+        'valid'      => $valid,
+        'normalized' => $normalized,
+        'codes'      => $codes,
+        'other'      => $hasOther,
+        'other_text' => $otherText,
+        'invalid'    => $invalid,
+    ];
+}
+
+/**
+ * Shared Shelf & Rack validator used by both saveBoardRecord() and Excel Import.
+ * Checks in strict order:
+ *   1. Valid format matching the sheet's shelf_prefix (parseShelf)
+ *   2. Exists in current Rack capacity: shelf_no <= magazineCount($pdo, $sheet) * MAGAZINE_SIZE
+ *   3. Not occupied in `boards` at (sheet, shelf_no) (excluding $excludeId)
+ *
+ * @return array{
+ *   valid: bool,
+ *   reason: string,
+ *   shelf: string,
+ *   shelf_no: ?int,
+ *   prefix: string,
+ *   mag_count: int,
+ *   capacity: int,
+ *   occupied_by: ?array<string, mixed>,
+ *   mag_slot: string,
+ *   error: string
+ * }
+ */
+function validateBoardShelf(PDO $pdo, string $sheet, string $rawShelf, ?int $excludeId = 0): array
+{
+    $excludeId = (int)($excludeId ?? 0);
+    $sp        = shelfPrefix($sheet);
+    $shelfTrim = strtoupper(trim($rawShelf));
+    $shelfNo   = parseShelf($sheet, $shelfTrim);
+
+    if ($shelfNo === null) {
+        return [
+            'valid'       => false,
+            'reason'      => 'invalid_format',
+            'shelf'       => $shelfTrim,
+            'shelf_no'    => null,
+            'prefix'      => $sp,
+            'mag_count'   => 0,
+            'capacity'    => 0,
+            'occupied_by' => null,
+            'mag_slot'    => '',
+            'error'       => "เลือกชั้นวาง (Shelf) ไม่ถูกต้อง เนื่องจากชีต $sheet ใช้รหัสชั้นวางขึ้นต้นด้วย {$sp} กรุณาเลือกชั้นวางจากรายการ ({$sp}1, {$sp}2, ...) / Invalid Shelf for sheet $sheet. Please select {$sp}1, {$sp}2, etc.",
+        ];
+    }
+
+    $shelf    = $sp . $shelfNo; // normalize e.g. CD05 -> CD5
+    $magCount = magazineCount($pdo, $sheet);
+    $limit    = $magCount * MAGAZINE_SIZE;
+    $magSlot  = magazineSlotText($sheet, $shelfNo);
+
+    if ($shelfNo > $limit) {
+        return [
+            'valid'       => false,
+            'reason'      => 'exceeds_capacity',
+            'shelf'       => $shelf,
+            'shelf_no'    => $shelfNo,
+            'prefix'      => $sp,
+            'mag_count'   => $magCount,
+            'capacity'    => $limit,
+            'occupied_by' => null,
+            'mag_slot'    => $magSlot,
+            'error'       => "เลือกชั้นวาง $shelf ไม่ได้ เนื่องจากเกินความจุชั้นวางปัจจุบันของชีต $sheet (สูงสุด {$sp}{$limit}) กรุณากดเพิ่ม Magazine ที่ Rack Map ก่อน / Shelf $shelf exceeds current capacity ({$sp}{$limit}) for $sheet. Add a Magazine first.",
+        ];
+    }
+
+    $taken = $pdo->prepare('SELECT id, code, shelf, shelf_no, mag_slot, product FROM boards WHERE sheet = ? AND shelf_no = ? AND id <> ? LIMIT 1');
+    $taken->execute([$sheet, $shelfNo, $excludeId]);
+    $occ = $taken->fetch(PDO::FETCH_ASSOC);
+
+    if ($occ) {
+        $occMagSlot = magazineSlotDisplay($occ);
+        $occ['mag_slot_display'] = $occMagSlot;
+        $occCode = (string)($occ['code'] ?? '');
+        return [
+            'valid'       => false,
+            'reason'      => 'occupied',
+            'shelf'       => $shelf,
+            'shelf_no'    => $shelfNo,
+            'prefix'      => $sp,
+            'mag_count'   => $magCount,
+            'capacity'    => $limit,
+            'occupied_by' => $occ,
+            'mag_slot'    => $magSlot,
+            'error'       => "บันทึกข้อมูลลงชั้นวาง $shelf ไม่ได้ เนื่องจากมีบอร์ดวางอยู่ในชั้นนี้แล้วในชีต $sheet (รหัส $occCode · $occMagSlot) กรุณาเลือกชั้นวางอื่นที่ว่างอยู่ / Shelf $shelf is already occupied in $sheet by $occCode ($occMagSlot). Please select an empty shelf.",
+        ];
+    }
+
+    return [
+        'valid'       => true,
+        'reason'      => '',
+        'shelf'       => $shelf,
+        'shelf_no'    => $shelfNo,
+        'prefix'      => $sp,
+        'mag_count'   => $magCount,
+        'capacity'    => $limit,
+        'occupied_by' => null,
+        'mag_slot'    => $magSlot,
+        'error'       => '',
+    ];
+}
+
+/**
+ * Shared validator for board record attributes (Product Model, Side, Board Type, Status, Other, Defects).
+ * Used by both saveBoardRecord() (web form, $strictMode = false) and Excel Import ($strictMode = true).
+ *
+ * @return array{
+ *   valid: bool,
+ *   product: string,
+ *   side: string,
+ *   board_type: string,
+ *   status: string,
+ *   pcs: string,
+ *   defects: string,
+ *   no_class: bool,
+ *   errors: string[],
+ *   field_errors: array<string, string>
+ * }
+ */
+function validateBoardInput(array $input, bool $strictMode = false): array
+{
+    $product    = strtoupper(trim((string)($input['product'] ?? '')));
+    $side       = trim((string)($input['side'] ?? ''));
+    $type       = trim((string)($input['board_type'] ?? ''));
+    $rawStatus  = trim((string)($input['board_status'] ?? ($input['status'] ?? '')));
+    $pcs        = trim((string)($input['pcs'] ?? ($input['pcs_status'] ?? '')));
+    $rawDefects = trim((string)($input['defects'] ?? ''));
+
+    // Normalize "G+D" -> "GD" (Excel dropdown shows G+D; DB stores GD)
+    $statusUpper = strtoupper($rawStatus);
+    $status = match ($statusUpper) {
+        'G+D', 'GD' => 'GD',
+        'G'         => 'G',
+        'D'         => 'D',
+        default     => $rawStatus,
+    };
+
+    $noClass = in_array($pcs, OTHER_NO_CLASS, true);
+    $defects = $rawDefects;
+
+    if (!$strictMode && $noClass) {
+        $status  = '';
+        $defects = '';
+    }
+
+    $errors      = [];
+    $fieldErrors = [];
+
+    if ($product === '' || mb_strlen($product, 'UTF-8') > 40 || strlen($product) > 40) {
+        $msg = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้กรอก Product Model (สูงสุดไม่เกิน 40 ตัวอักษร) กรุณาระบุรหัสรุ่นบอร์ด / Product Model is required (max 40 characters).';
+        $errors[] = $msg;
+        $fieldErrors['product'] = $msg;
+    }
+
+    if ($side === '' || !in_array($side, BOARD_SIDES, true)) {
+        $msg = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกด้านของบอร์ด (Side) กรุณาเลือก F-Side หรือ B-Side / Please select a Board Side (F-Side or B-Side).';
+        $errors[] = $msg;
+        $fieldErrors['side'] = $msg;
+    }
+
+    if ($type === '' || !in_array($type, BOARD_TYPES, true)) {
+        $msg = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกประเภทบอร์ด (Board Type) กรุณาเลือกประเภทบอร์ดจากรายการ / Please select a valid Board Type.';
+        $errors[] = $msg;
+        $fieldErrors['board_type'] = $msg;
+    }
+
+    if ($pcs !== '' && !in_array($pcs, OTHER_OPTIONS, true)) {
+        $msg = 'ตัวเลือก Other ไม่ถูกต้อง กรุณาเลือก Bare, Bad Mark หรือเว้นว่างไว้ / Invalid Other value.';
+        $errors[] = $msg;
+        $fieldErrors['pcs_status'] = $msg;
+    }
+
+    if ($noClass) {
+        if ($strictMode && ($rawStatus !== '' || $rawDefects !== '')) {
+            $msg = "ระบุ Status หรือ Defects ร่วมกับ PCS P/D (Other) = \"$pcs\" ไม่ได้ เนื่องจากบอร์ดประเภท Bare และ Bad Mark ต้องเว้นช่อง Status และ Defects ให้ว่าง กรุณาลบค่าในช่อง Status และ Defects / Status and Defects must be empty when PCS P/D (Other) is \"$pcs\". Please clear Status and Defects.";
+            $errors[] = $msg;
+            if ($rawStatus !== '') {
+                $fieldErrors['status'] = $msg;
+            }
+            if ($rawDefects !== '') {
+                $fieldErrors['defects'] = $msg;
+            }
+        }
+        $status  = '';
+        $defects = '';
+    } else {
+        if (!in_array($status, ['G', 'D', 'GD'], true)) {
+            $msg = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกสถานะบอร์ด (Board Classification) กรุณาเลือก Master [G], Master [D] หรือ [G+D] Mixed / Please select a Board Classification.';
+            $errors[] = $msg;
+            $fieldErrors['status'] = $msg;
+        }
+    }
+
+    if ($strictMode && $status === 'G' && $defects !== '') {
+        $msg = 'ระบุรหัส Defects สำหรับบอร์ดสถานะ G (Master Good) ไม่ได้ เนื่องจากบอร์ดงานดีต้องไม่มีข้อบกพร่อง กรุณาเว้นช่อง Defects ให้ว่าง หรือเปลี่ยน Status เป็น D / G+D / Defects must be empty when Status is G (Master Good). Clear Defects or change Status to D / G+D.';
+        $errors[] = $msg;
+        $fieldErrors['defects'] = $msg;
+    } elseif (in_array($status, ['D', 'GD'], true)) {
+        if ($defects === '') {
+            $msg = 'บันทึกไม่ได้ เนื่องจากบอร์ดสถานะ Defect ต้องระบุอาการเสีย กรุณาเลือกข้อบกพร่องอย่างน้อย 1 รายการในแผง Select Defects / Please select at least 1 defect for Defect classification.';
+            $errors[] = $msg;
+            $fieldErrors['defects'] = $msg;
+        } else {
+            $defCheck = validateAndNormalizeDefects($defects);
+            if (!$defCheck['valid']) {
+                $allowedCodes = implode(', ', array_keys(DEFECT_LABELS));
+                $badList      = !empty($defCheck['invalid']) ? implode(', ', $defCheck['invalid']) : $defects;
+                $msg = "รหัส Defects \"$badList\" ไม่ถูกต้อง เนื่องจากพบรหัสที่ไม่อยู่ในระบบ กรุณาระบุเฉพาะรหัสตัวเลขที่กำหนด ($allowedCodes) หรือ OTHER:รายละเอียด / Invalid Defect code(s) \"$badList\". Allowed codes: $allowedCodes or OTHER:<detail>.";
+                $errors[] = $msg;
+                $fieldErrors['defects'] = $msg;
+            } else {
+                $defects = $defCheck['normalized'];
+            }
+        }
+    }
+
+    return [
+        'valid'        => empty($errors),
+        'product'      => $product,
+        'side'         => $side,
+        'board_type'   => $type,
+        'status'       => $status,
+        'pcs'          => $pcs,
+        'pcs_status'   => $pcs,
+        'defects'      => $defects,
+        'no_class'     => $noClass,
+        'normalized'   => [
+            'product'    => $product,
+            'side'       => $side,
+            'board_type' => $type,
+            'status'     => $status,
+            'pcs_status' => $pcs,
+            'defects'    => $defects,
+        ],
+        'errors'       => $errors,
+        'field_errors' => $fieldErrors,
+    ];
+}
+
+/**
  * Shared validation, system-wide Number Code generation, and concurrency-safe INSERT/UPDATE for boards.
  * Used by both `api/save.php` (AJAX) and `includes/actions.php` (non-AJAX POST fallback).
  *
@@ -857,24 +1253,18 @@ function saveBoardRecord(PDO $pdo, array $input): array
 {
     topology($pdo);   // the zone / sheet checks below read the zones + sheets tables of this database
 
-    $id      = (int)($input['id'] ?? 0);
-    $zone    = normalizeZone((string)($input['zone'] ?? DEFAULT_ZONE));
-    $sheet   = trim((string)($input['sheet'] ?? ''));
-    $code    = trim((string)($input['code'] ?? ''));
-    $shelf   = strtoupper(trim((string)($input['shelf'] ?? '')));
-    $product = strtoupper(trim((string)($input['product'] ?? '')));
-    $side    = trim((string)($input['side'] ?? ''));
-    $type    = trim((string)($input['board_type'] ?? ''));
-    $status  = (string)($input['board_status'] ?? '');
-    $pcs     = trim((string)($input['pcs'] ?? ''));
-    $defects = trim((string)($input['defects'] ?? ''));
-
-    // Other = Bare / Bad Mark -> no Board Classification (locked empty in the form), so no defects either
-    $noClass = in_array($pcs, OTHER_NO_CLASS, true);
-    if ($noClass) {
-        $status  = '';
-        $defects = '';
-    }
+    $id        = (int)($input['id'] ?? 0);
+    $zone      = normalizeZone((string)($input['zone'] ?? DEFAULT_ZONE));
+    $sheet     = trim((string)($input['sheet'] ?? ''));
+    $code      = trim((string)($input['code'] ?? ''));
+    $shelf     = strtoupper(trim((string)($input['shelf'] ?? '')));
+    $validated = validateBoardInput($input, false);
+    $product   = $validated['product'];
+    $side      = $validated['side'];
+    $type      = $validated['board_type'];
+    $status    = $validated['status'];
+    $pcs       = $validated['pcs'];
+    $defects   = $validated['defects'];
 
     $formErrors = [];
     $old = ['id' => 0, 'zone' => $zone, 'sheet' => $sheet, 'code' => '', 'shelf' => '', 'shelf_no' => 0];
@@ -921,46 +1311,22 @@ function saveBoardRecord(PDO $pdo, array $input): array
         }
     }
 
-    // Validate Shelf when a valid sheet is known
+    // Validate Shelf when a valid sheet is known via shared validateBoardShelf()
     $shelfNo = null;
     if (sheetExists($sheet)) {
-        $sp      = shelfPrefix($sheet);
-        $shelfNo = parseShelf($sheet, $shelf);
-        if ($shelfNo === null) {
-            $formErrors[] = "เลือกชั้นวาง (Shelf) ไม่ถูกต้อง เนื่องจากชีต $sheet ใช้รหัสชั้นวางขึ้นต้นด้วย {$sp} กรุณาเลือกชั้นวางจากรายการ ({$sp}1, {$sp}2, ...) / Invalid Shelf for sheet $sheet. Please select {$sp}1, {$sp}2, etc.";
-        } else {
-            $shelf = $sp . $shelfNo; // normalize e.g. CD05 -> CD5
-            $limit = magazineCount($pdo, $sheet) * MAGAZINE_SIZE;
-            if ($shelfNo > $limit) {
-                $formErrors[] = "เลือกชั้นวาง $shelf ไม่ได้ เนื่องจากเกินความจุชั้นวางปัจจุบันของชีต $sheet (สูงสุด {$sp}{$limit}) กรุณากดเพิ่ม Magazine ที่ Rack Map ก่อน / Shelf $shelf exceeds current capacity ({$sp}{$limit}) for $sheet. Add a Magazine first.";
-            } else {
-                $taken = $pdo->prepare('SELECT id FROM boards WHERE sheet = ? AND shelf_no = ? AND id <> ?');
-                $taken->execute([$sheet, $shelfNo, $id]);
-                if ($taken->fetch()) {
-                    $formErrors[] = "บันทึกข้อมูลลงชั้นวาง $shelf ไม่ได้ เนื่องจากมีบอร์ดวางอยู่ในชั้นนี้แล้วในชีต $sheet กรุณาเลือกชั้นวางอื่นที่ว่างอยู่ / Shelf $shelf is already occupied in $sheet. Please select an empty shelf.";
-                }
-            }
+        $shelfCheck = validateBoardShelf($pdo, $sheet, $shelf, $id);
+        $shelfNo    = $shelfCheck['shelf_no'];
+        if ($shelfNo !== null) {
+            $shelf = $shelfCheck['shelf'];
+        }
+        if (!$shelfCheck['valid']) {
+            $formErrors[] = $shelfCheck['error'];
         }
     }
 
-    // Validate fields
-    if ($product === '' || strlen($product) > 40) {
-        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้กรอก Product Model (สูงสุดไม่เกิน 40 ตัวอักษร) กรุณาระบุรหัสรุ่นบอร์ด / Product Model is required (max 40 characters).';
-    }
-    if ($side === '' || !in_array($side, BOARD_SIDES, true)) {
-        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกด้านของบอร์ด (Side) กรุณาเลือก F-Side หรือ B-Side / Please select a Board Side (F-Side or B-Side).';
-    }
-    if ($type === '' || !in_array($type, BOARD_TYPES, true)) {
-        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกประเภทบอร์ด (Board Type) กรุณาเลือกประเภทบอร์ดจากรายการ / Please select a valid Board Type.';
-    }
-    if (!$noClass && !in_array($status, ['G', 'D', 'GD'], true)) {
-        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากยังไม่ได้เลือกสถานะบอร์ด (Board Classification) กรุณาเลือก Master [G], Master [D] หรือ [G+D] Mixed / Please select a Board Classification.';
-    }
-    if ($pcs !== '' && !in_array($pcs, OTHER_OPTIONS, true)) {
-        $formErrors[] = 'ตัวเลือก Other ไม่ถูกต้อง กรุณาเลือก Bare, Bad Mark หรือเว้นว่างไว้ / Invalid Other value.';
-    }
-    if (in_array($status, ['D', 'GD'], true) && $defects === '') {
-        $formErrors[] = 'บันทึกไม่ได้ เนื่องจากบอร์ดสถานะ Defect ต้องระบุอาการเสีย กรุณาเลือกข้อบกพร่องอย่างน้อย 1 รายการในแผง Select Defects / Please select at least 1 defect for Defect classification.';
+    // Append shared attribute validation errors
+    foreach ($validated['errors'] as $err) {
+        $formErrors[] = $err;
     }
 
     // System-wide duplicate check on edit (only when code was actually changed, allowing edits to legacy duplicates)

@@ -140,6 +140,11 @@ final class AoiXlsxStyle
     public const TFOOT_DEFECT_ZERO= 30; // Footer zero defect #F1F5F9, muted #64748B, center
     public const LEGEND_HEAD      = 31; // Legend section header #1E293B, white bold
     public const LEGEND_ITEM      = 32; // Legend item #F8FAFC, #334155 9.5pt
+    public const TD_LOCKED_CODE   = 33; // Locked Number Code #F1F5F9, bold mono #0F172A, center, locked=1
+    public const TD_LOCKED_AUTO   = 34; // Locked Magazine/Slot #F1F5F9, muted #64748B, center, locked=1
+    public const TD_EDIT_SHELF    = 35; // Unlocked Shelf #EFF6FF, bold #1D4ED8, center, locked=0
+    public const TD_EDIT_TEXT     = 36; // Unlocked Text #FFFFFF, #0F172A, left, locked=0
+    public const TD_EDIT_CENTER   = 37; // Unlocked Center #FFFFFF, #0F172A, center, locked=0
 }
 
 /**
@@ -242,8 +247,8 @@ function buildXlsxStylesXml(): string
         . '</border>'
         . '</borders>'
         . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        // CellXfs (0..32 matching AoiXlsxStyle constants)
-        . '<cellXfs count="33">'
+        // CellXfs (0..37 matching AoiXlsxStyle constants)
+        . '<cellXfs count="38">'
         // 0: DEFAULT_CELL
         . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
         // 1: TITLE_BANNER
@@ -310,16 +315,30 @@ function buildXlsxStylesXml(): string
         . '<xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>'
         // 32: LEGEND_ITEM
         . '<xf numFmtId="0" fontId="2" fillId="14" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>'
+        // 33: TD_LOCKED_CODE (locked=1, mono font, slate tint fill)
+        . '<xf numFmtId="0" fontId="5" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment horizontal="center" vertical="center"/><protection locked="1"/></xf>'
+        // 34: TD_LOCKED_AUTO (locked=1, muted italic/slate font, slate tint fill)
+        . '<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment horizontal="left" vertical="center" indent="1"/><protection locked="1"/></xf>'
+        // 35: TD_EDIT_SHELF (locked=0, bold cyan shelf font, white fill)
+        . '<xf numFmtId="0" fontId="6" fillId="13" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment horizontal="center" vertical="center"/><protection locked="0"/></xf>'
+        // 36: TD_EDIT_TEXT (locked=0, normal font, white fill, left-aligned)
+        . '<xf numFmtId="0" fontId="0" fillId="13" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment horizontal="left" vertical="center"/><protection locked="0"/></xf>'
+        // 37: TD_EDIT_CENTER (locked=0, normal font, white fill, center-aligned)
+        . '<xf numFmtId="0" fontId="0" fillId="13" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyProtection="1"><alignment horizontal="center" vertical="center"/><protection locked="0"/></xf>'
         . '</cellXfs>'
         . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
         . '</styleSheet>';
 }
 
 /**
- * Render a single Worksheet XML from structured rows, column widths, freeze panes, merges, and autoFilter.
+ * Render a single Worksheet XML from structured rows, column widths, freeze panes, merges, autoFilter, and options.
  *
  * Each row in $rows is:
- *   ['height' => float|null, 'cells' => [ ['v' => string|int|float, 's' => int, 't' => 'str'|'n'] ]]
+ *   ['height' => float|null, 'cells' => [ ['v' => string|int|float, 's' => int, 't' => 'str'|'n', 'f' => string|null] ]]
+ *
+ * Supported $options keys:
+ *   - 'sheetProtection' => bool (enable worksheet protection locking locked=1 cells while allowing locked=0 cells)
+ *   - 'dataValidations' => array of ['sqref' => string, 'list' => string[], 'allowBlank' => bool]
  */
 function buildWorksheetXml(
     array $rows,
@@ -327,7 +346,8 @@ function buildWorksheetXml(
     int $freezeRow = 4,
     int $freezeCol = 0,
     ?string $autoFilterRef = null,
-    array $merges = []
+    array $merges = [],
+    array $options = []
 ): string {
     $maxCol = max(1, count($colWidths));
     $maxRow = max(1, count($rows));
@@ -376,8 +396,13 @@ function buildWorksheetXml(
             $style = isset($cell['s']) ? ' s="' . (int)$cell['s'] . '"' : '';
             $type  = $cell['t'] ?? 'str';
             $val   = $cell['v'] ?? '';
+            $form  = isset($cell['f']) && is_string($cell['f']) && $cell['f'] !== '' ? $cell['f'] : null;
 
-            if ($type === 'n' && is_numeric($val)) {
+            if ($form !== null) {
+                $escapedForm = xlsxXmlEscape($form);
+                $escapedVal  = xlsxXmlEscape((string)$val);
+                $xml .= '<c r="' . $ref . '"' . $style . ' t="str"><f>' . $escapedForm . '</f><v>' . $escapedVal . '</v></c>';
+            } elseif ($type === 'n' && is_numeric($val)) {
                 $xml .= '<c r="' . $ref . '"' . $style . '><v>' . $val . '</v></c>';
             } else {
                 $escaped = xlsxXmlEscape((string)$val);
@@ -387,6 +412,11 @@ function buildWorksheetXml(
         $xml .= '</row>';
     }
     $xml .= '</sheetData>';
+
+    // 5b. sheetProtection (must appear right after sheetData and before autoFilter in ECMA-376)
+    if (!empty($options['sheetProtection'])) {
+        $xml .= '<sheetProtection sheet="1" objects="1" scenarios="1" formatCells="0" formatColumns="0" formatRows="0" insertRows="0" deleteRows="0" selectLockedCells="1" selectUnlockedCells="1"/>';
+    }
 
     // 6. autoFilter (must appear BEFORE mergeCells in ECMA-376)
     if ($autoFilterRef !== null && $autoFilterRef !== '') {
@@ -400,6 +430,22 @@ function buildWorksheetXml(
             $xml .= '<mergeCell ref="' . $mRef . '"/>';
         }
         $xml .= '</mergeCells>';
+    }
+
+    // 7b. dataValidations (must appear AFTER mergeCells and BEFORE pageMargins in ECMA-376)
+    $dataValidations = $options['dataValidations'] ?? [];
+    if (!empty($dataValidations) && is_array($dataValidations)) {
+        $xml .= '<dataValidations count="' . count($dataValidations) . '">';
+        foreach ($dataValidations as $dv) {
+            $sqref      = xlsxXmlEscape((string)($dv['sqref'] ?? 'A1'));
+            $allowBlank = !isset($dv['allowBlank']) || $dv['allowBlank'] ? '1' : '0';
+            $listItems  = $dv['list'] ?? [];
+            $formulaStr = '"' . implode(',', array_map(static fn($item): string => str_replace('"', '""', (string)$item), $listItems)) . '"';
+            $xml .= '<dataValidation type="list" allowBlank="' . $allowBlank . '" showInputMessage="1" showErrorMessage="1" sqref="' . $sqref . '">'
+                . '<formula1>' . xlsxXmlEscape($formulaStr) . '</formula1>'
+                . '</dataValidation>';
+        }
+        $xml .= '</dataValidations>';
     }
 
     // 8. pageMargins
@@ -813,7 +859,11 @@ function buildXlsxWorkbookBytes(array $sheets): string
     foreach ($sheets as $i => $sh) {
         $n     = $i + 1;
         $title = mb_substr(preg_replace('/[\\\\\\/?*\\[\\]:]+/', ' ', (string)$sh['title']) ?? 'Sheet' . $n, 0, 31);
-        $wb   .= '<sheet name="' . xlsxXmlEscape($title) . '" sheetId="' . $n . '" r:id="rId' . $n . '"/>';
+        $stateAttr = '';
+        if (isset($sh['state']) && in_array($sh['state'], ['hidden', 'veryHidden'], true)) {
+            $stateAttr = ' state="' . $sh['state'] . '"';
+        }
+        $wb .= '<sheet name="' . xlsxXmlEscape($title) . '" sheetId="' . $n . '"' . $stateAttr . ' r:id="rId' . $n . '"/>';
     }
     $wb .= '</sheets></workbook>';
     $zip->addFromString('xl/workbook.xml', $wb);

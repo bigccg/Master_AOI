@@ -341,6 +341,14 @@ $esThaiMonths = [
             <i class="fa-solid fa-rotate-left"></i>
             <span>รีเซ็ตตัวกรองทั้งหมด</span>
           </button>
+          <button type="button" class="es-reset-btn" id="es-open-import-tpl-btn" onclick="openImportStation(1, this)" title="ดาวน์โหลดแม่แบบ Excel พร้อม Number Code ล่าสุด">
+            <i class="fa-solid fa-file-arrow-down text-emerald-600"></i>
+            <span>แม่แบบ Import / Import Template</span>
+          </button>
+          <button type="button" class="es-reset-btn" id="es-open-import-upl-btn" onclick="openImportStation(2, this)" title="อัปโหลดและนำเข้าข้อมูลบอร์ดจากไฟล์แม่แบบ Excel (.xlsx)">
+            <i class="fa-solid fa-file-import text-cyan-600"></i>
+            <span>Import จาก Excel</span>
+          </button>
           <span class="es-summary-text" id="es-summary-text">พร้อมส่งออกทุกโซน · ทุกขนาด · ทุกช่วงเวลา</span>
         </div>
 

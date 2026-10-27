@@ -59,6 +59,30 @@ docker compose up -d web
 - ระบบไม่ renumber รหัสเดิม ฐานข้อมูลเก่าที่มีรหัสซ้ำข้ามชีต (จากช่วงที่เลขรันแยกตามชีต) ยังใช้งานได้ตามปกติ ระบบจะเพิ่ม unique index `uq_code` (และลบ `uq_sheet_code` เดิม) ให้อัตโนมัติเมื่อไม่มีรหัสซ้ำเหลืออยู่แล้วเท่านั้น
 - ระหว่างที่ยังมีรหัสซ้ำ เว็บจะตรวจและเขียน log เรื่องนี้ไม่เกินชั่วโมงละ 1 ครั้ง (ใช้ไฟล์ flag `aoi-<database>-uq_code.flag` ในโฟลเดอร์ temp ของ PHP)
 
+## การนำเข้าข้อมูลบอร์ดผ่าน Excel / Excel Batch Import
+
+ระบบรองรับการเพิ่มข้อมูลบอร์ดแบบกลุ่มผ่านไฟล์ Excel (`.xlsx`) โดยรักษาความต่อเนื่องของ `Number Code` ร่วมกับการบันทึกผ่านหน้าเว็บ:
+
+1. **ดาวน์โหลดแม่แบบ (`Import Station → 1. ดาวน์โหลดแม่แบบ` หรือ `api/import_template.php`)**
+   - แม่แบบผูกกับ **โซน + ชีต** ที่เปิดใช้งานจริง (ไม่อนุญาตมุมมองรวม `ALL`)
+   - เลือกจำนวนแถวได้ (`25`, `50`, `100`, `200` แถว) ระบบจะเติม `Number Code` ล่วงหน้าเริ่มจาก `nextNumberCode()` ณ ตอนดาวน์โหลด และรันต่อเนื่อง `+1` ลงมาทีละแถวภายในเดือนปัจจุบัน (`Asia/Bangkok`, สูงสุด `999`)
+   - ภายในไฟล์ `.xlsx` ประกอบด้วย 3 ชีต:
+     - `AOI_Import_Template`: ตารางกรอกข้อมูลพร้อม Data Validation dropdown (`Side`, `Board Type`, `Status`, `PCS P/D (Other)`), ล็อกคอลัมน์ `Number Code` และ `Magazine / Slot`
+     - `วิธีใช้ (Guide)`: คู่มือภาษาไทย/อังกฤษ ตัวอย่างการกรอก และตารางรหัส `DEFECT_LABELS` ทั้งหมด
+     - `_meta` (ซ่อน): เก็บ `version`, `zone`, `sheet`, `shelf_prefix`, `year_month`, `start_code`, `end_code`, `row_count`, `generated_at` พร้อมลายเซ็น `HMAC-SHA256` (`checksum`) ป้องกันการปลอมแปลง
+
+2. **การกรอกข้อมูลและตรวจสอบ (`2. อัปโหลดไฟล์ → 3. ตรวจสอบและยืนยัน` / `api/import_preview.php`)**
+   - ต้องกรอกข้อมูลต่อเนื่องจากแถวแรกลงมา ห้ามเว้นแถวว่างคั่นกลาง ส่วนแถวท้ายที่ไม่ได้ใช้ให้เว้นว่างไว้ ระบบจะข้ามให้อัตโนมัติและไม่เสียรหัส
+   - ระบบตรวจสอบที่เซิร์ฟเวอร์ทุกข้อโดยใช้ฟังก์ชันกลาง `validateBoardInput()` และ `validateBoardShelf()` ร่วมกับฟอร์มบนเว็บ:
+     - `Number Code`: รูปแบบถูกต้อง รหัสเริ่มต้นตรงกับ `nextNumberCode()` ณ ตอนนำเข้า (หากมีคนเพิ่มข้อมูลตัดหน้า แม่แบบจะถูกแจ้งว่าหมดอายุและมีปุ่มดาวน์โหลดแม่แบบใหม่ทันที ไม่มีการเปลี่ยนรหัสให้เองแบบเงียบๆ)
+     - `Shelf`: ตรงตาม prefix ของชีต, มีอยู่ในความจุ Rack จริง (`shelf_no <= magazineCount(sheet) * MAGAZINE_SIZE`, ไม่สร้าง Magazine เพิ่มอัตโนมัติ), ช่องว่างในฐานข้อมูล และไม่ซ้ำกันเองในไฟล์
+     - `Magazine / Slot`: คำนวณใหม่ที่เซิร์ฟเวอร์จาก `magazineSlotText()` เสมอโดยไม่เชื่อค่าจากไฟล์
+   - หากพบข้อผิดพลาด สามารถกรองดูเฉพาะแถวที่ผิดและกดดาวน์โหลดรายงานข้อผิดพลาดเป็นไฟล์ `.xlsx` ได้ทันที
+
+3. **การบันทึกแบบ All-or-Nothing (`api/import_commit.php`)**
+   - จองคิวด้วย `GET_LOCK('aoi_board_number_code', 5)` และตรวจสอบข้อมูลซ้ำอีกครั้งภายใน Database Transaction เดียว
+   - หากมีข้อมูลผิดกติกาหรือซ้ำแม้แต่ 1 แถว ระบบจะ `ROLLBACK` ทั้งไฟล์ (ไม่บันทึกรายการใดๆ เลย)
+
 ## ความปลอดภัยของไฟล์บนเว็บ
 
 `.htaccess` (Apache, ไม่ต้องใช้ mod_rewrite) ปิด `.git/` และไฟล์ที่ขึ้นต้นด้วยจุด (404), โฟลเดอร์ `config/ includes/ components/ tests/ scripts/ docs/` และไฟล์ `.zip .tar.gz .bak .old .sql .log .md .sh .bat` (403) ส่วน PHP built-in server (`start-offline.sh`) ปิด path เดียวกันใน router ของ `index.php` ถ้าใช้ web server อื่น (เช่น Nginx) ต้องตั้ง deny ให้ path เหล่านี้เอง
@@ -90,9 +114,12 @@ Exit code: `0` = ไม่มีอะไรต้องแก้, `2` = พบ�
 ## Tests
 
 ```bash
+docker exec php_app_web php /var/www/html/aoi-web-php/tests/import-test.php
 docker exec php_app_web php /var/www/html/aoi-web-php/tests/number-code-test.php
 docker exec php_app_web php /var/www/html/aoi-web-php/tests/topology-test.php
 ```
+
+`import-test.php` ทดสอบระบบนำเข้า Excel ครบทั้ง 8 หมวด (การสร้างแม่แบบและกรอกบางส่วนโดยรหัสต่อเนื่องกับหน้าเว็บ, แม่แบบหมดอายุเมื่อมีคนเพิ่มข้อมูลตัดหน้า, การกรอกเว้นบรรทัด/รหัสข้าม/ชนเพดาน 999, การตรวจ Shelf ทั้ง 4 ขั้นตอนและ All-or-Nothing rollback, การคำนวณ Magazine/Slot ที่เซิร์ฟเวอร์, การแชร์ `validateBoardInput()` ร่วมกับฟอร์มปกติและการซิงก์ `aoi_programs`, การป้องกันไฟล์ปลอม/แก้ไข `_meta`/XXE, และการชนกันของ `GET_LOCK` ที่คืนค่า 503) บนทั้ง SQLite (`:memory:`) และฐานข้อมูลชั่วคราว `aoi_test_import_*` บน MySQL
 
 `topology-test.php` ทดสอบตาราง zones / sheets, กฎของหน้าจัดการ, การล็อกอินผู้ดูแล (401 / 403 / fail closed), การ escape และไฟล์ที่ห้ามเข้าถึงผ่านเว็บ (PHP built-in server และ Apache ใน container ถ้าเข้าถึงได้) ใช้ฐานข้อมูล `aoi_test_*` เท่านั้น และตรวจตอนจบว่าไม่มีการต่อฐานข้อมูลอื่นโดยไม่ตั้งใจ ไม่ครอบคลุมการคลิกบน browser จริง
 
