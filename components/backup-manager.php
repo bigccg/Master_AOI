@@ -37,7 +37,7 @@
         </div>
 
         <div class="bm-head-right">
-          <div class="bm-view- pills" id="bm-view-stepper" aria-label="มุมมองการทำงาน">
+          <div class="bm-view-pills" id="bm-view-stepper" aria-label="มุมมองการทำงาน">
             <button type="button" class="bm-step-pill is-active" id="bm-step-list" data-bm-action="back">
               <span class="bm-step-dot">1</span>
               <span>ไทม์ไลน์จุดสำรอง</span>
@@ -55,6 +55,10 @@
       </header>
 
       <div class="gm-form bm-form-wrap">
+        <!-- Floating result notice: overlays the body so showing it never shifts the layout (screen readers get #bm-live) -->
+        <div id="bm-notice" class="bm-island" aria-hidden="true">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i><span></span>
+        </div>
         <div class="gm-body" id="bm-body" aria-busy="true"></div>
         <div class="gm-actions bm-footer-actions" id="bm-actions"></div>
       </div>
@@ -62,7 +66,7 @@
       <footer class="gm-status">
         <span class="gm-mode"><i class="fa-solid fa-shield-halved" style="font-size:9px" aria-hidden="true"></i><span id="bm-mode-text">DATA TIME-MACHINE</span></span>
         <span class="gm-seg-info hide-sm"><b id="bm-st-info">auto monthly · retention 12m</b></span>
-        <span class="gm-keys"><span><kbd>Esc</kbd> close / back</span></span>
+        <span class="gm-keys"><span><kbd>/</kbd> commit</span><span><kbd>Esc</kbd> close / back</span></span>
       </footer>
       <input type="file" id="bm-upload-input" class="hidden" accept=".json,application/json" aria-hidden="true">
       <p id="bm-live" class="sr-only" role="status" aria-live="polite"></p>

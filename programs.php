@@ -57,6 +57,8 @@ $pageTitle = 'โปรแกรม AOI | AOI Program Tracker - Precision SMT Hu
 <!-- Floating Toast Container -->
 <div id="prog-toast-container" class="prog-toast-container" aria-live="polite"></div>
 
+<?php require __DIR__ . '/components/popups/admin-login-modal.php'; ?>
+
 <?php require __DIR__ . '/components/programs/scripts.php'; ?>
 </body>
 </html>

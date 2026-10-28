@@ -55,6 +55,38 @@ $filters = [
     'stage'   => $stageF,
 ];
 
+// CSV Export Mode (Zero Page Reload download)
+if (qs('export') === '1' || qs('export') === 'csv') {
+    $allRes = fetchProgramList($pdo, $filters, $sort, $dir, 50000, 0);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="aoi_programs_' . date('Ymd_His') . '.csv"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    $out = fopen('php://output', 'w');
+    if ($out !== false) {
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['ID', 'Program Name', 'PCB Type', 'Machine', 'Owner', 'Stage 1 (Create)', 'Stage 2 (Teach)', 'Stage 3 (Dry Run)', 'Stage 4 (Sign-off)', 'Overall Status', 'Updated At']);
+        foreach ($allRes['rows'] as $r) {
+            $f = formatProgramRow($r);
+            fputcsv($out, [
+                $f['id'] ?? '',
+                $f['program_name'] ?? '',
+                $f['pcb_type'] ?? '',
+                $f['machine'] ?? '',
+                $f['owner'] ?? '',
+                $f['stage1_label'] ?? $f['stage1_status'] ?? '',
+                $f['stage2_label'] ?? $f['stage2_status'] ?? '',
+                $f['stage3_label'] ?? $f['stage3_status'] ?? '',
+                $f['stage4_label'] ?? $f['stage4_status'] ?? '',
+                $f['status_label'] ?? $f['status'] ?? '',
+                $f['updated_at'] ?? '',
+            ]);
+        }
+        fclose($out);
+    }
+    exit;
+}
+
 $kpi    = fetchProgramKpis($pdo);
 $owners = fetchProgramOwners($pdo);
 $operators = fetchProgramOperatorOptions($pdo);

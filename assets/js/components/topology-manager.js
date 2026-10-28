@@ -35,7 +35,7 @@ const TM_COPY = {
     editZone:      (k) => `แก้ไขโซน ${k} / Edit zone ${k}`,
     editSheet:     (k) => `แก้ไข Shelf ${k} / Edit shelf ${k}`,
     keyLocked:     'แก้ไม่ได้หลังสร้าง เพราะข้อมูลบอร์ดและลิงก์ที่บันทึกไว้อ้างอิงรหัสนี้ / Cannot change after creation: board records and saved links refer to it.',
-    prefixLocked:  'แก้ไม่ได้หลังสร้าง เพราะทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข / Cannot change after creation: every record stores its shelf as prefix + number.',
+    prefixEditHint: (n) => `ตัวอักษรอังกฤษพิมพ์ใหญ่ 1–3 ตัว ที่แสดงใน Rack map เช่น AXB → AXB1, AXB2${n ? ` · เปลี่ยนแล้วรหัสชั้นวางของ ${n} รายการจะเปลี่ยนตาม` : ''} / 1–3 capital letters shown on the rack map${n ? `; the shelf code of ${n} record(s) follows the change` : ''}`,
     zoneKeyHint:   'ตัวอักษรอังกฤษ ตัวเลข หรือ _ ยาว 1–30 ตัว เช่น Plant2_SMT / Letters, digits or _, 1–30 characters, e.g. Plant2_SMT',
     sheetKeyHint:  'ตัวอักษรอังกฤษ ตัวเลข หรือ _ ยาว 1–30 ตัว ห้ามซ้ำทั้งระบบ เช่น D400_Gen / Letters, digits or _, 1–30, unique system-wide, e.g. D400_Gen',
     prefixHint:    'ตัวอักษรพิมพ์ใหญ่ 1–3 ตัว ห้ามซ้ำทั้งระบบ ระบบเติมเลขชั้นวางให้เอง / 1–3 capital letters, unique system-wide; the system adds the shelf number',
@@ -44,7 +44,7 @@ const TM_COPY = {
     orderHint:     'เลขน้อยแสดงก่อน เว้นว่าง = ต่อท้าย / Lower shows first; empty = add at the end',
     zoneHint:      'เลือกได้เฉพาะโซนที่เปิดใช้งาน / Only active zones can be chosen',
     createZoneWarn:  'ตรวจสอบก่อนบันทึก: รหัสโซนแก้ภายหลังไม่ได้ เพราะลิงก์และข้อมูลบอร์ดอ้างอิงรหัสนี้ / Check before saving: the zone key cannot be changed later, because links and board records refer to it.',
-    createSheetWarn: 'ตรวจสอบก่อนบันทึก: รหัส Shelf และ Shelf prefix แก้ภายหลังไม่ได้ เพราะทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข Shelf ใหม่เริ่มต้นมี 1 Magazine / Check before saving: the shelf key and shelf prefix cannot be changed later, because every record stores its shelf as prefix + number. A new shelf starts with 1 Magazine.',
+    createSheetWarn: 'ตรวจสอบก่อนบันทึก: รหัส Shelf แก้ภายหลังไม่ได้ เพราะข้อมูลบอร์ดอ้างอิงรหัสนี้ Shelf ใหม่เริ่มต้นมี 1 Magazine / Check before saving: the shelf key cannot be changed later, because board records refer to it. A new shelf starts with 1 Magazine.',
     shelfPreview:  'ตัวอย่าง Shelf / Shelf preview:',
     tabPreview:    'ตัวอย่างแท็บ / Tab preview:',
     confirm: {
@@ -396,7 +396,6 @@ function tmSheetFormHtml(s, zone) {
           </div>
           <div id="tm-form-error" class="gm-error" role="alert" hidden></div>
           <input type="hidden" id="tm-f-sheet_key" name="sheet_key" value="${h(defaultKey)}" />
-          <input type="hidden" id="tm-f-shelf_prefix" name="shelf_prefix" value="${h(defaultPrefix)}" />
           <div class="gm-field" data-field="zone_key">
             <label class="gm-label" for="tm-f-zone_key"><span class="k">01</span><span>โซนที่สังกัด <span class="th">(Zone)</span><i class="gm-req">*</i></span></label>
             <select id="tm-f-zone_key" name="zone_key" class="gm-input"${moveWhy ? ' disabled aria-disabled="true"' : ''} aria-describedby="tm-f-zone_key-hint tm-f-zone_key-err">${zoneOpts}</select>
@@ -405,8 +404,11 @@ function tmSheetFormHtml(s, zone) {
           </div>
           ${tmInput({ k: '02', id: 'tm-f-label', name: 'label', label: 'ชื่อ Shelf ที่แสดง', en: 'Shelf name', required: true, max: rules.label_max,
                       icon: 'fa-tag', value: s?.label, hint: 'พิมพ์ชื่อ Shelf เช่น CD200_Gen, CD250_Gen หรือ A150' })}
+          ${tmInput({ k: '03', id: 'tm-f-shelf_prefix', name: 'shelf_prefix', label: 'ชื่อย่อใน Rack map', en: 'Shelf prefix', required: true, max: 3,
+                      icon: 'fa-font', value: defaultPrefix, cls: 'uppercase', hint: TM_COPY.prefixEditHint(s?.records || 0),
+                      after: `<div class="tm-preview"><span>${h(TM_COPY.shelfPreview)}</span><span id="tm-shelf-preview"></span></div>` })}
           <fieldset class="gm-field tm-swatch-field" data-field="dot_color" aria-describedby="tm-f-dot_color-err">
-            <legend class="gm-label"><span class="k">03</span><span>สีของแท็บ <span class="th">(Tab colour)</span><i class="gm-req">*</i></span></legend>
+            <legend class="gm-label"><span class="k">04</span><span>สีของแท็บ <span class="th">(Tab colour)</span><i class="gm-req">*</i></span></legend>
             <div class="tm-swatches">${swatches}</div>
             <p class="gm-hint tm-field-error" id="tm-f-dot_color-err" hidden></p>
             <div class="tm-preview"><span>${h(TM_COPY.tabPreview)}</span><span class="tm-tab-preview"><span class="tab-dot w-2.5 h-2.5 rounded-sm inline-block" id="tm-tab-dot" aria-hidden="true"></span><span id="tm-tab-label"></span></span></div>
@@ -444,11 +446,12 @@ function tmRenderForm() {
                 if (form.elements.sheet_key) {
                     form.elements.sheet_key.value = tmSuggestSheetKey(val);
                 }
-                if (form.elements.shelf_prefix) {
+                if (form.elements.shelf_prefix && tmAutoSync.shelf_prefix) {
                     form.elements.shelf_prefix.value = tmSuggestShelfPrefix(val);
                 }
             }
         }
+        if (name === 'shelf_prefix') tmAutoSync.shelf_prefix = e.target.value.trim() === '';
         if (f.kind === 'sheet') tmSyncSheetPreview();
         if (name) tmShowFieldError(name, tmCheckField(name));
     });
@@ -533,9 +536,9 @@ function tmCheckField(name) {
             if (s) return tmMsg('sheet_key_taken', { key: v, existing: s.key, zone: z.key });
         }
     }
-    if (name === 'shelf_prefix' && isNew) {
+    if (name === 'shelf_prefix') {
         let v = value.trim().toUpperCase();
-        if (v === '' && form.elements.label?.value.trim()) {
+        if (v === '' && isNew && form.elements.label?.value.trim()) {
             v = tmSuggestShelfPrefix(form.elements.label.value);
             form.elements.shelf_prefix.value = v;
         }
@@ -636,7 +639,7 @@ async function tmSubmit(e) {
 
     const names = f.kind === 'zone'
         ? (isNew ? ['label', 'zone_key', 'short_label'] : ['label', 'short_label'])
-        : (isNew ? ['zone_key', 'label', 'sheet_key', 'shelf_prefix', 'dot_color'] : ['zone_key', 'label', 'dot_color']);
+        : (isNew ? ['zone_key', 'label', 'sheet_key', 'shelf_prefix', 'dot_color'] : ['zone_key', 'label', 'shelf_prefix', 'dot_color']);
 
     let firstBad = null;
     names.forEach(n => {

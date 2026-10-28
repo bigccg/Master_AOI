@@ -63,3 +63,50 @@ function syncBrowserUrl() {
         exportBtn.href = expUrl.toString();
     }
 }
+
+/**
+ * Live sync: bring a rendered <tbody> up to date with newRows without re-rendering it, so unchanged rows stay put
+ * (no entrance animation, scroll and hover kept). New or changed rows are swapped in and flash once (.is-live-flash).
+ * keyOf(row) must match each <tr>'s data-id; htmlOf(row) returns one <tr>. Returns the number of rows swapped in.
+ */
+function livePatchRows(tbody, oldRows, newRows, keyOf, htmlOf) {
+    const oldSig = new Map(oldRows.map(r => [String(keyOf(r)), JSON.stringify(r)]));
+    const newKeys = new Set(newRows.map(r => String(keyOf(r))));
+    const byKey  = new Map();
+    for (const tr of [...tbody.children]) {   // drop rows that left the page first, so the rows below them stay put
+        if (tr.dataset.id && newKeys.has(tr.dataset.id)) byKey.set(tr.dataset.id, tr);
+        else tr.remove();
+    }
+    const tmp    = document.createElement('tbody');
+    let cursor   = tbody.firstElementChild;   // everything before the cursor is already in its final place
+    let changed  = 0;
+
+    for (const row of newRows) {
+        const key = String(keyOf(row));
+        const existing = byKey.get(key);
+        if (existing && oldSig.get(key) === JSON.stringify(row)) {
+            if (existing === cursor) { cursor = cursor.nextElementSibling; continue; }
+            existing.style.animation = 'none';   // re-inserting a node restarts its CSS animation
+            tbody.insertBefore(existing, cursor);
+            continue;
+        }
+        tmp.innerHTML = htmlOf(row);
+        const tr = tmp.firstElementChild;
+        if (!tr) continue;
+        tr.style.animation = 'none';
+        tr.classList.add('is-live-flash');
+        tr.addEventListener('animationend', () => tr.classList.remove('is-live-flash'), { once: true });
+        if (existing) {
+            if (existing === cursor) cursor = cursor.nextElementSibling;
+            existing.remove();
+        }
+        tbody.insertBefore(tr, cursor);
+        changed++;
+    }
+    while (cursor) {   // leftovers (duplicate ids)
+        const next = cursor.nextElementSibling;
+        cursor.remove();
+        cursor = next;
+    }
+    return changed;
+}

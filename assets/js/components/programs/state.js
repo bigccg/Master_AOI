@@ -129,10 +129,17 @@ function syncProgUrl() {
 
   window.history.replaceState({}, '', url.toString());
 
-  // Sync header Export CSV link with active filters & sort
+  // Sync header Export CSV link with active filters & sort (downloads directly via API without page reload)
   const exportBtn = document.getElementById('prog-export-btn');
   if (exportBtn) {
-    const expUrl = new URL(url.toString());
+    const expUrl = new URL('api/programs.php', window.location.href);
+    if (progState.search) expUrl.searchParams.set('q', progState.search);
+    if (progState.machine !== 'ALL') expUrl.searchParams.set('machine', progState.machine);
+    if (progState.owner !== 'ALL') expUrl.searchParams.set('owner', progState.owner);
+    if (progState.status !== 'ALL') expUrl.searchParams.set('status', progState.status);
+    if (progState.stage !== 'ALL') expUrl.searchParams.set('stage', progState.stage);
+    if (progState.sort !== 'updated_at') expUrl.searchParams.set('sort', progState.sort);
+    if (progState.dir !== 'desc') expUrl.searchParams.set('dir', progState.dir);
     expUrl.searchParams.set('export', '1');
     exportBtn.href = expUrl.toString();
   }

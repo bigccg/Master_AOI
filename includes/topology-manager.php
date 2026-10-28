@@ -11,10 +11,11 @@
  *         delete  not DEFAULT_ZONE, no sheet and no board record stored with the zone.
  *   sheet create  in an enabled zone; key as above (not ALL) and shelf_prefix A-Z (1-3), both unique system-wide
  *                 (boards.shelf stores prefix + number); dot colour from SHEET_DOT_PALETTE; starts with 1 Magazine.
- *         update  label, dot_color, sort_order, is_active - key and shelf_prefix never change; enable needs an enabled zone.
+ *         update  label, shelf_prefix, dot_color, sort_order, is_active - the key never changes; a new shelf_prefix
+ *                 rewrites boards.shelf (prefix + shelf_no) of the sheet's records; enable needs an enabled zone.
  *         move    (zone_key) only while the sheet has no board record (records store their zone), into an enabled zone.
  *         delete  only while the sheet has no board record; otherwise disable it.
- * Board records, Number Codes and shelves are never changed here.
+ * Board records and Number Codes are never changed here (only boards.shelf on a prefix change).
  */
 
 declare(strict_types=1);
@@ -55,7 +56,6 @@ function topologyCopy(): array
         'target_zone_missing' => 'ใช้โซน "{zone}" ไม่ได้ เนื่องจากไม่พบโซนนี้ (อาจถูกลบไปแล้ว) กรุณาโหลดรายการใหม่แล้วเลือกโซนอีกครั้ง / Zone "{zone}" was not found (it may have been deleted). Reload the list and choose the zone again.',
         'target_zone_off'     => 'ใช้โซน "{zone}" ไม่ได้ เนื่องจากโซนนี้ปิดใช้งานอยู่ กรุณาเปิดใช้งานโซนก่อน หรือเลือกโซนอื่น / Zone "{zone}" is disabled. Enable the zone first, or choose another one.',
         'key_immutable'       => 'แก้รหัสไม่ได้ เนื่องจากข้อมูลบอร์ดและลิงก์ที่บันทึกไว้อ้างอิงรหัสนี้ หากต้องการรหัสใหม่ ให้สร้างรายการใหม่ / Keys cannot be changed because board records and saved links refer to them. Create a new one if you need a different key.',
-        'prefix_immutable'    => 'แก้ Shelf prefix ไม่ได้ เนื่องจากทุกรายการเก็บรหัสชั้นวางเป็น prefix + เลข (เช่น {prefix}12) หากต้องการ prefix ใหม่ ให้สร้าง Shelf ใหม่ / The shelf prefix cannot be changed because every record stores its shelf as prefix + number (e.g. {prefix}12). Create a new shelf for a different prefix.',
         // ── state rules (also shown as reasons on disabled buttons) ──
         'default_zone_off'    => 'ปิดใช้งานไม่ได้ เพราะ {zone} เป็นโซนเริ่มต้นของระบบ (ลิงก์ที่ไม่ระบุโซนจะเปิดโซนนี้) / Cannot disable: {zone} is the default zone (links without a zone open it).',
         'default_zone_delete' => 'ลบไม่ได้ เพราะ {zone} เป็นโซนเริ่มต้นของระบบ / Cannot delete: {zone} is the default zone.',
@@ -616,8 +616,8 @@ function updateSheet(PDO $pdo, array $in, string $ip): array
         $fe = array_filter([
             'label'        => $label !== null ? topologyLabelError($label, true, TOPOLOGY_LABEL_MAX, 'label_too_long') : null,
             'dot_color'    => ($dot !== null && !isset(SHEET_DOT_PALETTE[$dot])) ? topologyMessage('dot_invalid') : null,
-            'shelf_prefix' => ($prefix !== null && strtoupper($prefix) !== strtoupper((string)$before['shelf_prefix']))
-                ? topologyMessage('prefix_immutable', ['prefix' => $before['shelf_prefix']]) : null,
+            'shelf_prefix' => $prefix === null ? null
+                : (preg_match('/' . TOPOLOGY_PREFIX_PATTERN . '/', strtoupper($prefix)) ? null : topologyMessage('prefix_format', ['prefix' => $prefix])),
             'sort_order'   => $orderError,
         ]);
         if ($fe) {
@@ -625,6 +625,7 @@ function updateSheet(PDO $pdo, array $in, string $ip): array
         }
         if ($label !== null) $after['label'] = $label;
         if ($dot !== null) $after['dot_color'] = $dot;
+        if ($prefix !== null) $after['shelf_prefix'] = strtoupper($prefix);
         if ($order !== null) $after['sort_order'] = $order;
         if ($active !== null) $after['is_active'] = $active ? 1 : 0;
 
@@ -657,8 +658,15 @@ function updateSheet(PDO $pdo, array $in, string $ip): array
         if (!$changed) {
             return topologyResult(true, 200, topologyMessage('nothing_changed'));
         }
-        $pdo->prepare('UPDATE sheets SET zone_key = ?, label = ?, dot_color = ?, sort_order = ?, is_active = ? WHERE sheet_key = ?')
-            ->execute([$after['zone_key'], $after['label'], $after['dot_color'], $after['sort_order'], $after['is_active'], $key]);
+        $pdo->prepare('UPDATE sheets SET zone_key = ?, label = ?, shelf_prefix = ?, dot_color = ?, sort_order = ?, is_active = ? WHERE sheet_key = ?')
+            ->execute([$after['zone_key'], $after['label'], $after['shelf_prefix'], $after['dot_color'], $after['sort_order'], $after['is_active'], $key]);
+
+        // New prefix: every record of this sheet stores its shelf as prefix + shelf_no (e.g. AXB12 -> AX12)
+        if ((string)$after['shelf_prefix'] !== (string)$before['shelf_prefix']) {
+            $concat = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'CONCAT(?, shelf_no)' : '(? || shelf_no)';
+            $pdo->prepare("UPDATE boards SET shelf = $concat WHERE LOWER(sheet) = LOWER(?)")
+                ->execute([$after['shelf_prefix'], $key]);
+        }
 
         $disabling = (int)$before['is_active'] === 1 && (int)$after['is_active'] === 0;
         $action    = $moving ? 'move' : ($disabling ? 'disable' : ($enabling ? 'enable' : 'update'));

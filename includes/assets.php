@@ -38,6 +38,8 @@ const JS_FILES = [
     'core/glass-popup.js',
     'components/flash-toast.js',
     'components/clock.js',
+    'components/admin-auth.js',
+    'core/live-sync.js',
     'components/data-table/cells.js',      // before table.js: COLUMNS references the cell renderers
     'components/data-table/table.js',
     'components/data-table/pagination.js',
@@ -57,6 +59,7 @@ const JS_FILES = [
     'components/export-station.js',
     'components/import-station.js',
     'core/events.js',
+    'core/spa-router.js',
     'main.js',
 ];
 
@@ -76,6 +79,11 @@ const PROGRAM_CSS_FILES = [
     'components/clock.css',
     'components/glass-select.css',
     'components/search.css',
+    'components/glass-popup/base.css',
+    'components/glass-popup/window.css',
+    'components/glass-popup/controls.css',
+    'components/glass-popup/responsive.css',
+    'components/popups/confirm.css',
     'components/programs/tokens.css',
     'components/programs/layout.css',
     'components/programs/kpi.css',
@@ -88,7 +96,11 @@ const PROGRAM_CSS_FILES = [
 const PROGRAM_JS_FILES = [
     'core/messages.js',
     'core/utils.js',
+    'core/glass-popup.js',
+    'components/flash-toast.js',
     'components/clock.js',
+    'components/admin-auth.js',
+    'core/live-sync.js',
     'components/search-fx.js',
     'components/programs/state.js',
     'components/programs/api.js',
@@ -97,5 +109,6 @@ const PROGRAM_JS_FILES = [
     'components/programs/command-bar.js',
     'components/programs/stepper.js',
     'components/programs/table.js',
+    'core/spa-router.js',
     'components/programs/main.js',
 ];

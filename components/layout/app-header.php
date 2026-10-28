@@ -38,15 +38,17 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
           </div>
         </div>
 
-        <!-- 2 Main Page Navigation Tabs -->
-        <nav class="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-xs font-medium" aria-label="เมนูหลัก">
-          <a href="<?= $currentPage === 'master' ? '#' : 'index.php?zone=' . urlencode($currentZone) . '&sheet=' . urlencode($currentSheet) ?>"
+        <!-- 2 Main Page Navigation Tabs (SPA Router Zero Page Reload) -->
+        <nav class="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-xs font-medium" id="main-nav-tabs" aria-label="เมนูหลัก">
+          <a href="index.php?zone=<?= urlencode($currentZone) ?>&amp;sheet=<?= urlencode($currentSheet) ?>"
+             id="nav-tab-master"
              class="px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 <?= $currentPage === 'master' ? 'bg-white text-emerald-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' ?>">
             <i class="fa-solid fa-table-list <?= $currentPage === 'master' ? 'text-emerald-600' : 'text-slate-400' ?>"></i>
             <span>บอร์ด Master</span>
             <span class="hidden xl:inline text-[10px] text-slate-400 font-normal">/ Master Board</span>
           </a>
-          <a href="<?= $currentPage === 'programs' ? '#' : 'programs.php' ?>"
+          <a href="programs.php"
+             id="nav-tab-programs"
              class="px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 <?= $currentPage === 'programs' ? 'bg-white text-emerald-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' ?>">
             <i class="fa-solid fa-list-check <?= $currentPage === 'programs' ? 'text-emerald-600' : 'text-slate-400' ?>"></i>
             <span>โปรแกรม AOI</span>
@@ -69,6 +71,18 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
           </div>
         </div>
 
+        <!-- Live Auto-Sync Status Badge (Zero Page Reload) -->
+        <div id="live-sync-indicator" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-50/90 text-emerald-700 border border-emerald-200/80 shrink-0 select-none shadow-xs transition-all" title="ระบบซิงค์ข้อมูลอัตโนมัติแบบเรียลไทม์ (Live AJAX Auto-Sync Active) หน้าเว็บจะอัปเดตตลอดเวลาโดยไม่ต้องกดรีเฟรช">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="live-sync-text" class="font-medium">Live Sync</span>
+          <button type="button" id="live-sync-now-btn" onclick="triggerManualSync()" title="คลิกเพื่ออัปเดตข้อมูลทันที (Sync Now)" class="ml-0.5 hover:text-emerald-900 focus:outline-none cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate text-[10px]" id="live-sync-icon" aria-hidden="true"></i>
+          </button>
+        </div>
+
         <!-- Buttons Toolbar (Export, Add, Manage, Logout) -->
         <div class="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 border-l border-slate-200 shrink-0 flex-nowrap">
           <?php if ($currentPage === 'master'): ?>
@@ -84,17 +98,18 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
             </button>
           <?php else: ?>
             <!-- Programs Page Actions (Export only; program creation is disabled on this page) -->
-            <a href="<?= h(url(['export' => 1])) ?>" id="prog-export-btn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="ส่งออกรายการโปรแกรมเป็นไฟล์ CSV">
+            <a href="api/programs.php?export=1" id="prog-export-btn" download class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition whitespace-nowrap shrink-0" title="ส่งออกรายการโปรแกรมเป็นไฟล์ CSV โดยไม่ต้องรีเฟรชหน้าเว็บ">
               <i class="fa-solid fa-file-excel text-emerald-600" aria-hidden="true"></i><span>ส่งออก / Export</span>
             </a>
           <?php endif; ?>
 
-          <!-- Admin Zone & Shelf Manager button -->
+          <!-- Admin Zone & Shelf Manager button (AJAX In-place) -->
           <?php
             $adminBack = http_build_query(['zone' => $currentZone, 'sheet' => $currentSheet]);
             $isAdm = isset($isAdmin) ? $isAdmin : (function_exists('isAdmin') ? isAdmin() : false);
             $admCfg = isset($adminConfigured) ? $adminConfigured : (function_exists('adminConfigured') ? adminConfigured() : false);
           ?>
+          <div id="header-admin-controls" class="inline-flex items-center gap-1.5 shrink-0">
           <?php if ($isAdm): ?>
             <button type="button" id="bm-open-btn" onclick="typeof openBackupManager === 'function' ? openBackupManager() : (window.location='index.php?backup=1')" aria-haspopup="dialog" aria-controls="backup-manager" title="สำรองข้อมูลรายเดือน เปรียบเทียบความต่าง (Diff) และย้อนข้อมูลกลับ (Restore) / Monthly Data Backup &amp; Time-Machine" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
               <i class="fa-solid fa-clock-rotate-left text-indigo-600" aria-hidden="true"></i><span>สำรอง/ย้อนข้อมูล</span>
@@ -102,22 +117,16 @@ $addBtnTitle = $addBtnDisabled ? $addBlocked : 'เพิ่มข้อมู�
             <button type="button" id="tm-open-btn" onclick="typeof openTopologyManager === 'function' ? openTopologyManager() : (window.location='index.php?manage=1')" aria-haspopup="dialog" aria-controls="topology-manager" title="เพิ่ม แก้ไข หรือปิดใช้งานโซนและ Shelf / Add, edit or disable zones and shelves" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer whitespace-nowrap shrink-0">
               <i class="fa-solid fa-sitemap text-emerald-600" aria-hidden="true"></i><span>จัดการโซนและ Shelf</span>
             </button>
-            <?php if (function_exists('isClientIpAllowed') && !isClientIpAllowed()): ?>
-              <form method="post" action="admin.php" class="inline-flex shrink-0">
-                <input type="hidden" name="csrf" value="<?= h(csrf()) ?>"/>
-                <input type="hidden" name="action" value="logout"/>
-                <input type="hidden" name="zone" value="<?= h($currentZone) ?>"/>
-                <input type="hidden" name="sheet" value="<?= h($currentSheet) ?>"/>
-                <button type="submit" title="ออกจากระบบผู้ดูแล / Sign out of the administrator session" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm transition cursor-pointer">
-                  <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span class="sr-only">ออกจากระบบผู้ดูแล / Sign out</span>
-                </button>
-              </form>
-            <?php endif; ?>
+            <button type="button" id="admin-logout-btn" onclick="handleAdminLogout(event)" title="ออกจากระบบผู้ดูแล / Sign out of administrator session" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-white border border-slate-300 hover:bg-rose-50 hover:text-rose-600 text-slate-700 shadow-sm transition cursor-pointer">
+              <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span class="sr-only sm:not-sr-only text-[11px]">ออก</span>
+            </button>
           <?php elseif ($admCfg): ?>
-            <a href="admin.php?<?= h($adminBack) ?>" title="เข้าสู่ระบบผู้ดูแล (สำหรับจัดการโซนและ Shelf) / Administrator sign-in" class="inline-flex items-center px-2 py-1.5 text-xs rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0">
-              <i class="fa-solid fa-user-shield" aria-hidden="true"></i><span class="sr-only">เข้าสู่ระบบผู้ดูแล</span>
+            <a href="admin.php?<?= h($adminBack) ?>" id="admin-signin-btn" onclick="openAdminLoginModal(); return false;" title="เข้าสู่ระบบผู้ดูแล (สำหรับจัดการโซนและ Shelf) / Administrator sign-in" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-emerald-700 hover:bg-emerald-50/60 border border-transparent hover:border-emerald-200 transition shrink-0 cursor-pointer">
+              <i class="fa-solid fa-user-shield text-emerald-600" aria-hidden="true"></i>
+              <span class="sr-only sm:not-sr-only">ผู้ดูแล</span>
             </a>
           <?php endif; ?>
+          </div>
 
         </div>
       </div>

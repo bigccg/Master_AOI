@@ -433,7 +433,7 @@ if (isset($_GET['export'])) {
             $r['status'],
             $r['pcs_status'],
             $magSlotText,
-            $r['created_at'],
+            exportDateOnly($r['created_at']),
         ];
         if ($isAllZones || $flt['isAllZonesSelected'] || count($flt['selectedZones']) > 1) {
             array_unshift($csvRow, $r['zone']);

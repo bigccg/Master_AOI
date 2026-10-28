@@ -45,3 +45,10 @@
 .gm-overlay.gm-closing { animation: gm-fadeout .15s ease both; }
 .gm-overlay.gm-closing .gm-window,
 .gm-overlay.gm-closing .gm-stage { animation: gm-popout .15s ease both; }
+
+/* While a popup covers the page, freeze the page's ambient loops (they keep running under the veil otherwise)
+   so the popup's own motion gets the whole frame budget on low-end GPUs */
+body:has(> .gm-overlay:not(.hidden)) > header .rounded-lg.bg-emerald-700,
+body:has(> .gm-overlay:not(.hidden)) main > div.bg-white::before,
+body:has(> .gm-overlay:not(.hidden)) #filters .aoi-search-glass::before,
+body:has(> .gm-overlay:not(.hidden)) .aoi-clock-dot { animation-play-state: paused; }

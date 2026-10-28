@@ -162,6 +162,18 @@ function xlsxColLetter(int $colIndex): string
 }
 
 /**
+ * Format a stored timestamp ("YYYY-MM-DD HH:MM:SS") as date only: DD/MM/YYYY.
+ */
+function exportDateOnly(?string $ts): string
+{
+    if ($ts === null || $ts === '') return '';
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $ts, $m)) {
+        return "{$m[3]}/{$m[2]}/{$m[1]}";
+    }
+    return $ts;
+}
+
+/**
  * Safe XML text escaping, stripping invalid XML 1.0 control characters.
  */
 function xlsxXmlEscape(string $val): string
@@ -472,7 +484,7 @@ function buildMasterBoardsSheet(array $boardRows, string $filterSummaryText): ar
         13,  // I: Status (G+D)
         16,  // J: Other (Bare / Bad Mark)
         23,  // K: Magazine / Slot
-        21,  // L: Created At
+        14,  // L: Created At
     ];
     $colCount = count($colWidths);
     $lastCol  = xlsxColLetter($colCount);
@@ -538,7 +550,7 @@ function buildMasterBoardsSheet(array $boardRows, string $filterSummaryText): ar
             ['v' => 'Status (G+D)',          's' => AoiXlsxStyle::TH_AMBER],
             ['v' => 'Other (Bare/Bad Mark)', 's' => AoiXlsxStyle::TH_VIOLET],
             ['v' => 'Magazine / Slot',       's' => AoiXlsxStyle::TH_SLATE],
-            ['v' => 'Created At (เวลาบันทึก)','s' => AoiXlsxStyle::TH_SLATE],
+            ['v' => 'Created At (วันที่บันทึก)','s' => AoiXlsxStyle::TH_SLATE],
         ],
     ];
 
@@ -584,7 +596,7 @@ function buildMasterBoardsSheet(array $boardRows, string $filterSummaryText): ar
                 ['v' => $statusTxt,                      's' => $sStatus],
                 ['v' => $pcsTxt,                         's' => $sPcs],
                 ['v' => $magSlot,                        's' => $sCenter],
-                ['v' => (string)($r['created_at'] ?? ''),'s' => $sMono],
+                ['v' => exportDateOnly($r['created_at'] ?? null),'s' => $sCenter],
             ],
         ];
     }

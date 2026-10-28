@@ -16,8 +16,6 @@
     --win-radius:  14px;
 }
 
-@property --hypr-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-
 html { scroll-behavior: smooth; }
 body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 .font-mono, code { font-feature-settings: "calt" 1, "zero" 1; }
@@ -27,7 +25,7 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 @keyframes hypr-slide   { from { opacity: 0; transform: translateY(-10px); }           to { opacity: 1; transform: none; } }
 @keyframes hypr-row     { from { opacity: 0; transform: translateX(-8px); }            to { opacity: 1; transform: none; } }
 @keyframes hypr-cell    { from { opacity: 0; transform: scale(.7); }                    to { opacity: 1; transform: none; } }
-@keyframes hypr-spin    { to { --hypr-angle: 360deg; } }
+@keyframes hypr-spin    { from { transform: translate(-50%, -50%) rotate(0turn); } to { transform: translate(-50%, -50%) rotate(1turn); } }
 @keyframes hypr-bar     { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes hypr-modal   { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes hypr-fade    { from { opacity: 0; } to { opacity: 1; } }
@@ -133,16 +131,25 @@ main > section.grid > div:hover::after { opacity: 1; }
 main > section.grid > div:hover > div:last-child { transform: rotate(-8deg) scale(1.12); }
 main > section.grid > div .bg-blue-600 { transform-origin: left; animation: hypr-bar 1.1s var(--ease-out) .5s both; }   /* utilisation bar fills in */
 
-/* ---------- active window: slowly travelling border on the table ---------- */
-main > div.bg-white { position: relative; box-shadow: 0 10px 30px -14px rgba(15,23,42,.25); }
+/* ---------- active window: slowly travelling border on the table ----------
+   Spun by the compositor (transform only) so it never repaints the table — an animated conic angle
+   re-rasterised the whole card every frame (~half the main thread at idle on low-end PCs).
+   ::before  square conic gradient wider than the card's diagonal (card height is capped by .aoi-table-scroll),
+             rotating round the card's centre, clipped by the card's overflow: hidden
+   ::after   white fill under the content; the card's 1.5px padding leaves the light showing as a ring */
+main > div.bg-white { position: relative; isolation: isolate; padding: 1.5px; box-shadow: 0 10px 30px -14px rgba(15,23,42,.25); }
 main > div.bg-white::before {
-    content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-    border-radius: inherit; padding: 1.5px;
-    background: conic-gradient(from var(--hypr-angle), transparent 0 62%, #10b981 82%, #2563eb 94%, transparent 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
+    content: ""; position: absolute; left: 50%; top: 50%; z-index: -2; pointer-events: none;
+    width: calc(100% + 320px); aspect-ratio: 1;
+    background: conic-gradient(transparent 0 62%, #10b981 82%, #2563eb 94%, transparent 100%);
+    transform: translate(-50%, -50%);
     animation: hypr-spin 7s linear infinite;
     opacity: .85;
+}
+main > div.bg-white::after {
+    content: ""; position: absolute; inset: 1.5px; z-index: -1; pointer-events: none;
+    border-radius: calc(var(--win-radius) - 2.5px);   /* card radius - 1px border - 1.5px ring */
+    background: #fff;
 }
 
 /* ---------- filters ---------- */
@@ -161,6 +168,11 @@ main > div.bg-white::before {
 .aoi-tbody .aoi-row:nth-child(9)  { animation-delay: .18s; } .aoi-tbody .aoi-row:nth-child(10) { animation-delay: .20s; }
 .aoi-tbody .aoi-row:nth-child(n+11) { animation-delay: .22s; }
 .aoi-tbody .aoi-row:hover { background-color: #f8fafc; }
+/* live sync (livePatchRows): a new or changed row flashes once - an opacity-only overlay, no repaint of the row */
+.aoi-row.is-live-flash > td:not([class*="sticky"]) { position: relative; }
+.aoi-row.is-live-flash > td::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: rgba(16,185,129,.22);
+                                     animation: live-flash .9s var(--ease-out) both; }
+@keyframes live-flash { from { opacity: 1; } to { opacity: 0; } }
 .aoi-tbody .aoi-row:hover .aoi-td:first-child { box-shadow: inset 3px 0 0 #10b981; }   /* focus marker */
 .aoi-td:first-child { transition: box-shadow .2s ease; }
 .aoi-td a, .aoi-td button { display: inline-flex; border-radius: 8px; transition: transform .2s var(--ease-spring), background-color .2s ease, color .2s ease; }

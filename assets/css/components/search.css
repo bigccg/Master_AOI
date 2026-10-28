@@ -1,45 +1,58 @@
-/* Glass search bar (components/filters.php, assets/js/components/search-fx.js) */
+/* Glass search bar (components/filters.php, components/programs/command-bar.php, Data Backup commit field; assets/js/components/search-fx.js) */
 
 /* ==========================================================================
    Glass search  ·  calm version
-   Frosted glass bar + one thin light slowly travelling round the border.
+   Glass bar + one thin light slowly travelling round the border.
    No sparkles / aurora / pulses (easy on the eyes). Effects JS: assets/js/components/search-fx.js
+   The light is spun by the compositor (transform only), so it never repaints and stays smooth on iGPUs:
+     ::before  an oversized square conic gradient (side >= the bar's diagonal), rotating round the bar's centre
+     ::after   the bar's fill, inset by the light's width, so only a thin ring of the gradient shows
+   Both sit at negative z-index inside the isolated bar: above its background, below its content.
    ========================================================================== */
 
-@property --sf-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-@keyframes sf-spin { to { --sf-ang: 360deg; } }
+@keyframes sf-spin {
+    from { transform: translate(-50%, -50%) rotate(0turn); }
+    to   { transform: translate(-50%, -50%) rotate(1turn); }
+}
 
 .aoi-search-glass {
     --sf-h: 2.5rem;
     --sf-r: 12px;
+    --sf-fill: linear-gradient(135deg, #ffffff, #f6f8fb);
     position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: flex;
     align-items: center;
     height: var(--sf-h);
     border-radius: var(--sf-r);
-    background: linear-gradient(135deg, rgba(255,255,255,.80), rgba(241,245,249,.55));
-    -webkit-backdrop-filter: blur(14px) saturate(1.5);
-            backdrop-filter: blur(14px) saturate(1.5);
+    background: var(--sf-fill);
     border: 1px solid rgba(148,163,184,.40);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 6px 16px -12px rgba(15,23,42,.30);
+    box-shadow: 0 6px 16px -12px rgba(15,23,42,.30);
     transition: border-color .3s ease, box-shadow .3s ease;
 }
 .aoi-search-glass:hover { border-color: rgba(16,185,129,.45); }
 .aoi-search-glass:focus-within {
     border-color: rgba(16,185,129,.55);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 0 0 3px rgba(16,185,129,.12);
+    box-shadow: 0 0 0 3px rgba(16,185,129,.12);
 }
 
 /* one thin light slowly running round the edge */
 .aoi-search-glass::before {
     content: "";
-    position: absolute; inset: -1px; z-index: 3; pointer-events: none;
-    border-radius: inherit;
-    padding: 1.5px;
-    background: conic-gradient(from var(--sf-ang), transparent 0 80%, rgba(16,185,129,.9) 92%, rgba(34,211,238,.9) 97%, transparent 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
+    position: absolute; left: 50%; top: 50%; z-index: -2; pointer-events: none;
+    width: calc(100% + var(--sf-h));
+    aspect-ratio: 1;
+    background: conic-gradient(transparent 0 80%, rgba(16,185,129,.9) 92%, rgba(34,211,238,.9) 97%, transparent 100%);
+    transform: translate(-50%, -50%);
     animation: sf-spin 12s linear infinite;
+}
+.aoi-search-glass::after {
+    content: "";
+    position: absolute; inset: 1.5px; z-index: -1; pointer-events: none;
+    border-radius: calc(var(--sf-r) - 2.5px);
+    background: var(--sf-fill);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
 }
 
 .aoi-search-icon {
@@ -51,7 +64,8 @@
 .aoi-search-glass:focus-within .aoi-search-icon { color: #059669; }
 .aoi-search-ring { display: none; }
 
-#filters .aoi-search-glass #barcode-search-input {
+#filters .aoi-search-glass #barcode-search-input,
+#backup-manager .aoi-search-glass #bm-checkpoint-title {
     flex: 1 1 auto; min-width: 0;
     height: 100%; min-height: 0;
     padding: 0 .35rem 0 0;
@@ -62,8 +76,10 @@
     font-size: .8125rem; font-weight: 500;
     text-overflow: ellipsis;
 }
-#filters .aoi-search-glass #barcode-search-input:focus { box-shadow: none; transform: none; border: 0; }
-#filters .aoi-search-glass #barcode-search-input::placeholder { color: #64748b; font-weight: 500; opacity: 1; }
+#filters .aoi-search-glass #barcode-search-input:focus,
+#backup-manager .aoi-search-glass #bm-checkpoint-title:focus { box-shadow: none; transform: none; border: 0; }
+#filters .aoi-search-glass #barcode-search-input::placeholder,
+#backup-manager .aoi-search-glass #bm-checkpoint-title::placeholder { color: #64748b; font-weight: 500; opacity: 1; }
 
 /* result count chip (static) */
 .aoi-search-count {
@@ -105,5 +121,5 @@
 
 @media (max-width: 639px) { .aoi-search-kbd, .aoi-search-count em { display: none; } }
 @media (prefers-reduced-motion: reduce) { .aoi-search-glass::before { animation: none; } }
-@media (prefers-reduced-transparency: reduce) { .aoi-search-glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; } }
+@media (prefers-reduced-transparency: reduce) { .aoi-search-glass { --sf-fill: #fff; } }
 @media print { .aoi-search-glass::before { display: none; } }

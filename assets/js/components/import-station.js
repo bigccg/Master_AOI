@@ -782,14 +782,25 @@ function isCommitImport() {
 
                 closeImportStation();
 
-                // Refresh live page data without full reload when in the same zone
+                // Refresh live page data without full reload (100% AJAX Zero Page Refreshes)
                 const targetZone  = data.zone || zone;
                 const targetSheet = data.sheet || sheet;
-                if (typeof state !== 'undefined' && typeof loadSheetData === 'function' && (state.zone === targetZone || state.zone === 'ALL')) {
-                    const sheetToLoad = (state.sheet === 'ALL' || state.sheet === targetSheet) ? state.sheet : targetSheet;
-                    loadSheetData(sheetToLoad);
-                } else {
-                    window.location.href = `index.php?zone=${encodeURIComponent(targetZone)}&sheet=${encodeURIComponent(targetSheet)}`;
+                if (typeof state !== 'undefined') {
+                    if (targetZone && targetZone !== state.zone) {
+                        state.zone = targetZone;
+                        const zSel = document.getElementById('zone-select');
+                        if (zSel) zSel.value = targetZone;
+                    }
+                    if (targetSheet && state.sheet !== 'ALL') {
+                        state.sheet = targetSheet;
+                        const sSel = document.getElementById('sheet-select');
+                        if (sSel) sSel.value = targetSheet;
+                    }
+                    if (typeof renderZoneTabs === 'function') renderZoneTabs(state.zone, state.sheet);
+                    if (typeof syncShelfViewMode === 'function') syncShelfViewMode();
+                    if (typeof syncBrowserUrl === 'function') syncBrowserUrl();
+                    if (typeof loadTable === 'function') loadTable();
+                    if (typeof refreshSheetData === 'function') refreshSheetData(state.sheet);
                 }
                 return;
             }

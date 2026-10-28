@@ -29,9 +29,12 @@ function buildProgApiUrl(overrides = {}) {
   return url.toString();
 }
 
-async function loadProgramsData() {
-  progState.viewStatus = 'loading';
-  renderProgTableSkeleton();
+// silent (live sync): no skeleton; unchanged data leaves the page alone, changed rows are patched in place
+async function loadProgramsData({ silent = false } = {}) {
+  if (!silent) {
+    progState.viewStatus = 'loading';
+    renderProgTableSkeleton();
+  }
 
   try {
     const res = await fetch(buildProgApiUrl(), {
@@ -45,6 +48,26 @@ async function loadProgramsData() {
     const json = await res.json();
     if (!json.success) {
       throw new Error(json.error || 'ไม่สามารถโหลดข้อมูลโปรแกรมได้');
+    }
+
+    const newRows = Array.isArray(json.data) ? json.data : [];
+    if (silent && progState.viewStatus === 'ready') {
+      const sameRows = JSON.stringify(newRows) === JSON.stringify(progState.rows);
+      const sameKpi  = JSON.stringify(json.kpi || progState.kpi) === JSON.stringify(progState.kpi);
+      if (sameRows && sameKpi && (json.total || 0) === progState.total) return;
+      const tbody = document.getElementById('prog-table-body');
+      if (tbody && newRows.length > 0 && progState.rows.length > 0) {
+        const oldRows = progState.rows;
+        progState.rows = newRows;
+        progState.kpi = json.kpi || progState.kpi;
+        progState.total = json.total || 0;
+        progState.pages = json.pages || 1;
+        if (!sameRows) livePatchRows(tbody, oldRows, newRows, r => r.id, renderSingleRowHtml);
+        if (!sameKpi) renderProgKpis();
+        renderProgPagination();
+        document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total: progState.total } }));
+        return;
+      }
     }
 
     progState.rows = Array.isArray(json.data) ? json.data : [];
@@ -72,6 +95,7 @@ async function loadProgramsData() {
     document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total: progState.total } }));
     document.dispatchEvent(new CustomEvent('aoi:programs-loaded', { detail: { count: progState.rows.length, total: progState.total } }));
   } catch (err) {
+    if (silent) throw err;   // live sync shows Offline; the table keeps what it has
     console.error('AOI Programs load error:', err);
     progState.viewStatus = 'error';
     renderProgTableError();

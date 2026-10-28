@@ -9,7 +9,8 @@ function setBusy(on) {
     tableWrapper?.setAttribute('aria-busy', on ? 'true' : 'false');
 }
 
-async function loadTable(refreshMatrix = true) {
+// silent (live sync): no loading state; unchanged data leaves the table alone, changed rows are patched in place
+async function loadTable(refreshMatrix = true, { silent = false } = {}) {
     if (refreshMatrix) {
         syncShelfViewMode();
         if (zoneHasSheetsJs(state.zone) && state.sheet === 'ALL') {
@@ -20,6 +21,7 @@ async function loadTable(refreshMatrix = true) {
     // Fast path when the selected zone has no sheets configured yet (e.g. a newly added zone)
     if (!zoneHasSheetsJs(state.zone)) {
         inflight?.abort();
+        inflight = null;
         view.status = 'ready';
         view.rows = [];
         view.total = 0;
@@ -30,16 +32,19 @@ async function loadTable(refreshMatrix = true) {
         return;
     }
 
+    if (silent && inflight) return;   // a user-driven load is already on its way
     const seq = ++reqSeq;
     inflight?.abort();
     const ctrl = inflight = new AbortController();
 
-    setBusy(true);
-    if (view.rows.length === 0) {
-        view.status = 'loading';
-        renderTable();
+    if (!silent) {
+        setBusy(true);
+        if (view.rows.length === 0) {
+            view.status = 'loading';
+            renderTable();
+        }
+        renderPagination();
     }
-    renderPagination();
 
     const url = buildApiUrl();
 
@@ -53,6 +58,8 @@ async function loadTable(refreshMatrix = true) {
         }
     } catch (err) {
         if (err.name === 'AbortError' || seq !== reqSeq) return;
+        inflight = null;
+        if (silent) throw err;   // live sync shows Offline; the table keeps what it has
         console.error(err);
         view.status = 'error';
         view.rows = [];
@@ -63,6 +70,7 @@ async function loadTable(refreshMatrix = true) {
         return;
     }
     if (seq !== reqSeq) return;
+    inflight = null;
 
     const total = Number(json.total);
 
@@ -71,6 +79,20 @@ async function loadTable(refreshMatrix = true) {
         state.page = Math.ceil(total / state.pageSize);
         loadTable(false);
         return;
+    }
+
+    if (silent && view.status === 'ready') {
+        const tbody = tableWrapper?.querySelector('.aoi-tbody');
+        if (total === view.total && JSON.stringify(json.data) === JSON.stringify(view.rows)) return;
+        if (tbody && view.rows.length > 0 && json.data.length > 0) {
+            const oldRows = view.rows;
+            view.rows = json.data;
+            view.total = total;
+            livePatchRows(tbody, oldRows, json.data, r => r[8], rowHtml);
+            renderPagination();
+            document.dispatchEvent(new CustomEvent('aoi:loaded', { detail: { total, search: state.search } }));
+            return;
+        }
     }
 
     view.status = 'ready';
